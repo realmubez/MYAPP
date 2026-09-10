@@ -1,6 +1,8 @@
 import { LanguageLesson } from '../types/lessons';
+import { PHONE_PLANS_LESSON } from './courses/english/phonePlansLesson';
 
 export const ENGLISH_LESSONS: LanguageLesson[] = [
+  PHONE_PLANS_LESSON,
   {
     id: 'en-greetings',
     language: 'en',

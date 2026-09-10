@@ -1,5 +1,6 @@
 import { Course } from '../types';
 import { ENGLISH_BEGINNER_1_UNITS } from './beginner1';
+import { PHONE_PLANS_LESSON } from './phonePlansLesson';
 
 export const ENGLISH_BEGINNER_1_COURSE: Course = {
   id: 'course-en-b1',
@@ -10,4 +11,5 @@ export const ENGLISH_BEGINNER_1_COURSE: Course = {
   units: ENGLISH_BEGINNER_1_UNITS,
 };
 
-export { ENGLISH_BEGINNER_1_UNITS };
+export { ENGLISH_BEGINNER_1_UNITS, PHONE_PLANS_LESSON };
+

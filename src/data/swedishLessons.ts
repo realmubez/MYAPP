@@ -1,6 +1,8 @@
 import { LanguageLesson } from '../types/lessons';
+import { PA_CAFE_LESSON } from './courses/swedish/paCafeLesson';
 
 export const SWEDISH_LESSONS: LanguageLesson[] = [
+  PA_CAFE_LESSON,
   {
     id: 'sv-haelsningar',
     language: 'sv',

@@ -84,21 +84,26 @@ export function EnglishCourseView() {
     setStoredAutoplay(checked);
   };
 
-  // Progression steps helper for English: Words -> Sentences -> Conversation
+  // Progression steps helper for English: Words -> Sentences -> Conversation -> Interactive
   const getProgressionSteps = (unit: CourseUnit) => {
     const subtitleMap: Record<string, string> = {
       'Word Mode': 'Learn essential vocabulary',
       'Sentence Mode': 'Put the words into context',
       'Dialogue Mode': 'Practice real dialogues',
+      'Concept': 'Interactive session (Concepts, Flashcards, Dialogue, Recall)',
     };
 
     return unit.exercises.map((exercise, idx) => ({
       id: exercise.id,
       stepNumber: (idx + 1).toString().padStart(2, '0'),
-      label: exercise.mode.replace(' Mode', ''),
+      label: exercise.lesson?.steps?.length
+        ? 'Interactive Session'
+        : exercise.mode.replace(' Mode', ''),
       icon: exercise.icon || (idx === 0 ? '👋' : idx === 1 ? '💬' : '👥'),
       subtitle: subtitleMap[exercise.mode] || 'Practice English typing',
-      itemCount: `${exercise.lesson?.sentences?.length || 0} items`,
+      itemCount: exercise.lesson?.steps?.length
+        ? `${exercise.lesson.steps.length} interactive steps`
+        : `${exercise.lesson?.sentences?.length || 0} items`,
       exercise,
     }));
   };

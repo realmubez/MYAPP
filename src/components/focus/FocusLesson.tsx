@@ -7,6 +7,9 @@ import { useLessonAudio } from '../../hooks/useLessonAudio';
 import { LessonHeader } from './LessonHeader';
 import { TypingText } from './TypingText';
 import { LessonResults } from './LessonResults';
+import { InteractiveLessonEngine } from './interactive/InteractiveLessonEngine';
+import { PhonePlansLessonEngine } from './interactive/PhonePlansLessonEngine';
+import { PaCafeLessonEngine } from './interactive/PaCafeLessonEngine';
 import { progressService } from '../../services/progress';
 import {
   getStoredVoice,
@@ -35,7 +38,41 @@ export function FocusLesson({
   onExit,
   onLessonComplete,
 }: FocusLessonProps) {
+  // If the lesson is the experimental Phone Plans lesson, use PhonePlansLessonEngine
+  if (lesson.id === 'en-phone-plans' || lesson.id.includes('phone-plans')) {
+    return (
+      <PhonePlansLessonEngine
+        lesson={lesson}
+        onExit={onExit}
+        onLessonComplete={onLessonComplete}
+      />
+    );
+  }
+
+  // If the lesson is the experimental Swedish På Café lesson, use PaCafeLessonEngine
+  if (lesson.id === 'sv-pa-cafe' || lesson.id.includes('pa-cafe') || lesson.id === 'sv-b1-u08-ex4') {
+    return (
+      <PaCafeLessonEngine
+        lesson={lesson}
+        onExit={onExit}
+        onLessonComplete={onLessonComplete}
+      />
+    );
+  }
+
+  // If the lesson contains structured interactive steps, use the InteractiveLessonEngine
+  if (lesson.steps && lesson.steps.length > 0) {
+    return (
+      <InteractiveLessonEngine
+        lesson={lesson}
+        onExit={onExit}
+        onLessonComplete={onLessonComplete}
+      />
+    );
+  }
+
   const navigate = useNavigate();
+
 
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState<number>(0);
   const [stage, setStage] = useState<LessonStage>('listen_type');

@@ -1,4 +1,5 @@
 import { CourseUnit } from '../types';
+import { PA_CAFE_LESSON } from './paCafeLesson';
 
 export const SWEDISH_BEGINNER_1_UNITS: CourseUnit[] = [
   // 01 — Hälsningar (Greetings)
@@ -620,6 +621,14 @@ export const SWEDISH_BEGINNER_1_UNITS: CourseUnit[] = [
             { id: 'sv-b1-u08-d04', text: 'Jag fikar här, tack så mycket.', translation: 'I will have it here, thanks so much.' },
           ],
         },
+      },
+      {
+        id: 'sv-b1-u08-ex4',
+        exerciseNumber: 4,
+        title: 'Exercise 4',
+        mode: 'Interactive Mode',
+        icon: '☕',
+        lesson: PA_CAFE_LESSON,
       },
     ],
   },

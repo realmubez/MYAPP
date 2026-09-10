@@ -1,4 +1,5 @@
 import { CourseUnit } from '../types';
+import { PHONE_PLANS_LESSON } from './phonePlansLesson';
 
 export const ENGLISH_BEGINNER_1_UNITS: CourseUnit[] = [
   // 01 — Greetings & Courtesies
@@ -1143,6 +1144,14 @@ export const ENGLISH_BEGINNER_1_UNITS: CourseUnit[] = [
             { id: 'en-b1-u15-d04', text: 'That is very kind of you, thank you.', translation: 'Customer gratitude' },
           ],
         },
+      },
+      {
+        id: 'en-b1-u15-ex4',
+        exerciseNumber: 4,
+        title: 'Exercise 4 · Interactive Session',
+        mode: 'Concept',
+        icon: '📱',
+        lesson: PHONE_PLANS_LESSON,
       },
     ],
   },
