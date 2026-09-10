@@ -8,14 +8,23 @@ import {
   User,
   Settings,
   HelpCircle,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 interface SidebarProps {
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
   onOpenSettings: () => void;
   onOpenHelp?: () => void;
 }
 
-export function Sidebar({ onOpenSettings, onOpenHelp }: SidebarProps) {
+export function Sidebar({
+  isCollapsed,
+  onToggleCollapse,
+  onOpenSettings,
+  onOpenHelp,
+}: SidebarProps) {
   const location = useLocation();
 
   const mainNavItems = [
@@ -71,27 +80,39 @@ export function Sidebar({ onOpenSettings, onOpenHelp }: SidebarProps) {
     <aside
       id="desktop-sidebar"
       aria-label="Desktop Navigation Sidebar"
-      className="hidden lg:flex flex-col justify-between w-60 xl:w-64 h-screen sticky top-0 shrink-0 border-r border-neutral-800/80 bg-[#0d0c0a] p-5 select-none z-30"
+      className={`hidden lg:flex flex-col justify-between h-screen sticky top-0 shrink-0 border-r border-neutral-800/80 bg-[#0d0c0a] select-none z-30 transition-[width,padding] duration-200 ease-in-out ${
+        isCollapsed ? 'w-[72px] p-3' : 'w-60 xl:w-64 p-5'
+      }`}
     >
       {/* Top Header & Brand */}
-      <div className="space-y-6">
-        <NavLink
-          to="/"
-          id="sidebar-brand-logo"
-          className="group flex items-center gap-3 px-1 py-1"
+      <div className="space-y-5">
+        <div
+          className={`flex items-center ${
+            isCollapsed ? 'justify-center' : 'justify-between gap-2'
+          }`}
         >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-sm font-bold shadow-sm shadow-amber-500/10 group-hover:border-amber-400 transition-colors">
-            &gt;_
-          </div>
-          <div>
-            <h1 className="text-sm font-bold tracking-wider text-white group-hover:text-amber-300 transition-colors leading-tight">
-              MY LEARNING
-            </h1>
-            <p className="text-[11px] text-neutral-400 font-normal mt-0.5">
-              “I learn by typing.”
-            </p>
-          </div>
-        </NavLink>
+          <NavLink
+            to="/"
+            id="sidebar-brand-logo"
+            title="MY LEARNING Dashboard"
+            aria-label="MY LEARNING Dashboard"
+            className="group flex items-center gap-3 px-1 py-1 min-w-0"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-sm font-bold shadow-sm shadow-amber-500/10 group-hover:border-amber-400 transition-colors">
+              &gt;_
+            </div>
+            {!isCollapsed && (
+              <div className="min-w-0 animate-in fade-in duration-150">
+                <h1 className="text-sm font-bold tracking-wider text-white group-hover:text-amber-300 transition-colors leading-tight truncate">
+                  MY LEARNING
+                </h1>
+                <p className="text-[11px] text-neutral-400 font-normal mt-0.5 truncate">
+                  “I learn by typing.”
+                </p>
+              </div>
+            )}
+          </NavLink>
+        </div>
 
         {/* Primary Navigation Links */}
         <nav className="space-y-1.5" aria-label="Main Navigation">
@@ -104,18 +125,24 @@ export function Sidebar({ onOpenSettings, onOpenHelp }: SidebarProps) {
                 key={item.id}
                 id={item.id}
                 to={item.path}
-                className={`flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                title={isCollapsed ? item.label : undefined}
+                aria-label={item.label}
+                className={`flex items-center rounded-xl text-xs font-semibold transition-all ${
+                  isCollapsed
+                    ? 'h-11 w-11 mx-auto justify-center'
+                    : 'gap-3.5 px-3.5 py-2.5'
+                } ${
                   active
                     ? 'bg-amber-400/15 text-amber-400 border border-amber-400/30 shadow-sm shadow-amber-500/10'
                     : 'text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900/80 border border-transparent'
                 }`}
               >
                 <Icon
-                  className={`w-4 h-4 ${
+                  className={`w-4 h-4 shrink-0 ${
                     active ? 'text-amber-400' : 'text-neutral-400 group-hover:text-neutral-200'
                   }`}
                 />
-                <span className="truncate">{item.label}</span>
+                {!isCollapsed && <span className="truncate">{item.label}</span>}
               </NavLink>
             );
           })}
@@ -125,47 +152,93 @@ export function Sidebar({ onOpenSettings, onOpenHelp }: SidebarProps) {
             type="button"
             id="sidebar-nav-profile"
             onClick={onOpenSettings}
-            className="w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900/80 border border-transparent transition-all cursor-pointer text-left"
+            title={isCollapsed ? 'Profile' : undefined}
+            aria-label="Profile"
+            className={`flex items-center rounded-xl text-xs font-semibold text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900/80 border border-transparent transition-all cursor-pointer ${
+              isCollapsed
+                ? 'h-11 w-11 mx-auto justify-center'
+                : 'w-full gap-3.5 px-3.5 py-2.5 text-left'
+            }`}
           >
-            <User className="w-4 h-4 text-neutral-400" />
-            <span>Profile</span>
+            <User className="w-4 h-4 shrink-0 text-neutral-400" />
+            {!isCollapsed && <span>Profile</span>}
           </button>
         </nav>
       </div>
 
-      {/* Bottom Area: Settings, Help & Quote Card */}
-      <div className="space-y-4 pt-4 border-t border-neutral-900">
+      {/* Bottom Area: Settings, Help & Collapse Toggle */}
+      <div className="space-y-3 pt-3 border-t border-neutral-900">
         <div className="space-y-1">
           <button
             type="button"
             id="sidebar-nav-settings"
             onClick={onOpenSettings}
-            className="w-full flex items-center gap-3.5 px-3.5 py-2 rounded-xl text-xs font-medium text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900/80 transition-all cursor-pointer text-left"
+            title={isCollapsed ? 'Settings' : undefined}
+            aria-label="Settings"
+            className={`flex items-center rounded-xl text-xs font-medium text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900/80 transition-all cursor-pointer ${
+              isCollapsed
+                ? 'h-10 w-10 mx-auto justify-center'
+                : 'w-full gap-3.5 px-3.5 py-2 text-left'
+            }`}
           >
-            <Settings className="w-4 h-4 text-neutral-400" />
-            <span>Settings</span>
+            <Settings className="w-4 h-4 shrink-0 text-neutral-400" />
+            {!isCollapsed && <span>Settings</span>}
           </button>
 
           <button
             type="button"
             id="sidebar-nav-help"
             onClick={onOpenHelp || onOpenSettings}
-            className="w-full flex items-center gap-3.5 px-3.5 py-2 rounded-xl text-xs font-medium text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900/80 transition-all cursor-pointer text-left"
+            title={isCollapsed ? 'Help' : undefined}
+            aria-label="Help"
+            className={`flex items-center rounded-xl text-xs font-medium text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900/80 transition-all cursor-pointer ${
+              isCollapsed
+                ? 'h-10 w-10 mx-auto justify-center'
+                : 'w-full gap-3.5 px-3.5 py-2 text-left'
+            }`}
           >
-            <HelpCircle className="w-4 h-4 text-neutral-400" />
-            <span>Help</span>
+            <HelpCircle className="w-4 h-4 shrink-0 text-neutral-400" />
+            {!isCollapsed && <span>Help</span>}
           </button>
         </div>
 
-        {/* Motivational Sidebar Card matching reference image */}
-        <div
-          id="sidebar-quote-card"
-          className="rounded-2xl border border-neutral-800/80 bg-neutral-900/60 p-3.5"
+        {/* Motivational Sidebar Card (expanded only) */}
+        {!isCollapsed && (
+          <div
+            id="sidebar-quote-card"
+            className="rounded-2xl border border-neutral-800/80 bg-neutral-900/60 p-3.5 animate-in fade-in duration-150"
+          >
+            <p className="text-xs text-neutral-300 italic leading-relaxed">
+              “Progress happens one keystroke at a time.”
+            </p>
+          </div>
+        )}
+
+        {/* Sidebar Collapse/Expand Toggle Button */}
+        <button
+          type="button"
+          id="sidebar-collapse-toggle-btn"
+          onClick={onToggleCollapse}
+          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className={`flex items-center rounded-xl border border-neutral-800/80 bg-neutral-900/90 text-neutral-400 hover:text-white hover:border-neutral-700 active:scale-95 transition-all cursor-pointer text-xs font-semibold ${
+            isCollapsed
+              ? 'h-10 w-10 mx-auto justify-center'
+              : 'w-full justify-between px-3.5 py-2.5'
+          }`}
         >
-          <p className="text-xs text-neutral-300 italic leading-relaxed">
-            “Progress happens one keystroke at a time.”
-          </p>
-        </div>
+          {isCollapsed ? (
+            <ChevronRight className="w-4 h-4 text-amber-400" />
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <ChevronLeft className="w-4 h-4 text-amber-400" />
+                <span>Collapse</span>
+              </div>
+              <span className="text-[10px] font-mono text-neutral-500">◀</span>
+            </>
+          )}
+        </button>
       </div>
     </aside>
   );

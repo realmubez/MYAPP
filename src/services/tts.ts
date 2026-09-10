@@ -71,6 +71,25 @@ export const ENGLISH_VOICES: VoiceOption[] = [
   },
 ];
 
+export const SOMALI_VOICES: VoiceOption[] = [
+  {
+    id: 'so-SO-MuqdishoNeural',
+    name: 'Muqdisho (Neural)',
+    language: 'so' as unknown as Language,
+    gender: 'male',
+    region: 'Somalia',
+    description: 'Natural standard Somali voice (default)',
+  },
+  {
+    id: 'so-SO-UbaxNeural',
+    name: 'Ubax (Neural)',
+    language: 'so' as unknown as Language,
+    gender: 'female',
+    region: 'Somalia',
+    description: 'Articulate female Somali voice',
+  },
+];
+
 export const AVAILABLE_RATES = ['-20%', '-15%', '0%', '+10%'] as const;
 export type TTSRate = typeof AVAILABLE_RATES[number];
 
@@ -78,8 +97,10 @@ export type TTSRate = typeof AVAILABLE_RATES[number];
 export const STORAGE_KEYS = {
   SWEDISH_VOICE: 'my-learning-swedish-voice',
   ENGLISH_VOICE: 'my-learning-english-voice',
+  SOMALI_VOICE: 'my-learning-somali-voice',
   SWEDISH_RATE: 'my-learning-swedish-rate',
   ENGLISH_RATE: 'my-learning-english-rate',
+  SOMALI_RATE: 'my-learning-somali-rate',
   AUTOPLAY_AUDIO: 'my-learning-autoplay-audio',
   DIFFICULT_WORDS: 'my-learning-difficult-words',
 };
@@ -101,8 +122,10 @@ export function getTTSUrl({ text, voice, rate }: TTSRequestOptions): string {
   return `${TTS_BASE_URL}?${params.toString()}`;
 }
 
-export function getDefaultVoice(language: Language): string {
-  return language === 'sv' ? 'sv-SE-MattiasNeural' : 'en-GB-RyanNeural';
+export function getDefaultVoice(language: string): string {
+  if (language === 'sv') return 'sv-SE-MattiasNeural';
+  if (language === 'so') return 'so-SO-MuqdishoNeural';
+  return 'en-US-GuyNeural';
 }
 
 export function getStoredVoice(language: Language): string {

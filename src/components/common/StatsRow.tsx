@@ -54,7 +54,7 @@ export function StatsRow({ stats }: StatsRowProps) {
   return (
     <div
       id="dashboard-stats-row"
-      className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
+      className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5 lg:gap-4"
     >
       {statItems.map((item) => {
         const Icon = item.icon;
@@ -62,38 +62,40 @@ export function StatsRow({ stats }: StatsRowProps) {
           <div
             key={item.id}
             id={item.id}
-            className="flex items-center gap-3.5 rounded-3xl border border-neutral-800/80 bg-[#141210] p-4 sm:p-4.5 transition-all hover:border-neutral-700/80 shadow-sm"
+            className="flex flex-col justify-between min-h-[112px] sm:min-h-[120px] rounded-2xl sm:rounded-3xl border border-neutral-800/80 bg-[#141210] p-3.5 sm:p-4 lg:p-4.5 transition-all hover:border-neutral-700/80 shadow-sm"
           >
-            {/* Round Icon Container */}
-            <div
-              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${item.iconBg}`}
-            >
-              <Icon className="w-5 h-5" />
+            {/* Top row: Icon + Sublabel / Badge */}
+            <div className="flex items-center justify-between gap-1.5">
+              <div
+                className={`flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl ${item.iconBg}`}
+              >
+                <Icon className="w-5 h-5" />
+              </div>
+
+              {item.badge ? (
+                <span
+                  className={`text-[10px] font-semibold font-mono px-1.5 py-0.5 rounded-md border ${item.badge.color}`}
+                >
+                  {item.badge.text}
+                </span>
+              ) : (
+                <span className="text-[11px] text-neutral-500 font-medium tracking-tight">
+                  {item.sublabel}
+                </span>
+              )}
             </div>
 
-            {/* Value & Label */}
-            <div className="min-w-0 flex-1">
-              <span className="text-[11px] text-neutral-400 font-medium block truncate">
+            {/* Bottom info: Label + Prominent Value */}
+            <div className="mt-2 min-w-0">
+              <span className="text-xs sm:text-[13px] text-neutral-400 font-medium block leading-tight whitespace-normal">
                 {item.label}
               </span>
 
-              <div className="flex items-baseline gap-2 mt-0.5">
-                <span className="text-lg sm:text-xl font-bold text-white font-mono tracking-tight">
+              <div className="flex items-baseline gap-1.5 mt-0.5">
+                <span className="text-xl sm:text-2xl font-bold text-white font-mono tracking-tight">
                   {item.value}
                 </span>
-
-                {item.badge && (
-                  <span
-                    className={`text-[10px] font-semibold font-mono px-1.5 py-0.5 rounded-md border ${item.badge.color}`}
-                  >
-                    {item.badge.text}
-                  </span>
-                )}
               </div>
-
-              <span className="text-[11px] text-neutral-400 block mt-0.5">
-                {item.sublabel}
-              </span>
             </div>
           </div>
         );

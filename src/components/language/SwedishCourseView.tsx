@@ -9,15 +9,15 @@ import {
   X,
   Volume2,
   Check,
-  CheckCircle2,
 } from 'lucide-react';
 import { SwedishFlagIcon } from '../common/FlagIcons';
-import { SWEDISH_UNITS, CourseUnit, ExerciseItem } from '../../data/swedishUnits';
+import { CourseUnit, ExerciseItem } from '../../data/swedishUnits';
 import { LanguageLesson } from '../../types/lessons';
 import { FocusLesson } from '../focus/FocusLesson';
 import { storageService } from '../../services/storage';
 import { useProgress } from '../../hooks/useProgress';
 import { typingSoundService } from '../../services/typingSoundService';
+import { PA_CAFE_LESSON } from '../../data/curriculumConfig';
 import {
   SWEDISH_VOICES,
   AVAILABLE_RATES,
@@ -31,6 +31,25 @@ import {
   unlockAudio,
 } from '../../services/tts';
 
+const CURATED_SWEDISH_UNITS: CourseUnit[] = [
+  {
+    id: 'sv-b1-u-pa-cafe',
+    unitNumber: 1,
+    title: 'På café',
+    description: 'Master ordering coffee, requesting pastries, asking prices, and engaging in natural café conversations in Swedish through structured typing.',
+    exercises: [
+      {
+        id: 'sv-pa-cafe',
+        exerciseNumber: 1,
+        title: 'På café',
+        mode: 'Interactive Mode',
+        icon: '☕',
+        lesson: PA_CAFE_LESSON,
+      },
+    ],
+  },
+];
+
 export function SwedishCourseView() {
   const navigate = useNavigate();
   const { progress, isExerciseCompleted, updateLastPosition } = useProgress();
@@ -39,10 +58,9 @@ export function SwedishCourseView() {
   // Active focus lesson
   const [activeFocusLesson, setActiveFocusLesson] = useState<LanguageLesson | null>(null);
 
-  // Collapsible units state: Unit 1 open by default
+  // Collapsible units state
   const [expandedUnits, setExpandedUnits] = useState<Record<string, boolean>>({
-    'sv-b1-u01': true,
-    'unit-1': true,
+    'sv-b1-u-pa-cafe': true,
   });
 
   // Book reference modal
@@ -66,16 +84,16 @@ export function SwedishCourseView() {
     }));
   };
 
-  const handleStartExercise = (exercise: ExerciseItem, unit: CourseUnit) => {
+  const handleStartExercise = (exercise: ExerciseItem, unit?: CourseUnit) => {
     unlockAudio();
     updateLastPosition({
       subjectId: 'swedish',
-      unitId: unit.id,
-      unitTitle: `Beginner 1 · ${unit.title}`,
+      unitId: unit?.id || 'sv-b1-u-pa-cafe',
+      unitTitle: unit ? `Beginner 1 · ${unit.title}` : 'Beginner 1 · På café',
       exerciseId: exercise.id,
       exerciseTitle: `${exercise.title} · ${exercise.mode}`,
     });
-    setActiveFocusLesson(exercise.lesson);
+    setActiveFocusLesson(exercise.lesson || PA_CAFE_LESSON);
   };
 
   const handleVoiceChange = (newVoice: string) => {
@@ -93,29 +111,10 @@ export function SwedishCourseView() {
     setStoredAutoplay(checked);
   };
 
-  const handleToggleTypingSound = (enabled: boolean) => {
-    setTypingSoundEnabled(enabled);
-    const settings = storageService.getSettings();
-    const updated = { ...settings, soundEnabled: enabled };
-    storageService.saveSettings(updated);
-    typingSoundService.setEnabled(enabled);
-    if (enabled) {
-      typingSoundService.playCorrectKey();
-    }
-  };
-
-  const handleTypingVolumeChange = (vol: number) => {
-    setTypingSoundVolume(vol);
-    const settings = storageService.getSettings();
-    const updated = { ...settings, typingSoundVolume: vol };
-    storageService.saveSettings(updated);
-    typingSoundService.setVolume(vol);
-  };
-
   return (
     <div
       id="swedish-course-page"
-      className="w-full max-w-5xl lg:max-w-6xl space-y-6 lg:space-y-8 pb-24 lg:pb-12 text-neutral-100"
+      className="w-full max-w-5xl lg:max-w-6xl space-y-4 sm:space-y-6 lg:space-y-8 pb-24 lg:pb-12 text-neutral-100"
     >
       {/* Active Focus Mode Overlay */}
       {activeFocusLesson && (
@@ -129,32 +128,41 @@ export function SwedishCourseView() {
       )}
 
       {/* Course Header Banner */}
-      <div className="rounded-3xl border border-neutral-800/80 bg-[#141210] p-5 sm:p-7 space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
+      <div className="rounded-2xl sm:rounded-3xl border border-neutral-800/80 bg-[#141210] p-4 sm:p-6 lg:p-7 space-y-3.5 sm:space-y-5 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <button
               type="button"
               id="back-to-dashboard-btn"
               onClick={() => navigate('/')}
               aria-label="Back to Dashboard"
-              className="flex h-10 w-10 items-center justify-center rounded-2xl border border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-white hover:border-neutral-700 active:scale-95 transition-all cursor-pointer shrink-0"
+              className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl sm:rounded-2xl border border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-white hover:border-neutral-700 active:scale-95 transition-all cursor-pointer shrink-0"
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
 
-            <div className="flex items-center gap-3.5">
-              <SwedishFlagIcon size={44} className="shrink-0" />
+            <div className="flex items-center gap-3 sm:gap-3.5">
+              <div className="shrink-0 block sm:hidden">
+                <SwedishFlagIcon size={36} className="shrink-0" />
+              </div>
+              <div className="shrink-0 hidden sm:block">
+                <SwedishFlagIcon size={44} className="shrink-0" />
+              </div>
+
               <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-tight">
-                    Swedish (Svenska)
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-white leading-tight">
+                    Swedish
                   </h1>
-                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 font-semibold">
+                  <span className="text-xs text-neutral-400 font-normal">
+                    (Svenska)
+                  </span>
+                  <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 font-semibold">
                     Beginner 1
                   </span>
                 </div>
-                <p className="text-xs sm:text-sm text-neutral-400 mt-1">
-                  Learn everyday Swedish through listening, speaking, and character typing.
+                <p className="text-xs sm:text-sm text-neutral-400 mt-0.5 sm:mt-1">
+                  Learn everyday Swedish through listening and typing.
                 </p>
               </div>
             </div>
@@ -166,12 +174,12 @@ export function SwedishCourseView() {
               type="button"
               id="open-swedish-book-btn"
               onClick={() => setIsBookModalOpen(true)}
-              aria-label="Course Guide & Voice Settings"
-              title="Course Guide & Voice Settings"
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-neutral-800 bg-neutral-900/90 text-neutral-300 hover:text-white hover:border-neutral-700 active:scale-95 transition-all text-xs font-semibold cursor-pointer"
+              aria-label="Course Guide"
+              title="Course Guide"
+              className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl border border-neutral-800 bg-neutral-900/90 text-neutral-300 hover:text-white hover:border-neutral-700 active:scale-95 transition-all text-xs font-semibold cursor-pointer"
             >
-              <BookOpen className="w-4 h-4 text-amber-400" />
-              <span>Course Guide & Audio</span>
+              <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+              <span>Course Guide</span>
             </button>
           </div>
         </div>
@@ -179,13 +187,13 @@ export function SwedishCourseView() {
         {/* Progress Pill Bar */}
         <div
           id="swedish-progress-card"
-          className="rounded-2xl border border-neutral-800/90 bg-[#0d0c0a] py-3 px-4 flex items-center justify-between gap-4 shadow-inner"
+          className="rounded-xl sm:rounded-2xl border border-neutral-800/90 bg-[#0d0c0a] py-2.5 sm:py-3 px-3.5 sm:px-4 flex items-center justify-between gap-3 sm:gap-4 shadow-inner"
         >
           <span className="text-xs font-mono font-bold text-amber-400 shrink-0">
             {swedishProgress.percentComplete}% Complete
           </span>
 
-          <div className="h-2 flex-1 rounded-full bg-neutral-800/90 overflow-hidden">
+          <div className="h-1.5 sm:h-2 flex-1 rounded-full bg-neutral-800/90 overflow-hidden">
             <div
               className="h-full rounded-full bg-amber-400 transition-all duration-500"
               style={{ width: `${Math.max(2, swedishProgress.percentComplete)}%` }}
@@ -193,14 +201,14 @@ export function SwedishCourseView() {
           </div>
 
           <span className="text-xs font-mono text-neutral-400 shrink-0">
-            {swedishProgress.completedLessons} / {swedishProgress.totalLessons} lessons
+            {swedishProgress.completedLessons} / 1 lesson
           </span>
         </div>
       </div>
 
       {/* Course Units Section */}
       <div className="space-y-6">
-        {SWEDISH_UNITS.map((unit: CourseUnit) => {
+        {CURATED_SWEDISH_UNITS.map((unit: CourseUnit) => {
           const isExpanded = expandedUnits[unit.id] !== false;
 
           return (
@@ -221,7 +229,7 @@ export function SwedishCourseView() {
                     </span>
                     <span className="text-neutral-600">·</span>
                     <span className="text-xs text-neutral-400">
-                      {unit.exercises.length} modes
+                      {unit.exercises.length} {unit.exercises.length === 1 ? 'mode' : 'modes'}
                     </span>
                   </div>
                   <h2 className="text-base sm:text-lg font-bold text-white tracking-tight mt-1">
@@ -328,7 +336,7 @@ export function SwedishCourseView() {
               <div className="flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-amber-400" />
                 <h3 className="text-sm font-bold text-white">
-                  Swedish Course Guide & Audio
+                  Swedish Course Guide
                 </h3>
               </div>
               <button
@@ -345,9 +353,9 @@ export function SwedishCourseView() {
             <div className="space-y-2 text-xs text-neutral-300">
               <p className="font-medium text-white">Beginner 1 Focus:</p>
               <ul className="list-disc list-inside space-y-1 text-neutral-400">
-                <li>Listening comprehension via neural TTS</li>
+                <li>Listening comprehension via neural audio</li>
                 <li>Character-by-character keyboard muscle memory</li>
-                <li>Greetings, introductions, daily life & food</li>
+                <li>Everyday café conversations & polite requests</li>
               </ul>
             </div>
 
@@ -434,3 +442,4 @@ export function SwedishCourseView() {
     </div>
   );
 }
+

@@ -7,6 +7,7 @@ import { ENGLISH_UNITS } from '../data/englishUnits';
 import { PYTHON_UNITS, PythonExerciseItem } from '../data/pythonUnits';
 import { FocusLesson } from '../components/focus/FocusLesson';
 import { PythonFocusLesson } from '../components/focus/PythonFocusLesson';
+import { PythonVariablesLessonEngine } from '../components/focus/interactive/PythonVariablesLessonEngine';
 import { LanguageLesson } from '../types/lessons';
 import { SAMPLE_EXERCISES } from '../data/mockData';
 
@@ -21,6 +22,20 @@ export function FocusLessonPage() {
   // Combine query param options
   const targetId = lessonId || id;
   const targetSubject = subject?.toLowerCase();
+
+  // Python Variables experimental lesson check
+  if (
+    targetId === 'py-variables' ||
+    targetId === 'py-b1-u02-ex5' ||
+    (targetSubject === 'python' && targetId?.includes('variables'))
+  ) {
+    return (
+      <PythonVariablesLessonEngine
+        onExit={() => navigate('/python')}
+        onComplete={() => navigate('/python')}
+      />
+    );
+  }
 
   // Python-specific lesson handler
   if (targetSubject === 'python' || targetId?.startsWith('py-')) {

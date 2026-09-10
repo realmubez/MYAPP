@@ -10,7 +10,7 @@ export function DashboardHero() {
   return (
     <div
       id="dashboard-hero-banner"
-      className="relative overflow-hidden rounded-3xl border border-neutral-800/80 bg-gradient-to-r from-[#1c1611] via-[#161310] to-[#1a1511] p-6 sm:p-8 shadow-xl"
+      className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-neutral-800/80 bg-gradient-to-r from-[#1c1611] via-[#161310] to-[#1a1511] p-5 sm:p-7 md:p-8 shadow-xl"
     >
       {/* Subtle warm amber ambient glow effect */}
       <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl" />
@@ -35,24 +35,24 @@ export function DashboardHero() {
         />
       </svg>
 
-      <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+      <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-5 sm:gap-6">
         {/* Left Welcome Copy & CTAs */}
-        <div className="space-y-4 max-w-xl">
+        <div className="space-y-3.5 sm:space-y-4 max-w-xl">
           <div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-white leading-tight">
+            <h1 className="text-[26px] sm:text-3xl lg:text-4xl font-bold tracking-tight text-white leading-tight">
               Welcome <span className="text-amber-400">back!</span>
             </h1>
-            <p className="text-xs sm:text-sm text-neutral-300 font-normal mt-1.5 leading-relaxed">
+            <p className="text-[15px] sm:text-base text-neutral-300 font-normal mt-1 leading-snug">
               Small steps every day make a big difference.
             </p>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap items-center gap-3 pt-1">
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 pt-0.5">
             <Link
               to={continueRoute}
               id="hero-continue-learning-btn"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs sm:text-sm font-bold shadow-lg shadow-amber-400/20 transition-all active:scale-95 cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 h-12 px-5 rounded-xl sm:rounded-2xl bg-amber-400 hover:bg-amber-300 text-neutral-950 text-xs sm:text-sm font-bold shadow-lg shadow-amber-400/20 transition-all active:scale-95 cursor-pointer"
             >
               <Play className="w-4 h-4 fill-neutral-950 translate-x-0.5" />
               <span>Continue Learning</span>
@@ -62,7 +62,7 @@ export function DashboardHero() {
             <Link
               to="/progress"
               id="hero-view-progress-btn"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-neutral-900/80 hover:bg-neutral-800 text-neutral-200 hover:text-white border border-neutral-700/80 text-xs sm:text-sm font-medium transition-all active:scale-95 cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 h-12 px-4 sm:px-4.5 rounded-xl sm:rounded-2xl bg-neutral-900/80 hover:bg-neutral-800 text-neutral-200 hover:text-white border border-neutral-700/80 text-xs sm:text-sm font-medium transition-all active:scale-95 cursor-pointer"
             >
               <BarChart2 className="w-4 h-4 text-neutral-400" />
               <span>View Progress</span>

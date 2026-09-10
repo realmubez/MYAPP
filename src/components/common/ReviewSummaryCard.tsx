@@ -23,13 +23,13 @@ export function ReviewSummaryCard({ onStartSession }: ReviewSummaryCardProps) {
   return (
     <div
       id="dashboard-review-summary-card"
-      className="group relative overflow-hidden rounded-3xl border border-neutral-800/80 bg-[#141210] p-4 sm:p-5 transition-all hover:border-amber-500/40 shadow-sm flex flex-col justify-between h-full min-h-[140px]"
+      className="group relative overflow-hidden rounded-2xl sm:rounded-3xl border border-neutral-800/80 bg-[#141210] p-3.5 sm:p-4.5 md:p-5 transition-all hover:border-amber-500/40 shadow-sm flex flex-col justify-between h-full min-h-[125px] sm:min-h-[140px]"
     >
-      <div className="flex items-start justify-between gap-3.5">
-        <div className="flex items-start gap-3.5 min-w-0 flex-1">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3 min-w-0 flex-1">
           {/* Sparkle badge */}
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
-            <Sparkles className="w-6 h-6" />
+          <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+            <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
 
           <div className="min-w-0 flex-1">
@@ -44,7 +44,7 @@ export function ReviewSummaryCard({ onStartSession }: ReviewSummaryCardProps) {
               )}
             </div>
 
-            <p className="text-xs text-neutral-400 mt-1">
+            <p className="text-xs text-neutral-400 mt-0.5 sm:mt-1">
               {totalDifficult === 0
                 ? 'No items to review · All clear'
                 : getSubBreakdown()}
@@ -60,7 +60,7 @@ export function ReviewSummaryCard({ onStartSession }: ReviewSummaryCardProps) {
       </div>
 
       {/* Footer link / button */}
-      <div className="mt-4 pt-3 border-t border-neutral-800/60 flex items-center justify-between">
+      <div className="mt-3 sm:mt-4 pt-2.5 sm:pt-3 border-t border-neutral-800/60 flex items-center justify-between">
         <span className="text-[11px] text-neutral-400">
           Personalized spaced repetition
         </span>

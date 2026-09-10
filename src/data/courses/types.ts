@@ -23,7 +23,7 @@ export interface PythonExerciseItem {
   id: string;
   exerciseNumber: number;
   title: string;
-  mode: 'Concept' | 'Type' | 'Code' | 'Recall' | 'Typing' | 'Code / Recall';
+  mode: 'Concept' | 'Type' | 'Code' | 'Recall' | 'Typing' | 'Code / Recall' | 'Interactive Mode';
   icon: string;
   prompt: string;
   contentToType: string;

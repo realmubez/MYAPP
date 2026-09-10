@@ -5,11 +5,23 @@ import { BottomNav } from './BottomNav';
 import { Sidebar } from './Sidebar';
 import { DesktopTopBar } from './DesktopTopBar';
 import { SettingsModal } from '../common/SettingsModal';
+import { storageService } from '../../services/storage';
 
 export function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() =>
+    storageService.getSidebarCollapsed()
+  );
+
+  const handleToggleSidebar = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      storageService.setSidebarCollapsed(next);
+      return next;
+    });
+  };
 
   // If route is /lesson/:id or /focus/*, bypass standard nav wrappers for pure focus mode
   const isFocusLesson =
@@ -51,10 +63,14 @@ export function Layout() {
   return (
     <div className="min-h-screen bg-[#0a0908] text-neutral-100 flex flex-col lg:flex-row antialiased selection:bg-amber-500/30 selection:text-white">
       {/* Desktop Left Sidebar (Visible at >= 1024px) */}
-      <Sidebar onOpenSettings={() => setIsSettingsOpen(true)} />
+      <Sidebar
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={handleToggleSidebar}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+      />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen transition-all duration-200 ease-in-out">
         {/* Mobile secondary page top header (Hidden on desktop) */}
         {!isCustomHeaderPage && (
           <header className="lg:hidden sticky top-0 z-30 w-full bg-neutral-950/95 backdrop-blur-md border-b border-neutral-900 px-4 py-2.5">
@@ -76,7 +92,7 @@ export function Layout() {
         )}
 
         {/* Responsive Content Container */}
-        <main className="flex-1 w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 pt-3 lg:pt-6 pb-24 lg:pb-12">
+        <main className="flex-1 w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 pt-3 lg:pt-6 pb-24 lg:pb-12 transition-all duration-200">
           <DesktopTopBar onOpenSettings={() => setIsSettingsOpen(true)} />
           <Outlet />
         </main>

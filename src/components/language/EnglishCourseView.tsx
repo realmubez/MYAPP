@@ -11,10 +11,11 @@ import {
   Check,
 } from 'lucide-react';
 import { BritishFlagIcon } from '../common/FlagIcons';
-import { ENGLISH_UNITS, CourseUnit, ExerciseItem } from '../../data/englishUnits';
+import { CourseUnit, ExerciseItem } from '../../data/englishUnits';
 import { LanguageLesson } from '../../types/lessons';
 import { FocusLesson } from '../focus/FocusLesson';
 import { useProgress } from '../../hooks/useProgress';
+import { PHONE_PLANS_LESSON } from '../../data/curriculumConfig';
 import {
   ENGLISH_VOICES,
   AVAILABLE_RATES,
@@ -28,6 +29,25 @@ import {
   unlockAudio,
 } from '../../services/tts';
 
+const CURATED_ENGLISH_UNITS: CourseUnit[] = [
+  {
+    id: 'en-b1-u-phone-plans',
+    unitNumber: 1,
+    title: 'Phone Plans',
+    description: 'Learn how to understand and talk about mobile phone plans, contracts, data limits, and customer service requests through structured typing.',
+    exercises: [
+      {
+        id: 'en-phone-plans',
+        exerciseNumber: 1,
+        title: 'Phone Plans',
+        mode: 'Interactive Mode',
+        icon: '📱',
+        lesson: PHONE_PLANS_LESSON,
+      },
+    ],
+  },
+];
+
 export function EnglishCourseView() {
   const navigate = useNavigate();
   const { progress, isExerciseCompleted, updateLastPosition } = useProgress();
@@ -36,10 +56,9 @@ export function EnglishCourseView() {
   // Active focus lesson
   const [activeFocusLesson, setActiveFocusLesson] = useState<LanguageLesson | null>(null);
 
-  // Collapsible units state: Unit 1 open, others collapsed by default
+  // Collapsible units state
   const [expandedUnits, setExpandedUnits] = useState<Record<string, boolean>>({
-    'en-b1-u01': true,
-    'unit-1': true,
+    'en-b1-u-phone-plans': true,
   });
 
   // Book reference modal
@@ -61,12 +80,12 @@ export function EnglishCourseView() {
     unlockAudio();
     updateLastPosition({
       subjectId: 'english',
-      unitId: unit?.id,
-      unitTitle: unit ? `Beginner 1 · ${unit.title}` : undefined,
+      unitId: unit?.id || 'en-b1-u-phone-plans',
+      unitTitle: unit ? `Beginner 1 · ${unit.title}` : 'Beginner 1 · Phone Plans',
       exerciseId: exercise.id,
       exerciseTitle: `${exercise.title} · ${exercise.mode}`,
     });
-    setActiveFocusLesson(exercise.lesson);
+    setActiveFocusLesson(exercise.lesson || PHONE_PLANS_LESSON);
   };
 
   const handleVoiceChange = (newVoice: string) => {
@@ -84,34 +103,10 @@ export function EnglishCourseView() {
     setStoredAutoplay(checked);
   };
 
-  // Progression steps helper for English: Words -> Sentences -> Conversation -> Interactive
-  const getProgressionSteps = (unit: CourseUnit) => {
-    const subtitleMap: Record<string, string> = {
-      'Word Mode': 'Learn essential vocabulary',
-      'Sentence Mode': 'Put the words into context',
-      'Dialogue Mode': 'Practice real dialogues',
-      'Concept': 'Interactive session (Concepts, Flashcards, Dialogue, Recall)',
-    };
-
-    return unit.exercises.map((exercise, idx) => ({
-      id: exercise.id,
-      stepNumber: (idx + 1).toString().padStart(2, '0'),
-      label: exercise.lesson?.steps?.length
-        ? 'Interactive Session'
-        : exercise.mode.replace(' Mode', ''),
-      icon: exercise.icon || (idx === 0 ? '👋' : idx === 1 ? '💬' : '👥'),
-      subtitle: subtitleMap[exercise.mode] || 'Practice English typing',
-      itemCount: exercise.lesson?.steps?.length
-        ? `${exercise.lesson.steps.length} interactive steps`
-        : `${exercise.lesson?.sentences?.length || 0} items`,
-      exercise,
-    }));
-  };
-
   return (
     <div
       id="english-course-page"
-      className="w-full max-w-5xl lg:max-w-6xl space-y-6 lg:space-y-8 pb-24 lg:pb-12 text-neutral-100"
+      className="w-full max-w-5xl lg:max-w-6xl space-y-4 sm:space-y-6 lg:space-y-8 pb-24 lg:pb-12 text-neutral-100"
     >
       {/* Active Focus Mode Overlay */}
       {activeFocusLesson && (
@@ -125,32 +120,38 @@ export function EnglishCourseView() {
       )}
 
       {/* Course Header Banner */}
-      <div className="rounded-3xl border border-neutral-800/80 bg-[#141210] p-5 sm:p-7 space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
+      <div className="rounded-2xl sm:rounded-3xl border border-neutral-800/80 bg-[#141210] p-4 sm:p-6 lg:p-7 space-y-3.5 sm:space-y-5 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <button
               type="button"
               id="back-to-dashboard-btn"
               onClick={() => navigate('/')}
               aria-label="Back to Dashboard"
-              className="flex h-10 w-10 items-center justify-center rounded-2xl border border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-white hover:border-neutral-700 active:scale-95 transition-all cursor-pointer shrink-0"
+              className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl sm:rounded-2xl border border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-white hover:border-neutral-700 active:scale-95 transition-all cursor-pointer shrink-0"
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
 
-            <div className="flex items-center gap-3.5">
-              <BritishFlagIcon size={44} className="shrink-0" />
+            <div className="flex items-center gap-3 sm:gap-3.5">
+              <div className="shrink-0 block sm:hidden">
+                <BritishFlagIcon size={36} className="shrink-0" />
+              </div>
+              <div className="shrink-0 hidden sm:block">
+                <BritishFlagIcon size={44} className="shrink-0" />
+              </div>
+
               <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-tight">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-white leading-tight">
                     English
                   </h1>
-                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 font-semibold">
+                  <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 font-semibold">
                     Beginner 1
                   </span>
                 </div>
-                <p className="text-xs sm:text-sm text-neutral-400 mt-1">
-                  Learn natural English through listening, speaking, and fluent keyboard practice.
+                <p className="text-xs sm:text-sm text-neutral-400 mt-0.5 sm:mt-1">
+                  Learn practical English through listening and typing.
                 </p>
               </div>
             </div>
@@ -162,12 +163,12 @@ export function EnglishCourseView() {
               type="button"
               id="open-english-book-btn"
               onClick={() => setIsBookModalOpen(true)}
-              aria-label="Course Guide & Voice Settings"
-              title="Course Guide & Voice Settings"
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-neutral-800 bg-neutral-900/90 text-neutral-300 hover:text-white hover:border-neutral-700 active:scale-95 transition-all text-xs font-semibold cursor-pointer"
+              aria-label="Course Guide"
+              title="Course Guide"
+              className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl border border-neutral-800 bg-neutral-900/90 text-neutral-300 hover:text-white hover:border-neutral-700 active:scale-95 transition-all text-xs font-semibold cursor-pointer"
             >
-              <BookOpen className="w-4 h-4 text-amber-400" />
-              <span>Course Guide & Audio</span>
+              <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+              <span>Course Guide</span>
             </button>
           </div>
         </div>
@@ -175,13 +176,13 @@ export function EnglishCourseView() {
         {/* Progress Pill Bar */}
         <div
           id="english-progress-card"
-          className="rounded-2xl border border-neutral-800/90 bg-[#0d0c0a] py-3 px-4 flex items-center justify-between gap-4 shadow-inner"
+          className="rounded-xl sm:rounded-2xl border border-neutral-800/90 bg-[#0d0c0a] py-2.5 sm:py-3 px-3.5 sm:px-4 flex items-center justify-between gap-3 sm:gap-4 shadow-inner"
         >
           <span className="text-xs font-mono font-bold text-amber-400 shrink-0">
             {englishProgress.percentComplete}% Complete
           </span>
 
-          <div className="h-2 flex-1 rounded-full bg-neutral-800/90 overflow-hidden">
+          <div className="h-1.5 sm:h-2 flex-1 rounded-full bg-neutral-800/90 overflow-hidden">
             <div
               className="h-full rounded-full bg-amber-400 transition-all duration-500"
               style={{ width: `${Math.max(2, englishProgress.percentComplete)}%` }}
@@ -189,14 +190,14 @@ export function EnglishCourseView() {
           </div>
 
           <span className="text-xs font-mono text-neutral-400 shrink-0">
-            {englishProgress.completedLessons} / {englishProgress.totalLessons} lessons
+            {englishProgress.completedLessons} / 1 lesson
           </span>
         </div>
       </div>
 
       {/* Course Units Section */}
       <div className="space-y-6">
-        {ENGLISH_UNITS.map((unit: CourseUnit) => {
+        {CURATED_ENGLISH_UNITS.map((unit: CourseUnit) => {
           const isExpanded = expandedUnits[unit.id] !== false;
 
           return (
@@ -217,7 +218,7 @@ export function EnglishCourseView() {
                     </span>
                     <span className="text-neutral-600">·</span>
                     <span className="text-xs text-neutral-400">
-                      {unit.exercises.length} stages
+                      {unit.exercises.length} {unit.exercises.length === 1 ? 'stage' : 'stages'}
                     </span>
                   </div>
                   <h2 className="text-base sm:text-lg font-bold text-white tracking-tight mt-1">
@@ -249,16 +250,14 @@ export function EnglishCourseView() {
               {/* Responsive Grid of Exercise Progression Cards */}
               {isExpanded && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-2 border-t border-neutral-800/60">
-                  {getProgressionSteps(unit).map((step) => {
-                    const isDone = step.exercise
-                      ? isExerciseCompleted(step.exercise.id) || isExerciseCompleted(step.exercise.lesson.id)
-                      : false;
+                  {unit.exercises.map((exercise: ExerciseItem, idx) => {
+                    const isDone = isExerciseCompleted(exercise.id) || isExerciseCompleted(exercise.lesson.id);
 
                     return (
                       <div
-                        key={step.id}
-                        id={`exercise-card-${step.id}`}
-                        onClick={() => step.exercise && handleStartExercise(step.exercise, unit)}
+                        key={exercise.id}
+                        id={`exercise-card-${exercise.id}`}
+                        onClick={() => handleStartExercise(exercise, unit)}
                         className={`group flex items-center justify-between rounded-2xl border p-3.5 transition-all active:scale-[0.99] cursor-pointer ${
                           isDone
                             ? 'border-neutral-800/90 bg-[#161412] hover:border-amber-500/40'
@@ -270,8 +269,8 @@ export function EnglishCourseView() {
                           <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border text-xl shadow-sm relative ${
                             isDone ? 'bg-neutral-900 border-amber-500/30 text-amber-300' : 'bg-neutral-950 border-neutral-800 group-hover:border-amber-500/30'
                           }`}>
-                            <span role="img" aria-label={step.label}>
-                              {step.icon}
+                            <span role="img" aria-label={exercise.title}>
+                              {exercise.icon}
                             </span>
                             {isDone && (
                               <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-neutral-950 text-[10px] font-bold">
@@ -284,7 +283,7 @@ export function EnglishCourseView() {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-mono font-bold text-amber-400">
-                                {step.stepNumber} · {step.label}
+                                {(idx + 1).toString().padStart(2, '0')} · Interactive Session
                               </span>
                               {isDone && (
                                 <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400 border border-amber-500/20 shrink-0">
@@ -293,10 +292,10 @@ export function EnglishCourseView() {
                               )}
                             </div>
                             <p className="text-xs text-neutral-300 font-medium truncate mt-0.5">
-                              {step.subtitle}
+                              {exercise.title}
                             </p>
                             <span className="text-[11px] text-neutral-500 font-mono mt-0.5 block">
-                              {step.itemCount}
+                              23 interactive steps
                             </span>
                           </div>
                         </div>
@@ -329,7 +328,7 @@ export function EnglishCourseView() {
               <div className="flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-amber-400" />
                 <h3 className="text-sm font-bold text-white">
-                  English Course Guide & Audio
+                  English Course Guide
                 </h3>
               </div>
               <button
@@ -346,9 +345,9 @@ export function EnglishCourseView() {
             <div className="space-y-2 text-xs text-neutral-300">
               <p className="font-medium text-white">Beginner 1 Focus:</p>
               <ul className="list-disc list-inside space-y-1 text-neutral-400">
-                <li>Listening comprehension via British/American neural TTS</li>
+                <li>Listening comprehension via British/American neural audio</li>
                 <li>Letter-by-letter typing muscle memory & cadence</li>
-                <li>Greetings, personal intros, daily dialogues & travel</li>
+                <li>Everyday phone plans, data queries & conversations</li>
               </ul>
             </div>
 
@@ -435,3 +434,4 @@ export function EnglishCourseView() {
     </div>
   );
 }
+

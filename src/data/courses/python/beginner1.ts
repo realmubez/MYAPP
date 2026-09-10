@@ -98,6 +98,16 @@ export const PYTHON_BEGINNER_1_UNITS: PythonCourseUnit[] = [
         contentToType: 'score = 10\nscore = 20',
         explanation: 'Python variables are dynamically typed and can be reassigned to new values at runtime.',
       },
+      {
+        id: 'py-b1-u02-ex5',
+        exerciseNumber: 5,
+        mode: 'Interactive Mode',
+        title: 'Exercise 5',
+        icon: '🐍',
+        prompt: 'Interactive Variables Engine (Understand → Type → Predict → Debug → Recall → Challenge)',
+        contentToType: 'name = "Ali"\nprint(name)',
+        explanation: 'Master Python variables through typing, output prediction, case-sensitivity debugging, and multiline scripting.',
+      },
     ],
   },
 

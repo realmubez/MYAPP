@@ -19,9 +19,9 @@ export function Dashboard() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <div id="dashboard-view" className="w-full space-y-6 lg:space-y-8 text-neutral-100">
+    <div id="dashboard-view" className="w-full space-y-5 sm:space-y-6 lg:space-y-8 text-neutral-100">
       {/* 1. Mobile-Only Header (< 1024px) */}
-      <header className="flex lg:hidden items-center justify-between pt-1">
+      <header className="flex lg:hidden items-center justify-between pt-0.5 pb-0.5">
         <div className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-xs font-bold">
             &gt;_
@@ -145,7 +145,7 @@ export function Dashboard() {
       <DashboardHero />
 
       {/* 3. Today's Overview / Stats Row */}
-      <section className="space-y-3">
+      <section className="space-y-2.5 sm:space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <BarChart2 className="w-4 h-4 text-amber-400" />
@@ -164,9 +164,9 @@ export function Dashboard() {
       </section>
 
       {/* 4. Continue Learning & Mistake Review Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-5 items-stretch">
         {/* Continue Learning (58% / col-span-7 on Desktop) */}
-        <section className="lg:col-span-7 flex flex-col space-y-3">
+        <section className="lg:col-span-7 flex flex-col space-y-2.5 sm:space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm sm:text-base font-bold text-white">Continue Learning</h2>
             <Link
@@ -184,7 +184,7 @@ export function Dashboard() {
         </section>
 
         {/* Mistake Review (42% / col-span-5 on Desktop) */}
-        <section className="lg:col-span-5 flex flex-col space-y-3">
+        <section className="lg:col-span-5 flex flex-col space-y-2.5 sm:space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm sm:text-base font-bold text-white">Mistake Review</h2>
             <Link
@@ -203,7 +203,7 @@ export function Dashboard() {
       </div>
 
       {/* 5. Your Subjects Section (3 Columns on Desktop) */}
-      <section className="space-y-3.5">
+      <section className="space-y-2.5 sm:space-y-3.5">
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2">
@@ -226,7 +226,7 @@ export function Dashboard() {
         </div>
 
         {/* Responsive Grid: 1 col on mobile, 3 cols on tablet/desktop */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4 lg:gap-5">
           <SubjectCard
             subject={SUBJECTS.swedish}
             progressData={progress.subjects.swedish}
@@ -243,7 +243,7 @@ export function Dashboard() {
       </section>
 
       {/* 6. Lower Dashboard: Recent Activity & Keep Going Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-2">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-5 pt-0.5 sm:pt-2">
         {/* Recent Activity (col-span-7) */}
         <div className="lg:col-span-7">
           <RecentActivity />
@@ -256,7 +256,7 @@ export function Dashboard() {
       </div>
 
       {/* 7. Quick Actions Row */}
-      <section className="pt-2">
+      <section className="pt-0.5 sm:pt-2">
         <QuickActions />
       </section>
 

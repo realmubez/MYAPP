@@ -4,6 +4,7 @@ import { PythonLogoIcon } from '../common/FlagIcons';
 import { PYTHON_UNITS, PythonCourseUnit, PythonExerciseItem } from '../../data/pythonUnits';
 import { useTypingEngine } from '../../hooks/useTypingEngine';
 import { TypingText } from './TypingText';
+import { PythonVariablesLessonEngine } from './interactive/PythonVariablesLessonEngine';
 import { storageService } from '../../services/storage';
 import { progressService } from '../../services/progress';
 import { reviewService } from '../../services/reviewService';
@@ -24,6 +25,20 @@ export function PythonFocusLesson({
   onExit,
   onComplete,
 }: PythonFocusLessonProps) {
+  // If the exercise is the experimental Variables lesson, use PythonVariablesLessonEngine
+  if (
+    initialExercise.id === 'py-variables' ||
+    initialExercise.id === 'py-b1-u02-ex5' ||
+    initialExercise.id.includes('variables')
+  ) {
+    return (
+      <PythonVariablesLessonEngine
+        onExit={onExit}
+        onComplete={onComplete}
+      />
+    );
+  }
+
   // Identify parent unit and exercises list
   const parentUnit =
     propParentUnit ||

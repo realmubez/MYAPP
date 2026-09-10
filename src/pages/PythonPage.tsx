@@ -8,16 +8,35 @@ import {
   ChevronRight,
   X,
   Code2,
-  ListChecks,
 } from 'lucide-react';
 import { PythonLogoIcon } from '../components/common/FlagIcons';
 import {
-  PYTHON_UNITS,
   PythonCourseUnit,
   PythonExerciseItem,
 } from '../data/pythonUnits';
 import { PythonFocusLesson } from '../components/focus/PythonFocusLesson';
 import { useProgress } from '../hooks/useProgress';
+
+const CURATED_PYTHON_UNITS: PythonCourseUnit[] = [
+  {
+    id: 'py-b1-u-variables',
+    unitNumber: 1,
+    title: 'Variables',
+    description: 'Master Python variables, naming conventions, value assignments, mental models, code prediction, syntax debugging, and interactive scripting.',
+    exercises: [
+      {
+        id: 'py-variables',
+        exerciseNumber: 1,
+        title: 'Variables',
+        mode: 'Interactive Mode',
+        icon: '🐍',
+        prompt: 'Master Python variables and memory through typing muscle memory.',
+        contentToType: 'name = "Ali"\nprint(name)',
+        explanation: 'Variables store and name values in Python.',
+      },
+    ],
+  },
+];
 
 export function PythonPage() {
   const navigate = useNavigate();
@@ -28,10 +47,9 @@ export function PythonPage() {
   const [activeExercise, setActiveExercise] = useState<PythonExerciseItem | null>(null);
   const [activeUnit, setActiveUnit] = useState<PythonCourseUnit | null>(null);
 
-  // Collapsible chapters state: Chapter 1 open by default
+  // Collapsible chapters state
   const [expandedUnits, setExpandedUnits] = useState<Record<string, boolean>>({
-    'py-b1-u01': true,
-    'unit-1': true,
+    'py-b1-u-variables': true,
   });
 
   // Course Guide modal
@@ -48,38 +66,18 @@ export function PythonPage() {
     if (unit) setActiveUnit(unit);
     updateLastPosition({
       subjectId: 'python',
-      unitId: unit?.id,
-      unitTitle: unit ? `Chapter ${unit.unitNumber.toString().padStart(2, '0')} · ${unit.title}` : undefined,
+      unitId: unit?.id || 'py-b1-u-variables',
+      unitTitle: unit ? `Beginner 1 · ${unit.title}` : 'Beginner 1 · Variables',
       exerciseId: exercise.id,
       exerciseTitle: `${exercise.title} · ${exercise.mode}`,
     });
     setActiveExercise(exercise);
   };
 
-  // Progression steps helper for Python: Concept -> Type -> Code -> Recall
-  const getProgressionSteps = (unit: PythonCourseUnit) => {
-    const subtitleMap: Record<string, string> = {
-      Concept: 'Understand the key concept',
-      Type: 'Build muscle memory',
-      Code: 'Write small code patterns',
-      Recall: 'Test and reinforce knowledge',
-    };
-
-    return unit.exercises.map((exercise, idx) => ({
-      id: exercise.id,
-      stepNumber: (idx + 1).toString().padStart(2, '0'),
-      label: exercise.mode,
-      icon: exercise.icon || (idx === 0 ? '💡' : idx === 1 ? '⌨️' : idx === 2 ? '</>' : '🎯'),
-      subtitle: subtitleMap[exercise.mode] || 'Practice Python syntax',
-      itemCount: '1 exercise',
-      exercise,
-    }));
-  };
-
   return (
     <div
       id="python-course-page"
-      className="w-full max-w-5xl lg:max-w-6xl space-y-6 lg:space-y-8 pb-24 lg:pb-12 text-neutral-100"
+      className="w-full max-w-5xl lg:max-w-6xl space-y-4 sm:space-y-6 lg:space-y-8 pb-24 lg:pb-12 text-neutral-100"
     >
       {/* Active Focus Mode Overlay */}
       {activeExercise && (
@@ -92,32 +90,38 @@ export function PythonPage() {
       )}
 
       {/* Course Header Banner */}
-      <div className="rounded-3xl border border-neutral-800/80 bg-[#141210] p-5 sm:p-7 space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
+      <div className="rounded-2xl sm:rounded-3xl border border-neutral-800/80 bg-[#141210] p-4 sm:p-6 lg:p-7 space-y-3.5 sm:space-y-5 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <button
               type="button"
               id="back-to-dashboard-btn"
               onClick={() => navigate('/')}
               aria-label="Back to Dashboard"
-              className="flex h-10 w-10 items-center justify-center rounded-2xl border border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-white hover:border-neutral-700 active:scale-95 transition-all cursor-pointer shrink-0"
+              className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl sm:rounded-2xl border border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-white hover:border-neutral-700 active:scale-95 transition-all cursor-pointer shrink-0"
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
 
-            <div className="flex items-center gap-3.5">
-              <PythonLogoIcon size={44} className="shrink-0" />
+            <div className="flex items-center gap-3 sm:gap-3.5">
+              <div className="shrink-0 block sm:hidden">
+                <PythonLogoIcon size={36} className="shrink-0" />
+              </div>
+              <div className="shrink-0 hidden sm:block">
+                <PythonLogoIcon size={44} className="shrink-0" />
+              </div>
+
               <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-tight">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-white leading-tight">
                     Python
                   </h1>
-                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 font-semibold">
+                  <span className="text-[10px] sm:text-xs px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 font-semibold">
                     Beginner 1
                   </span>
                 </div>
-                <p className="text-xs sm:text-sm text-neutral-400 mt-1">
-                  Learn Python programming through typing, concept mastery, recall, and coding.
+                <p className="text-xs sm:text-sm text-neutral-400 mt-0.5 sm:mt-1">
+                  Learn Python through understanding, typing and coding.
                 </p>
               </div>
             </div>
@@ -129,12 +133,12 @@ export function PythonPage() {
               type="button"
               id="open-python-book-btn"
               onClick={() => setIsBookModalOpen(true)}
-              aria-label="Python Course Guide"
-              title="Python Course Guide"
-              className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-neutral-800 bg-neutral-900/90 text-neutral-300 hover:text-white hover:border-neutral-700 active:scale-95 transition-all text-xs font-semibold cursor-pointer"
+              aria-label="Course Guide"
+              title="Course Guide"
+              className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl border border-neutral-800 bg-neutral-900/90 text-neutral-300 hover:text-white hover:border-neutral-700 active:scale-95 transition-all text-xs font-semibold cursor-pointer"
             >
-              <BookOpen className="w-4 h-4 text-amber-400" />
-              <span>Python Course Guide</span>
+              <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+              <span>Course Guide</span>
             </button>
           </div>
         </div>
@@ -142,13 +146,13 @@ export function PythonPage() {
         {/* Progress Pill Bar */}
         <div
           id="python-progress-card"
-          className="rounded-2xl border border-neutral-800/90 bg-[#0d0c0a] py-3 px-4 flex items-center justify-between gap-4 shadow-inner"
+          className="rounded-xl sm:rounded-2xl border border-neutral-800/90 bg-[#0d0c0a] py-2.5 sm:py-3 px-3.5 sm:px-4 flex items-center justify-between gap-3 sm:gap-4 shadow-inner"
         >
           <span className="text-xs font-mono font-bold text-amber-400 shrink-0">
             {pythonProgress.percentComplete}% Complete
           </span>
 
-          <div className="h-2 flex-1 rounded-full bg-neutral-800/90 overflow-hidden">
+          <div className="h-1.5 sm:h-2 flex-1 rounded-full bg-neutral-800/90 overflow-hidden">
             <div
               className="h-full rounded-full bg-amber-400 transition-all duration-500"
               style={{ width: `${Math.max(2, pythonProgress.percentComplete)}%` }}
@@ -156,16 +160,15 @@ export function PythonPage() {
           </div>
 
           <span className="text-xs font-mono text-neutral-400 shrink-0">
-            {pythonProgress.completedLessons} / {pythonProgress.totalLessons} exercises
+            {pythonProgress.completedLessons} / 1 lesson
           </span>
         </div>
       </div>
 
       {/* Course Chapters Section */}
       <div className="space-y-6">
-        {PYTHON_UNITS.map((unit: PythonCourseUnit) => {
+        {CURATED_PYTHON_UNITS.map((unit: PythonCourseUnit) => {
           const isExpanded = expandedUnits[unit.id] !== false;
-          const steps = getProgressionSteps(unit);
 
           return (
             <div
@@ -185,7 +188,7 @@ export function PythonPage() {
                     </span>
                     <span className="text-neutral-600">·</span>
                     <span className="text-xs text-neutral-400">
-                      {unit.exercises.length} stages
+                      {unit.exercises.length} {unit.exercises.length === 1 ? 'stage' : 'stages'}
                     </span>
                   </div>
                   <h2 className="text-base sm:text-lg font-bold text-white tracking-tight mt-1">
@@ -214,37 +217,31 @@ export function PythonPage() {
                 </button>
               </div>
 
-              {/* Responsive Grid of 4-Stage Progression Cards */}
+              {/* Responsive Grid of Progression Cards */}
               {isExpanded && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-2 border-t border-neutral-800/60">
-                  {steps.map((step) => {
-                    const isDone = step.exercise ? isExerciseCompleted(step.exercise.id) : false;
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-2 border-t border-neutral-800/60">
+                  {unit.exercises.map((exercise, idx) => {
+                    const isDone = isExerciseCompleted(exercise.id);
 
                     return (
                       <div
-                        key={step.id}
-                        id={`exercise-card-${step.id}`}
-                        onClick={() => step.exercise && handleStartExercise(step.exercise, unit)}
+                        key={exercise.id}
+                        id={`exercise-card-${exercise.id}`}
+                        onClick={() => handleStartExercise(exercise, unit)}
                         className={`group flex items-center justify-between rounded-2xl border p-3.5 transition-all active:scale-[0.99] cursor-pointer ${
                           isDone
                             ? 'border-neutral-800/90 bg-[#161412] hover:border-amber-500/40'
                             : 'border-neutral-800/80 bg-[#181512] hover:border-neutral-700/80'
                         }`}
                       >
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="flex items-center gap-3.5 min-w-0 flex-1">
                           {/* Squircle Icon badge */}
-                          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-lg shadow-sm relative ${
+                          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border text-xl shadow-sm relative ${
                             isDone ? 'bg-neutral-900 border-amber-500/30 text-amber-300' : 'bg-neutral-950 border-neutral-800 group-hover:border-amber-500/30'
                           }`}>
-                            {step.icon === '</>' ? (
-                              <span className="font-mono text-xs font-bold text-amber-400">&lt;/&gt;</span>
-                            ) : step.icon === 'list-check' ? (
-                              <ListChecks className="w-4 h-4 text-amber-400" />
-                            ) : (
-                              <span role="img" aria-label={step.label}>
-                                {step.icon}
-                              </span>
-                            )}
+                            <span role="img" aria-label={exercise.title}>
+                              {exercise.icon}
+                            </span>
                             {isDone && (
                               <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-neutral-950 text-[10px] font-bold">
                                 ✓
@@ -254,24 +251,27 @@ export function PythonPage() {
 
                           {/* Progression Details */}
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-2">
                               <span className="text-xs font-mono font-bold text-amber-400">
-                                {step.stepNumber} · {step.label}
+                                {(idx + 1).toString().padStart(2, '0')} · Interactive Session
                               </span>
                               {isDone && (
-                                <span className="inline-flex items-center rounded-md bg-amber-500/10 px-1 py-0.2 text-[9px] font-medium text-amber-400 border border-amber-500/20 shrink-0">
+                                <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400 border border-amber-500/20 shrink-0">
                                   Done
                                 </span>
                               )}
                             </div>
-                            <p className="text-[11px] text-neutral-400 truncate mt-0.5">
-                              {step.subtitle}
+                            <p className="text-xs text-neutral-300 font-medium truncate mt-0.5">
+                              {exercise.title}
                             </p>
+                            <span className="text-[11px] text-neutral-500 font-mono mt-0.5 block">
+                              23 interactive steps
+                            </span>
                           </div>
                         </div>
 
                         {/* Right Amber Arrow */}
-                        <ChevronRight className="w-3.5 h-3.5 text-amber-400 shrink-0 group-hover:translate-x-0.5 transition-transform ml-1" />
+                        <ChevronRight className="w-4 h-4 text-amber-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
                       </div>
                     );
                   })}
@@ -317,7 +317,7 @@ export function PythonPage() {
               <ul className="list-disc list-inside space-y-1 text-neutral-400">
                 <li>Concept internalisation through deliberate typing</li>
                 <li>Memory models: variables, references & mutability</li>
-                <li>Control flow, iteration & pure function structures</li>
+                <li>Code prediction, debugging & interactive recall</li>
               </ul>
             </div>
 
@@ -357,3 +357,4 @@ export function PythonPage() {
     </div>
   );
 }
+

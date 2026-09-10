@@ -10,17 +10,13 @@ import {
   UserStats,
   ContinueInfo,
 } from '../types';
+import { CURATED_TOTAL_LESSONS, CURATED_LESSONS } from '../data/curriculumConfig';
 
 export const PROGRESS_STORAGE_KEY = 'mylearning_progress_v1';
 export const PROGRESS_UPDATED_EVENT = 'mylearning_progress_changed';
 
-// Curriculum totals based on available units & drills
-export const TOTAL_LESSONS_BY_SUBJECT: Record<SubjectId, number> = {
-  swedish: 60, // 20 units × 3 exercises
-  english: 60, // 20 units × 3 exercises
-  python: 80,  // 20 chapters × 4 exercises
-  typing: 10,  // 10 drills
-};
+// Curriculum totals based on approved curated visible lessons
+export const TOTAL_LESSONS_BY_SUBJECT: Record<SubjectId, number> = CURATED_TOTAL_LESSONS;
 
 export const SUBJECT_DISPLAY_NAMES: Record<SubjectId, string> = {
   swedish: 'Swedish',
@@ -78,10 +74,10 @@ export function createInitialProgress(): LearningProgress {
       totalStudyTimeSeconds: 0,
       averageWpm: 0,
       averageAccuracy: 0,
-      lastUnitId: 'unit-1',
-      lastUnitTitle: 'Beginner 1 · Hälsningar',
-      lastExerciseId: 'u1-ex1',
-      lastExerciseTitle: 'Exercise 1 · Word Mode',
+      lastUnitId: 'sv-pa-cafe',
+      lastUnitTitle: 'Beginner 1 · På café',
+      lastExerciseId: 'sv-pa-cafe',
+      lastExerciseTitle: 'På café · Interactive Session',
       completedExerciseIds: [],
     },
     english: {
@@ -92,10 +88,10 @@ export function createInitialProgress(): LearningProgress {
       totalStudyTimeSeconds: 0,
       averageWpm: 0,
       averageAccuracy: 0,
-      lastUnitId: 'unit-1',
-      lastUnitTitle: 'Beginner 1 · Greetings & Courtesies',
-      lastExerciseId: 'en-u1-ex1',
-      lastExerciseTitle: 'Exercise 1 · Word Mode',
+      lastUnitId: 'en-phone-plans',
+      lastUnitTitle: 'Beginner 1 · Phone Plans',
+      lastExerciseId: 'en-phone-plans',
+      lastExerciseTitle: 'Phone Plans · Interactive Session',
       completedExerciseIds: [],
     },
     python: {
@@ -106,10 +102,10 @@ export function createInitialProgress(): LearningProgress {
       totalStudyTimeSeconds: 0,
       averageWpm: 0,
       averageAccuracy: 0,
-      lastUnitId: 'unit-1',
-      lastUnitTitle: 'Chapter 01 · Variables & Types',
-      lastExerciseId: 'py-u1-ex1',
-      lastExerciseTitle: '01 — Concept',
+      lastUnitId: 'py-variables',
+      lastUnitTitle: 'Beginner 1 · Variables',
+      lastExerciseId: 'py-variables',
+      lastExerciseTitle: 'Variables · Interactive Session',
       completedExerciseIds: [],
     },
     typing: {
@@ -128,10 +124,10 @@ export function createInitialProgress(): LearningProgress {
 
   const initialLastPosition: LastPosition = {
     subjectId: 'swedish',
-    unitId: 'unit-1',
-    unitTitle: 'Beginner 1 · Hälsningar',
-    exerciseId: 'u1-ex1',
-    exerciseTitle: 'Exercise 1 · Word Mode',
+    unitId: 'sv-pa-cafe',
+    unitTitle: 'Beginner 1 · På café',
+    exerciseId: 'sv-pa-cafe',
+    exerciseTitle: 'På café · Interactive Session',
     stage: 'listen_type',
     sentenceIndex: 0,
     updatedAt: new Date().toISOString(),
@@ -219,8 +215,27 @@ class ProgressService {
     Object.keys(defaults.subjects).forEach((subKey) => {
       const key = subKey as SubjectId;
       subjects[key].totalLessons = TOTAL_LESSONS_BY_SUBJECT[key];
-      // Recalculate percent
-      const completedCount = subjects[key].completedExerciseIds?.length || subjects[key].completedLessons || 0;
+      
+      let completedCount = 0;
+      if (key === 'swedish') {
+        const isCompleted = p.exercises?.['sv-pa-cafe']?.completed || 
+          p.subjects?.swedish?.completedExerciseIds?.includes('sv-pa-cafe') ||
+          (p.subjects?.swedish?.completedLessons ?? 0) > 0;
+        completedCount = isCompleted ? 1 : 0;
+      } else if (key === 'english') {
+        const isCompleted = p.exercises?.['en-phone-plans']?.completed || 
+          p.subjects?.english?.completedExerciseIds?.includes('en-phone-plans') ||
+          (p.subjects?.english?.completedLessons ?? 0) > 0;
+        completedCount = isCompleted ? 1 : 0;
+      } else if (key === 'python') {
+        const isCompleted = p.exercises?.['py-variables']?.completed || 
+          p.subjects?.python?.completedExerciseIds?.includes('py-variables') ||
+          (p.subjects?.python?.completedLessons ?? 0) > 0;
+        completedCount = isCompleted ? 1 : 0;
+      } else {
+        completedCount = Math.min(subjects[key].totalLessons, subjects[key].completedExerciseIds?.length || subjects[key].completedLessons || 0);
+      }
+
       subjects[key].completedLessons = completedCount;
       subjects[key].percentComplete = Math.min(
         100,
@@ -330,7 +345,7 @@ class ProgressService {
       if (!sub.completedExerciseIds.includes(data.exerciseId)) {
         sub.completedExerciseIds.push(data.exerciseId);
       }
-      sub.completedLessons = sub.completedExerciseIds.length;
+      sub.completedLessons = Math.min(sub.totalLessons, sub.completedExerciseIds.length);
       sub.percentComplete = Math.min(
         100,
         Math.round((sub.completedLessons / sub.totalLessons) * 100)
@@ -524,33 +539,47 @@ class ProgressService {
   public getContinueInfo(): ContinueInfo {
     const progress = this.getProgress();
     const lastPos = progress.lastPosition;
-    const subject = progress.subjects[lastPos.subjectId] || progress.subjects.swedish;
+    const subjectId = lastPos?.subjectId || 'swedish';
+    const subject = progress.subjects[subjectId] || progress.subjects.swedish;
+    const curated = CURATED_LESSONS[subjectId] || CURATED_LESSONS.swedish;
 
-    let subjectName = SUBJECT_DISPLAY_NAMES[lastPos.subjectId] || 'Swedish';
-    let moduleName = lastPos.unitTitle || subject.lastUnitTitle || 'Beginner 1 · Hälsningar';
-    let lessonTitle = lastPos.exerciseTitle || subject.lastExerciseTitle || 'Exercise 1 · Word Mode';
+    const subjectName = SUBJECT_DISPLAY_NAMES[subjectId] || 'Swedish';
+    
+    // Use curated module & lesson title if old/hidden IDs are present
+    const isLegacyUnit =
+      !lastPos.unitId ||
+      lastPos.unitId.startsWith('unit-') ||
+      lastPos.unitTitle?.includes('Hälsningar') ||
+      lastPos.unitTitle?.includes('Greetings');
+
+    const moduleName = isLegacyUnit ? `${curated.courseLevel} · ${curated.lessonTitle}` : (lastPos.unitTitle || `${curated.courseLevel} · ${curated.lessonTitle}`);
+    const lessonTitle = isLegacyUnit ? `${curated.lessonTitle} · ${curated.badge}` : (lastPos.exerciseTitle || `${curated.lessonTitle} · ${curated.badge}`);
+    
     let exerciseSnippet = 'Listen and type directly to build muscle memory.';
-    let stage = lastPos.stage || 'listen_type';
-    let nextStep = 'Listen & type sentence';
-    let targetRoute = `/${lastPos.subjectId}`;
+    let stage = lastPos.stage || 'interactive';
+    let nextStep = 'Start curated interactive lesson';
+    let targetRoute = curated.route;
 
-    if (lastPos.subjectId === 'swedish') {
-      exerciseSnippet = 'Lyssna och skriv: Hej! Hur mår du idag?';
-      nextStep = 'Type Swedish sentence';
-    } else if (lastPos.subjectId === 'english') {
-      exerciseSnippet = 'Listen and type: Have a nice day!';
-      nextStep = 'Type English sentence';
-    } else if (lastPos.subjectId === 'python') {
-      exerciseSnippet = 'Concept & Code: x = 42';
-      nextStep = 'Type Python code';
-    } else if (lastPos.subjectId === 'typing') {
+    if (subjectId === 'swedish') {
+      exerciseSnippet = 'Lyssna och skriv: Jag skulle vilja ha en kaffe.';
+      nextStep = 'Type Swedish café dialogue';
+      targetRoute = '/swedish';
+    } else if (subjectId === 'english') {
+      exerciseSnippet = 'Listen and type: I need a plan with lots of data.';
+      nextStep = 'Type English phone plan dialogue';
+      targetRoute = '/english';
+    } else if (subjectId === 'python') {
+      exerciseSnippet = 'Concept & Code: name = "Ali"';
+      nextStep = 'Type Python variables & code';
+      targetRoute = '/python';
+    } else if (subjectId === 'typing') {
       exerciseSnippet = 'Nordic special characters: å, ä, ö';
       nextStep = 'Practice typing speed';
       targetRoute = '/typing';
     }
 
     return {
-      subjectId: lastPos.subjectId,
+      subjectId,
       subjectName,
       moduleName,
       lessonTitle,

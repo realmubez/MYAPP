@@ -2,6 +2,7 @@ import { UserStats, AppSettings } from '../types';
 import { progressService } from './progress';
 
 const SETTINGS_KEY = 'mylearning_settings';
+const SIDEBAR_COLLAPSED_KEY = 'mylearning_sidebar_collapsed';
 
 const DEFAULT_SETTINGS: AppSettings = {
   soundEnabled: true,
@@ -20,6 +21,24 @@ const DEFAULT_SETTINGS: AppSettings = {
 export const storageService = {
   getUserStats(): UserStats {
     return progressService.getUserStats();
+  },
+
+  getSidebarCollapsed(): boolean {
+    try {
+      const val = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+      return val === 'true';
+    } catch (e) {
+      console.warn('Could not read sidebar state from localStorage:', e);
+      return false;
+    }
+  },
+
+  setSidebarCollapsed(collapsed: boolean): void {
+    try {
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
+    } catch (e) {
+      console.warn('Could not save sidebar state to localStorage:', e);
+    }
   },
 
   getSettings(): AppSettings {
