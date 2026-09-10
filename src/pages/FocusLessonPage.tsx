@@ -8,6 +8,7 @@ import { PYTHON_UNITS, PythonExerciseItem } from '../data/pythonUnits';
 import { FocusLesson } from '../components/focus/FocusLesson';
 import { PythonFocusLesson } from '../components/focus/PythonFocusLesson';
 import { PythonVariablesLessonEngine } from '../components/focus/interactive/PythonVariablesLessonEngine';
+import { SwedishStoryLessonEngine } from '../components/focus/interactive/SwedishStoryLessonEngine';
 import { LanguageLesson } from '../types/lessons';
 import { SAMPLE_EXERCISES } from '../data/mockData';
 
@@ -33,6 +34,20 @@ export function FocusLessonPage() {
       <PythonVariablesLessonEngine
         onExit={() => navigate('/python')}
         onComplete={() => navigate('/python')}
+      />
+    );
+  }
+
+  // Swedish Story: En vanlig morgon
+  if (
+    targetId === 'sv-en-vanlig-morgon' ||
+    targetId === 'en-vanlig-morgon' ||
+    (targetSubject === 'swedish' && (targetId?.includes('morgon') || targetId?.includes('en-vanlig-morgon')))
+  ) {
+    return (
+      <SwedishStoryLessonEngine
+        onExit={() => navigate('/swedish')}
+        onComplete={() => navigate('/swedish')}
       />
     );
   }

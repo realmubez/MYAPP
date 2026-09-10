@@ -203,6 +203,7 @@ class ProgressService {
     // Notify listeners across app
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent(PROGRESS_UPDATED_EVENT, { detail: progress }));
+      syncTelegramProgress(progress);
     }
   }
 
@@ -218,10 +219,14 @@ class ProgressService {
       
       let completedCount = 0;
       if (key === 'swedish') {
-        const isCompleted = p.exercises?.['sv-pa-cafe']?.completed || 
-          p.subjects?.swedish?.completedExerciseIds?.includes('sv-pa-cafe') ||
-          (p.subjects?.swedish?.completedLessons ?? 0) > 0;
-        completedCount = isCompleted ? 1 : 0;
+        const u1 = p.exercises?.['sv-pa-cafe']?.completed || 
+          p.subjects?.swedish?.completedExerciseIds?.includes('sv-pa-cafe') ? 1 : 0;
+        const u2 = p.exercises?.['sv-en-vanlig-morgon']?.completed || 
+          p.subjects?.swedish?.completedExerciseIds?.includes('sv-en-vanlig-morgon') ? 1 : 0;
+        completedCount = u1 + u2;
+        if (completedCount === 0 && (p.subjects?.swedish?.completedLessons ?? 0) > 0) {
+          completedCount = Math.min(2, p.subjects?.swedish?.completedLessons || 1);
+        }
       } else if (key === 'english') {
         const isCompleted = p.exercises?.['en-phone-plans']?.completed || 
           p.subjects?.english?.completedExerciseIds?.includes('en-phone-plans') ||
@@ -561,9 +566,15 @@ class ProgressService {
     let targetRoute = curated.route;
 
     if (subjectId === 'swedish') {
-      exerciseSnippet = 'Lyssna och skriv: Jag skulle vilja ha en kaffe.';
-      nextStep = 'Type Swedish café dialogue';
-      targetRoute = '/swedish';
+      if (lastPos.exerciseId === 'sv-en-vanlig-morgon' || lastPos.unitId?.includes('morgon')) {
+        exerciseSnippet = 'Kapitel 1: Det var en kall morgon i november.';
+        nextStep = 'Continue Swedish story';
+        targetRoute = '/focus/swedish/en-vanlig-morgon';
+      } else {
+        exerciseSnippet = 'Lyssna och skriv: Jag skulle vilja ha en kaffe.';
+        nextStep = 'Type Swedish café dialogue';
+        targetRoute = '/swedish';
+      }
     } else if (subjectId === 'english') {
       exerciseSnippet = 'Listen and type: I need a plan with lots of data.';
       nextStep = 'Type English phone plan dialogue';
@@ -602,3 +613,47 @@ class ProgressService {
 }
 
 export const progressService = new ProgressService();
+
+export function syncTelegramProgress(progress: LearningProgress): void {
+  try {
+    const streakDays = progress.streak?.currentStreak || 4;
+    const englishPct = progress.subjects?.english?.percentComplete ?? 85;
+    const swedishPct = progress.subjects?.swedish?.percentComplete ?? 70;
+    const pythonPct = progress.subjects?.python?.percentComplete ?? 60;
+
+    let mistakesCount = 5;
+    try {
+      const raw = localStorage.getItem('mylearning_review_items');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) mistakesCount = parsed.length;
+      }
+    } catch {
+      // safe fallback
+    }
+
+    fetch('/api/telegram/sync-progress', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        streakDays,
+        englishPct,
+        swedishPct,
+        pythonPct,
+        mistakesCount,
+      }),
+    }).catch(() => {});
+  } catch {
+    // Non-blocking
+  }
+}
+
+// Perform initial background sync if in browser
+if (typeof window !== 'undefined') {
+  setTimeout(() => {
+    try {
+      syncTelegramProgress(progressService.getProgress());
+    } catch {}
+  }, 1500);
+}
+

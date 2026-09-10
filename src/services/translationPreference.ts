@@ -1,3 +1,5 @@
+import { getVoiceForLanguage } from './tts';
+
 export type TranslationLang = 'so' | 'sv' | 'en' | 'off';
 export type PythonSupportLang = 'en' | 'so' | 'sv' | 'off';
 
@@ -119,17 +121,17 @@ export const translationService = {
   ): { text: string; voice: string } | null {
     if (!translations) return null;
     if (typeof translations === 'string') {
-      return { text: translations, voice: 'en-US-GuyNeural' };
+      return { text: translations, voice: getVoiceForLanguage('en') };
     }
 
     const lang = currentLang || 'en';
     if (lang === 'so' && translations.so) {
-      return { text: translations.so, voice: 'so-SO-MuqdishoNeural' };
+      return { text: translations.so, voice: getVoiceForLanguage('so') };
     }
     if (lang === 'sv' && translations.sv) {
-      return { text: translations.sv, voice: 'sv-SE-MattiasNeural' };
+      return { text: translations.sv, voice: getVoiceForLanguage('sv') };
     }
-    return { text: translations.en || translations.so || translations.sv || '', voice: 'en-US-GuyNeural' };
+    return { text: translations.en || translations.so || translations.sv || '', voice: getVoiceForLanguage('en') };
   },
 };
 

@@ -2,6 +2,7 @@ import { MultiLangTranslation } from '../../../services/translationPreference';
 
 export type PythonStepType =
   | 'concept'
+  | 'typeIdea'
   | 'typeCode'
   | 'changeCode'
   | 'predict'
@@ -14,8 +15,11 @@ export type PythonStepType =
 export interface PythonDrillItem {
   id: string;
   type: PythonStepType;
+  drillMode?: 'idea' | 'code';
+  badgeLabel?: string;
   prompt?: MultiLangTranslation | string;
   targetCode: string;
+  translationSupport?: MultiLangTranslation;
   codeContext?: string;
   brokenCode?: string;
   expectedOutput?: string;
@@ -58,14 +62,20 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
     },
     drills: [
       {
-        id: 'py-var-01',
-        type: 'concept',
+        id: 'py-var-01a',
+        type: 'typeIdea',
+        drillMode: 'idea',
+        badgeLabel: 'TYPE THE IDEA',
         prompt: {
-          en: 'TYPE & LEARN:',
-          so: 'QOR OO BARO:',
-          sv: 'SKRIV & LÄR DIG:',
+          en: 'TYPE THE IDEA:',
+          so: 'QOR FIKRADDA:',
+          sv: 'SKRIV IDÉN:',
         },
-        targetCode: 'name = "Ali"',
+        targetCode: 'A variable stores a value.',
+        translationSupport: {
+          so: 'Variable-ku wuxuu kaydiyaa qiime.',
+          sv: 'En variabel lagrar ett värde.',
+        },
         visualBreakdown: [
           {
             label: 'name',
@@ -93,6 +103,23 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
           },
         ],
         explanationAfter: {
+          en: 'A variable gives a value a name so we can use that value later.',
+          so: 'Variable-ku wuxuu qiime siiyaa magac si aan mar dambe u isticmaali karno.',
+          sv: 'En variabel ger ett värde ett namn så att vi kan använda värdet senare.',
+        },
+      },
+      {
+        id: 'py-var-01b',
+        type: 'typeCode',
+        drillMode: 'code',
+        badgeLabel: 'TYPE THE CODE',
+        prompt: {
+          en: 'TYPE THE CODE:',
+          so: 'QOR CODE-KA:',
+          sv: 'SKRIV KODEN:',
+        },
+        targetCode: 'name = "Ali"',
+        explanationAfter: {
           en: 'You stored "Ali" inside the variable called name.',
           so: 'Waxaad ku kaydisay "Ali" gudaha variable-ka la yiraahdo name.',
           sv: 'Du lagrade "Ali" i variabeln med namnet name.',
@@ -102,7 +129,7 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
   },
 
   // ==========================================
-  // STEP 2 — EXPLAIN WHAT HAPPENED
+  // STEP 2 — HOW VARIABLES WORK
   // ==========================================
   {
     stepNumber: 2,
@@ -120,8 +147,31 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
     },
     drills: [
       {
-        id: 'py-var-02',
+        id: 'py-var-02a',
+        type: 'typeIdea',
+        drillMode: 'idea',
+        badgeLabel: 'TYPE WHAT YOU LEARNED',
+        prompt: {
+          en: 'TYPE WHAT YOU LEARNED:',
+          so: 'QOR WAXAAD BARATAY:',
+          sv: 'SKRIV VAD DU LÄRDE DIG:',
+        },
+        targetCode: 'The variable name stores the value "Ali".',
+        translationSupport: {
+          so: 'Variable-ka name wuxuu kaydiyaa qiimaha "Ali".',
+          sv: 'Variabeln name lagrar värdet "Ali".',
+        },
+        explanationAfter: {
+          en: 'When Python evaluates name, it accesses "Ali".',
+          so: 'Marka Python uu fiiriyo name, wuxuu helayaa "Ali".',
+          sv: 'När Python läser name hämtar den "Ali".',
+        },
+      },
+      {
+        id: 'py-var-02b',
         type: 'typeCode',
+        drillMode: 'code',
+        badgeLabel: 'TYPE THE CODE',
         prompt: {
           en: 'Type the assignment to reinforce memory:',
           so: 'Ku qor assignment-ka si aad u xasuusato:',
@@ -157,8 +207,31 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
     },
     drills: [
       {
-        id: 'py-var-03',
+        id: 'py-var-03a',
+        type: 'typeIdea',
+        drillMode: 'idea',
+        badgeLabel: 'TYPE THE IDEA',
+        prompt: {
+          en: 'TYPE THE IDEA:',
+          so: 'QOR FIKRADDA:',
+          sv: 'SKRIV IDÉN:',
+        },
+        targetCode: 'print() displays a value.',
+        translationSupport: {
+          so: 'print() wuxuu shaashadda ku soo bandhigaa qiime.',
+          sv: 'print() visar ett värde.',
+        },
+        explanationAfter: {
+          en: 'print() is the Python function that sends output to the screen.',
+          so: 'print() waa function-ka Python ee output-ka u dira shaashadda.',
+          sv: 'print() är Python-funktionen som visar output på skärmen.',
+        },
+      },
+      {
+        id: 'py-var-03b',
         type: 'typeCode',
+        drillMode: 'code',
+        badgeLabel: 'TYPE THE CODE',
         prompt: {
           en: 'Print the variable name:',
           so: 'Daabac magaca variable-ka:',
@@ -197,6 +270,8 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
       {
         id: 'py-var-04',
         type: 'typeCode',
+        drillMode: 'code',
+        badgeLabel: 'TYPE THE CODE',
         prompt: {
           en: 'TYPE THE CODE (Press Enter for line 2):',
           so: 'QOR CODE-KA (Taabo Enter sadarka 2aad):',
@@ -221,14 +296,37 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
     },
     stepType: 'changeCode',
     contextNote: {
-      en: 'Currently: name = "Ali". Change the stored value.',
-      so: 'Hadda: name = "Ali". Beddel qiimaha la kaydiyay.',
-      sv: 'Just nu: name = "Ali". Ändra det sparade värdet.',
+      en: 'Reassign means giving a variable a new value. Python variables can change.',
+      so: 'Reassign waxay ka dhigan tahay in variable-ka la siiyo qiime cusub. Variable-yada Python way isbeddeli karaan.',
+      sv: 'Omtilldelning betyder att ge en variabel ett nytt värde. Python-variabler kan ändras.',
     },
     drills: [
       {
-        id: 'py-var-05',
+        id: 'py-var-05a',
+        type: 'typeIdea',
+        drillMode: 'idea',
+        badgeLabel: 'TYPE THE IDEA',
+        prompt: {
+          en: 'TYPE THE IDEA:',
+          so: 'QOR FIKRADDA:',
+          sv: 'SKRIV IDÉN:',
+        },
+        targetCode: 'A variable can change its value.',
+        translationSupport: {
+          so: 'Variable-ku wuxuu beddeli karaa qiimihiisa.',
+          sv: 'En variabel kan ändra sitt värde.',
+        },
+        explanationAfter: {
+          en: 'Variables are flexible containers; assigning a new value overwrites the old one.',
+          so: 'Variable-yadu waa sanduuqyo dabacsan; marka qiime cusub la siiyo kii hore ayaa tirtirma.',
+          sv: 'Variabler är flexibla behållare; ett nytt värde ersätter det gamla.',
+        },
+      },
+      {
+        id: 'py-var-05b',
         type: 'changeCode',
+        drillMode: 'code',
+        badgeLabel: 'CHANGE THE VALUE',
         prompt: {
           en: 'Store "Amina" instead:',
           so: 'Ku kaydi "Amina" beddelkeeda:',
@@ -266,6 +364,8 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
       {
         id: 'py-var-06',
         type: 'writeCode',
+        drillMode: 'code',
+        badgeLabel: 'WRITE THE CODE',
         prompt: {
           en: 'Create a variable called student instead. Store "Amina" in it.',
           so: 'Samee variable la yiraahdo student beddelkeeda. Ku kaydi "Amina".',
@@ -291,14 +391,37 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
     },
     stepType: 'typeCode',
     contextNote: {
-      en: '20 is a number. We don\'t put quotation marks around integers.',
-      so: '20 waa tiro. Uma baahnin calaamadaha xigashada tirooyinka (integers).',
-      sv: '20 är ett tal. Vi sätter inte citationstecken runt heltal (integers).',
+      en: '20 is an integer. An integer is a whole number without quotation marks.',
+      so: '20 waa integer. Integer waa tiro dhan oo aan calaamadaha xigashada lahayn.',
+      sv: '20 är ett heltal (integer). Ett heltal skrivs utan citationstecken.',
     },
     drills: [
       {
         id: 'py-var-07a',
+        type: 'typeIdea',
+        drillMode: 'idea',
+        badgeLabel: 'PROGRAMMING VOCABULARY',
+        prompt: {
+          en: 'TYPE THE IDEA:',
+          so: 'QOR FIKRADDA:',
+          sv: 'SKRIV IDÉN:',
+        },
+        targetCode: 'An integer is a whole number.',
+        translationSupport: {
+          so: 'Integer waa tiro dhan.',
+          sv: 'Ett heltal (integer) är ett tal utan decimaler.',
+        },
+        explanationAfter: {
+          en: 'Numbers like 20, 100, and 5 are integers in Python.',
+          so: 'Tirooyinka sida 20, 100, iyo 5 waa integers gudaha Python.',
+          sv: 'Tal som 20, 100 och 5 är heltal (integers) i Python.',
+        },
+      },
+      {
+        id: 'py-var-07b',
         type: 'typeCode',
+        drillMode: 'code',
+        badgeLabel: 'STORE INTEGER',
         prompt: {
           en: 'Store the number 20:',
           so: 'Ku kaydi lambarka 20:',
@@ -307,8 +430,10 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
         targetCode: 'age = 20',
       },
       {
-        id: 'py-var-07b',
+        id: 'py-var-07c',
         type: 'typeCode',
+        drillMode: 'code',
+        badgeLabel: 'PRINT INTEGER',
         prompt: {
           en: 'Print the age variable:',
           so: 'Daabac variable-ka age:',
@@ -334,14 +459,37 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
     },
     stepType: 'typeCode',
     contextNote: {
-      en: '"Ali" is text (string in quotes). 20 is a whole number (integer without quotes).',
-      so: '"Ali" waa qoraal (string oo xigasho ku jirta). 20 waa tiro dhan (integer aan xigasho lahayn).',
-      sv: '"Ali" är text (string med citationstecken). 20 är ett heltal (integer utan citationstecken).',
+      en: '"Stockholm" is a string. A string is text in quotes. 20 is an integer.',
+      so: '"Stockholm" waa string. String waa qoraal xigasho ku jirta. 20 waa integer.',
+      sv: '"Stockholm" är en string. En string är text med citationstecken. 20 är ett heltal.',
     },
     drills: [
       {
         id: 'py-var-08a',
+        type: 'typeIdea',
+        drillMode: 'idea',
+        badgeLabel: 'PROGRAMMING VOCABULARY',
+        prompt: {
+          en: 'TYPE THE IDEA:',
+          so: 'QOR FIKRADDA:',
+          sv: 'SKRIV IDÉN:',
+        },
+        targetCode: 'A string stores text.',
+        translationSupport: {
+          so: 'String wuxuu kaydiyaa qoraal.',
+          sv: 'En string lagrar text.',
+        },
+        explanationAfter: {
+          en: 'Strings always use quotation marks like "Stockholm" or "Ali".',
+          so: 'Strings mar walba waxay isticmaalaan calaamadaha xigashada sida "Stockholm" ama "Ali".',
+          sv: 'Strängar (strings) använder alltid citationstecken som "Stockholm" eller "Ali".',
+        },
+      },
+      {
+        id: 'py-var-08b',
         type: 'typeCode',
+        drillMode: 'code',
+        badgeLabel: 'STORE STRING',
         prompt: {
           en: '1 of 2 — Store text in a variable:',
           so: '1 ee 2 — Ku kaydi qoraal variable:',
@@ -350,8 +498,10 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
         targetCode: 'city = "Stockholm"',
       },
       {
-        id: 'py-var-08b',
+        id: 'py-var-08c',
         type: 'typeCode',
+        drillMode: 'code',
+        badgeLabel: 'STORE INTEGER',
         prompt: {
           en: '2 of 2 — Store a number in a variable:',
           so: '2 ee 2 — Ku kaydi tiro variable:',
@@ -375,14 +525,37 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
     },
     stepType: 'predict',
     contextNote: {
-      en: 'Read the Python code and type what will be printed in the terminal.',
-      so: 'Akhri code-ka Python oo qor waxa terminal-ka lagu daabici doono.',
-      sv: 'Läs Python-koden och skriv vad som skrivs ut i terminalen.',
+      en: 'Output is what the program displays on screen.',
+      so: 'Output waa waxa uu barnaamijku ku soo daabaco shaashadda.',
+      sv: 'Outputen är vad programmet visar på skärmen.',
     },
     drills: [
       {
-        id: 'py-var-09',
+        id: 'py-var-09a',
+        type: 'typeIdea',
+        drillMode: 'idea',
+        badgeLabel: 'PROGRAMMING VOCABULARY',
+        prompt: {
+          en: 'TYPE THE IDEA:',
+          so: 'QOR FIKRADDA:',
+          sv: 'SKRIV IDÉN:',
+        },
+        targetCode: 'The output is what the program displays.',
+        translationSupport: {
+          so: 'Output waa waxa uu barnaamijku soo bandhigo.',
+          sv: 'Outputen är vad programmet visar.',
+        },
+        explanationAfter: {
+          en: 'When programmers say "predict the output", they mean what appears on screen.',
+          so: 'Marka la yiraahdo "qiyaas output-ka", waxaa loola jeedaa waxa shaashadda ka soo bixi doona.',
+          sv: 'När programmerare säger "förutse outputen" menar de vad som visas på skärmen.',
+        },
+      },
+      {
+        id: 'py-var-09b',
         type: 'predict',
+        drillMode: 'code',
+        badgeLabel: 'PREDICT THE OUTPUT',
         codeContext: 'age = 20\nprint(age)',
         prompt: {
           en: 'What will Python print?',
@@ -421,6 +594,8 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
       {
         id: 'py-var-10',
         type: 'predict',
+        drillMode: 'code',
+        badgeLabel: 'PREDICT THE OUTPUT',
         codeContext: 'city = "Stockholm"\nprint(city)',
         prompt: {
           en: 'What will Python print?',
@@ -459,6 +634,8 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
       {
         id: 'py-var-11',
         type: 'predict',
+        drillMode: 'code',
+        badgeLabel: 'PREDICT THE OUTPUT',
         codeContext: 'score = 10\nscore = 20\nprint(score)',
         prompt: {
           en: 'What will Python print?',
@@ -497,6 +674,8 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
       {
         id: 'py-var-12',
         type: 'writeCode',
+        drillMode: 'code',
+        badgeLabel: 'WRITE THE CODE',
         prompt: {
           en: 'Create a variable called city and store the text "Stockholm" in it.',
           so: 'Samee variable la yiraahdo city oo ku kaydi qoraalka "Stockholm".',
@@ -530,6 +709,8 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
       {
         id: 'py-var-13a',
         type: 'writeCode',
+        drillMode: 'code',
+        badgeLabel: 'STEP 1 OF 3',
         prompt: {
           en: '1 of 3 — Create a variable called score. Store the number 100.',
           so: '1 ee 3 — Samee variable la yiraahdo score. Ku kaydi lambarka 100.',
@@ -542,6 +723,8 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
       {
         id: 'py-var-13b',
         type: 'writeCode',
+        drillMode: 'code',
+        badgeLabel: 'STEP 2 OF 3',
         prompt: {
           en: '2 of 3 — Print score.',
           so: '2 ee 3 — Daabac score.',
@@ -555,6 +738,8 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
       {
         id: 'py-var-13c',
         type: 'writeCode',
+        drillMode: 'code',
+        badgeLabel: 'STEP 3 OF 3',
         prompt: {
           en: '3 of 3 — Now combine both lines:',
           so: '3 ee 3 — Hadda isku dar labada sadar:',
@@ -589,6 +774,8 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
       {
         id: 'py-var-14',
         type: 'writeCode',
+        drillMode: 'code',
+        badgeLabel: 'WRITE THE CODE',
         prompt: {
           en: 'Write the 2-line program (Press Enter between lines):',
           so: 'Qor barnaamijka 2-da sadar ah (Taabo Enter inta u dhaxaysa sadarrada):',
@@ -615,14 +802,37 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
     },
     stepType: 'debug',
     contextNote: {
-      en: 'Something is wrong in the code snippet below.',
-      so: 'Wax baa khaldan code-ka hoose.',
-      sv: 'Något är fel i kodstycket nedan.',
+      en: 'Something is wrong in the code snippet below. Python is case-sensitive.',
+      so: 'Wax baa khaldan code-ka hoose. Python wuxuu kala saaraa xaraf weyn iyo xaraf yar.',
+      sv: 'Något är fel i kodstycket nedan. Python skiljer på stora och små bokstäver.',
     },
     drills: [
       {
-        id: 'py-var-15',
+        id: 'py-var-15a',
+        type: 'typeIdea',
+        drillMode: 'idea',
+        badgeLabel: 'PROGRAMMING VOCABULARY',
+        prompt: {
+          en: 'TYPE THE IDEA:',
+          so: 'QOR FIKRADDA:',
+          sv: 'SKRIV IDÉN:',
+        },
+        targetCode: 'Python is case-sensitive.',
+        translationSupport: {
+          so: 'Python wuxuu kala soocaa xaraf weyn iyo xaraf yar.',
+          sv: 'Python skiljer på stora och små bokstäver.',
+        },
+        explanationAfter: {
+          en: 'Name and name are treated as two different variables in Python.',
+          so: 'Name iyo name Python wuxuu u arkaa laba variable oo kala duwan.',
+          sv: 'Name och name behandlas som två olika variabler i Python.',
+        },
+      },
+      {
+        id: 'py-var-15b',
         type: 'debug',
+        drillMode: 'code',
+        badgeLabel: 'FIX THE CODE',
         brokenCode: 'name = "Ali"\nprint(Name)',
         prompt: {
           en: 'Fix the incorrect line:',
@@ -654,14 +864,37 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
     },
     stepType: 'debug',
     contextNote: {
-      en: 'We want Stockholm to be text (string).',
-      so: 'Waxaan rabnaa in Stockholm uu noqdo qoraal (string).',
-      sv: 'Vi vill att Stockholm ska vara text (string).',
+      en: 'We want Stockholm to be text (string). Strings need quotation marks.',
+      so: 'Waxaan rabnaa in Stockholm uu noqdo qoraal (string). Qoraalka string-ka ahi wuxuu u baahan yahay calaamadaha xigashada.',
+      sv: 'Vi vill att Stockholm ska vara text (string). Strängar behöver citationstecken.',
     },
     drills: [
       {
-        id: 'py-var-16',
+        id: 'py-var-16a',
+        type: 'typeIdea',
+        drillMode: 'idea',
+        badgeLabel: 'PROGRAMMING VOCABULARY',
+        prompt: {
+          en: 'TYPE THE IDEA:',
+          so: 'QOR FIKRADDA:',
+          sv: 'SKRIV IDÉN:',
+        },
+        targetCode: 'Strings need quotation marks.',
+        translationSupport: {
+          so: 'Qoraalka string-ka ahi wuxuu u baahan yahay calaamadaha xigashada.',
+          sv: 'Strängar behöver citationstecken.',
+        },
+        explanationAfter: {
+          en: 'Without quotes, Python thinks Stockholm is a variable name instead of text.',
+          so: 'La\'aanta calaamadaha xigashada, Python wuxuu u qaadanayaa inuu Stockholm yahay magac variable ee uusan ahayn qoraal.',
+          sv: 'Utan citationstecken tror Python att Stockholm är ett variabelnamn istället för text.',
+        },
+      },
+      {
+        id: 'py-var-16b',
         type: 'debug',
+        drillMode: 'code',
+        badgeLabel: 'FIX THE CODE',
         brokenCode: 'city = Stockholm',
         prompt: {
           en: 'Fix the code so Stockholm is a valid string:',
@@ -693,14 +926,37 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
     },
     stepType: 'debug',
     contextNote: {
-      en: 'We want Python to print the VALUE stored in age, not the literal word "age".',
-      so: 'Waxaan rabnaa in Python uu daabaco QIIMAHA ku kaydsan age, ee uusan daabacin ereyga tooska ah ee "age".',
-      sv: 'Vi vill att Python ska skriva ut VÄRDET som lagras i age, inte det ordagranna ordet "age".',
+      en: 'The equals sign assigns a value. When printing a variable, do not wrap its name in quotation marks.',
+      so: 'Calaamadda le\'eg waxay qiime ku kaydisaa variable-ka. Markaad daabacayso variable, ha gelin calaamadaha xigashada.',
+      sv: 'Likamedelstecknet tilldelar ett värde. När du skriver ut en variabel, sätt inte citationstecken runt namnet.',
     },
     drills: [
       {
-        id: 'py-var-17',
+        id: 'py-var-17a',
+        type: 'typeIdea',
+        drillMode: 'idea',
+        badgeLabel: 'PROGRAMMING VOCABULARY',
+        prompt: {
+          en: 'TYPE THE IDEA:',
+          so: 'QOR FIKRADDA:',
+          sv: 'SKRIV IDÉN:',
+        },
+        targetCode: 'The equals sign assigns a value.',
+        translationSupport: {
+          so: 'Calaamadda le\'eg waxay qiime ku kaydisaa variable-ka.',
+          sv: 'Likamedelstecknet tilldelar ett värde.',
+        },
+        explanationAfter: {
+          en: 'In Python, = is the assignment operator that stores data into a variable.',
+          so: 'Gudaha Python, = waa calaamadda assignment-ka ee xogta ku kaydisa variable-ka.',
+          sv: 'I Python är = tilldelningsoperatorn som lagrar data i en variabel.',
+        },
+      },
+      {
+        id: 'py-var-17b',
         type: 'debug',
+        drillMode: 'code',
+        badgeLabel: 'FIX THE CODE',
         brokenCode: 'age = 20\nprint("age")',
         prompt: {
           en: 'Fix the second line so it prints the variable value 20:',
@@ -741,6 +997,8 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
       {
         id: 'py-var-18a',
         type: 'understand',
+        drillMode: 'code',
+        badgeLabel: 'READ & TYPE VALUE',
         codeContext: 'product = "Laptop"\nprice = 900',
         prompt: {
           en: '1 of 2 — What value is stored in product?',
@@ -752,6 +1010,8 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
       {
         id: 'py-var-18b',
         type: 'understand',
+        drillMode: 'code',
+        badgeLabel: 'READ & TYPE VALUE',
         codeContext: 'product = "Laptop"\nprice = 900',
         prompt: {
           en: '2 of 2 — What value is stored in price?',
@@ -784,6 +1044,8 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
       {
         id: 'py-var-19a',
         type: 'changeCode',
+        drillMode: 'code',
+        badgeLabel: 'CHANGE CODE',
         codeContext: 'product = "Laptop"\nprice = 900',
         prompt: {
           en: '1 of 2 — Change the product to "Phone":',
@@ -795,6 +1057,8 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
       {
         id: 'py-var-19b',
         type: 'changeCode',
+        drillMode: 'code',
+        badgeLabel: 'CHANGE CODE',
         codeContext: 'product = "Phone"\nprice = 900',
         prompt: {
           en: '2 of 2 — Change the price to 700:',
@@ -827,6 +1091,8 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
       {
         id: 'py-var-20a',
         type: 'recall',
+        drillMode: 'code',
+        badgeLabel: 'RECALL 1 OF 4',
         prompt: {
           en: '1 of 4 — Create a variable called name containing "Amina":',
           so: '1 ee 4 — Samee variable la yiraahdo name oo ku kaydi "Amina":',
@@ -839,6 +1105,8 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
       {
         id: 'py-var-20b',
         type: 'recall',
+        drillMode: 'code',
+        badgeLabel: 'RECALL 2 OF 4',
         prompt: {
           en: '2 of 4 — Create a variable called age containing 25:',
           so: '2 ee 4 — Samee variable la yiraahdo age oo ku kaydi 25:',
@@ -851,6 +1119,8 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
       {
         id: 'py-var-20c',
         type: 'recall',
+        drillMode: 'code',
+        badgeLabel: 'RECALL 3 OF 4',
         prompt: {
           en: '3 of 4 — Print the name variable:',
           so: '3 ee 4 — Daabac variable-ka name:',
@@ -864,6 +1134,8 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
       {
         id: 'py-var-20d',
         type: 'recall',
+        drillMode: 'code',
+        badgeLabel: 'RECALL 4 OF 4',
         prompt: {
           en: '4 of 4 — Create language containing "Python" and print it:',
           so: '4 ee 4 — Samee language oo ku kaydi "Python" kadibna daabac:',
@@ -898,6 +1170,8 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
       {
         id: 'py-var-21',
         type: 'recall',
+        drillMode: 'code',
+        badgeLabel: 'ONE MORE TIME',
         prompt: {
           en: 'ONE MORE TIME — Create city containing "Stockholm":',
           so: 'MAR KALE — Samee city oo ku kaydi "Stockholm":',
@@ -931,6 +1205,8 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
       {
         id: 'py-var-22',
         type: 'challenge',
+        drillMode: 'code',
+        badgeLabel: 'FINAL CHALLENGE',
         prompt: {
           en: 'Write the complete program from scratch (Press Enter for line 2):',
           so: 'Qor barnaamijka oo dhan bilow ilaa dhammaad (Taabo Enter sadarka 2aad):',
@@ -965,6 +1241,8 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
       {
         id: 'py-var-23',
         type: 'challenge',
+        drillMode: 'code',
+        badgeLabel: 'BONUS CHALLENGE',
         prompt: {
           en: 'Write all 4 lines (Press Enter between lines):',
           so: 'Qor dhammaan 4-ta sadar (Taabo Enter inta u dhaxaysa sadarrada):',
@@ -978,3 +1256,4 @@ export const PYTHON_VARIABLES_STEPS: PythonInteractiveStep[] = [
     ],
   },
 ];
+

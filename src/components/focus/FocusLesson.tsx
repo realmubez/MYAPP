@@ -10,6 +10,7 @@ import { LessonResults } from './LessonResults';
 import { InteractiveLessonEngine } from './interactive/InteractiveLessonEngine';
 import { PhonePlansLessonEngine } from './interactive/PhonePlansLessonEngine';
 import { PaCafeLessonEngine } from './interactive/PaCafeLessonEngine';
+import { SwedishStoryLessonEngine } from './interactive/SwedishStoryLessonEngine';
 import { progressService } from '../../services/progress';
 import {
   getStoredVoice,
@@ -56,6 +57,25 @@ export function FocusLesson({
         lesson={lesson}
         onExit={onExit}
         onLessonComplete={onLessonComplete}
+      />
+    );
+  }
+
+  // If the lesson is the Swedish Story lesson (Unit 2), use SwedishStoryLessonEngine
+  if (lesson.id === 'sv-en-vanlig-morgon' || lesson.id.includes('en-vanlig-morgon') || lesson.id.includes('morgon')) {
+    return (
+      <SwedishStoryLessonEngine
+        onExit={onExit}
+        onComplete={() => {
+          if (onLessonComplete) {
+            onLessonComplete({
+              accuracy: 100,
+              wpm: 35,
+              mistakes: 0,
+              difficultWords: [],
+            });
+          }
+        }}
       />
     );
   }

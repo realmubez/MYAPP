@@ -88,7 +88,7 @@ export const CURATED_LESSONS: Record<SubjectId, CuratedLessonInfo> = {
 };
 
 export const CURATED_TOTAL_LESSONS: Record<SubjectId, number> = {
-  swedish: 1,
+  swedish: 2,
   english: 1,
   python: 1,
   typing: 10,
@@ -107,7 +107,10 @@ export function isCuratedLesson(subjectId: SubjectId, lessonId?: string): boolea
     lessonId.includes(curated.lessonId) ||
     lessonId === 'phone-plans' ||
     lessonId === 'pa-cafe' ||
-    lessonId === 'variables'
+    lessonId === 'variables' ||
+    lessonId === 'sv-en-vanlig-morgon' ||
+    lessonId.includes('morgon') ||
+    lessonId.includes('en-vanlig-morgon')
   );
 }
 

@@ -10,6 +10,8 @@ import {
   Terminal,
   AlertTriangle,
   Code,
+  Lightbulb,
+  BookOpen,
   Volume2,
   VolumeX,
   X,
@@ -29,9 +31,12 @@ import { typingSoundService } from '../../../services/typingSoundService';
 import {
   translationService,
   PythonSupportLang,
-  MultiLangTranslation,
 } from '../../../services/translationPreference';
-import { getTTSUrl } from '../../../services/tts';
+import {
+  lessonSpeechManager,
+  getStoredAutoplay,
+} from '../../../services/tts';
+import { LanguageAudioButton } from '../../audio/LanguageAudioButton';
 import { PythonLogoIcon } from '../../common/FlagIcons';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -79,107 +84,16 @@ export function PythonVariablesLessonEngine({
     }
   };
 
-  // TTS playback state & controller
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const [playingKey, setPlayingKey] = useState<string | null>(null);
-
   const stopAudio = useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-    if (audioRef.current) {
-      try {
-        const audio = audioRef.current;
-        audio.oncanplay = null;
-        audio.onplaying = null;
-        audio.onended = null;
-        audio.onerror = null;
-        audio.pause();
-        audio.currentTime = 0;
-        audio.removeAttribute('src');
-        audio.load();
-      } catch {
-        // Safe to ignore
-      }
-      audioRef.current = null;
-    }
-    setPlayingKey(null);
+    lessonSpeechManager.stopSpeech();
   }, []);
-
-  const playTTS = useCallback(
-    async (key: string, content: MultiLangTranslation | string | undefined) => {
-      if (!content) return;
-      if (playingKey === key) {
-        stopAudio();
-        return;
-      }
-
-      const ttsData = translationService.getPythonTTSText(content, supportLang);
-      if (!ttsData || !ttsData.text.trim()) return;
-
-      stopAudio();
-      setPlayingKey(key);
-
-      const abortController = new AbortController();
-      abortControllerRef.current = abortController;
-
-      const targetUrl = getTTSUrl({
-        text: ttsData.text,
-        voice: ttsData.voice,
-        rate: '0%',
-      });
-
-      try {
-        let resolvedSrc = targetUrl;
-        try {
-          const res = await fetch(targetUrl, { signal: abortController.signal });
-          if (res.ok) {
-            const blob = await res.blob();
-            if (blob.size > 0) {
-              resolvedSrc = URL.createObjectURL(blob);
-            }
-          }
-        } catch {
-          if (abortController.signal.aborted) return;
-        }
-
-        if (abortController.signal.aborted) return;
-
-        const audio = new Audio();
-        audio.src = resolvedSrc;
-        audio.volume = 1;
-        audioRef.current = audio;
-
-        audio.onended = () => {
-          setPlayingKey(null);
-          audioRef.current = null;
-        };
-        audio.onerror = () => {
-          setPlayingKey(null);
-          audioRef.current = null;
-        };
-
-        const playPromise = audio.play();
-        if (playPromise !== undefined) {
-          playPromise.catch(() => {
-            setPlayingKey(null);
-          });
-        }
-      } catch {
-        setPlayingKey(null);
-      }
-    },
-    [playingKey, stopAudio, supportLang]
-  );
 
   // Stop audio on unmount or navigation
   useEffect(() => {
     return () => {
-      stopAudio();
+      lessonSpeechManager.stopSpeech();
     };
-  }, [stopAudio]);
+  }, []);
 
   // Metrics accumulators
   const [accumulatedMistakes, setAccumulatedMistakes] = useState(0);
@@ -193,6 +107,59 @@ export function PythonVariablesLessonEngine({
   const totalSteps = PYTHON_VARIABLES_STEPS.length;
   const currentDrill: PythonDrillItem =
     currentStep?.drills[currentDrillIndex] || currentStep?.drills[0];
+
+  const isIdeaMode =
+    currentDrill?.drillMode === 'idea' || currentDrill?.type === 'typeIdea';
+
+  // Autoplay single stream following learner's active language setting
+  useEffect(() => {
+    lessonSpeechManager.stopSpeech();
+
+    if (getStoredAutoplay()) {
+      if (isIdeaMode) {
+        if (supportLang === 'so' && currentDrill?.translationSupport?.so) {
+          lessonSpeechManager.playSpeech({
+            key: `so:${currentDrill.translationSupport.so}`,
+            text: currentDrill.translationSupport.so,
+            language: 'so',
+          });
+        } else if (supportLang === 'sv' && currentDrill?.translationSupport?.sv) {
+          lessonSpeechManager.playSpeech({
+            key: `sv:${currentDrill.translationSupport.sv}`,
+            text: currentDrill.translationSupport.sv,
+            language: 'sv',
+          });
+        } else if (currentDrill?.targetCode) {
+          lessonSpeechManager.playSpeech({
+            key: `en:${currentDrill.targetCode}`,
+            text: currentDrill.targetCode,
+            language: 'en',
+          });
+        }
+      } else if (currentStep?.contextNote) {
+        const note = translationService.getPythonText(currentStep.contextNote, supportLang);
+        if (supportLang === 'so' && note?.translated) {
+          lessonSpeechManager.playSpeech({
+            key: `so:${note.translated}`,
+            text: note.translated,
+            language: 'so',
+          });
+        } else if (supportLang === 'sv' && note?.translated) {
+          lessonSpeechManager.playSpeech({
+            key: `sv:${note.translated}`,
+            text: note.translated,
+            language: 'sv',
+          });
+        } else if (note?.en) {
+          lessonSpeechManager.playSpeech({
+            key: `en:${note.en}`,
+            text: note.en,
+            language: 'en',
+          });
+        }
+      }
+    }
+  }, [currentStepIndex, currentDrillIndex, isIdeaMode, supportLang, currentDrill, currentStep]);
 
   // Track position in progressService
   useEffect(() => {
@@ -251,7 +218,7 @@ export function PythonVariablesLessonEngine({
   } = useTypingEngine({
     targetText: currentDrill?.targetCode || '',
     language: 'en',
-    isCode: true,
+    isCode: !isIdeaMode,
     onComplete: handleTypingComplete,
     disabled: isDrillCompleted,
     sentenceContext: currentDrill
@@ -576,39 +543,63 @@ export function PythonVariablesLessonEngine({
             >
               {/* Badge Label */}
               <div className="flex items-center gap-2 mb-2 sm:mb-3">
-                <span className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-mono uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                  <Code size={12} />
-                  <span>{currentStep.badgeLabel}</span>
+                <span
+                  className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-mono uppercase tracking-wider ${
+                    isIdeaMode
+                      ? 'bg-amber-400/15 text-amber-300 border border-amber-400/30'
+                      : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                  }`}
+                >
+                  {isIdeaMode ? (
+                    <Lightbulb size={12} className="text-amber-400" />
+                  ) : (
+                    <Code size={12} />
+                  )}
+                  <span>
+                    {currentDrill.badgeLabel ||
+                      (isIdeaMode ? 'TYPE THE IDEA' : currentStep.badgeLabel)}
+                  </span>
                 </span>
+                {currentStep.drills.length > 1 && (
+                  <span className="text-[11px] font-mono text-neutral-500">
+                    ({currentDrillIndex + 1}/{currentStep.drills.length})
+                  </span>
+                )}
               </div>
 
-              {/* Context Note / Core Concept (with TTS speaker & multi-language translation support) */}
+              {/* Context Note / Core Concept (with dual English + Somali/Swedish TTS speakers) */}
               {contextNoteText && (
                 <div className="w-full max-w-xl mx-auto mb-2.5 sm:mb-4 px-3 sm:px-4 py-2 sm:py-3 rounded-xl bg-neutral-900/80 border border-neutral-800/90 text-left">
+                  {/* English Line */}
                   <div className="flex items-start justify-between gap-2.5">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs sm:text-sm text-neutral-200 leading-relaxed font-sans whitespace-pre-line">
-                        {contextNoteText.en}
-                      </div>
-                      {contextNoteText.translated && (
-                        <div className="text-xs text-neutral-400 mt-1 sm:mt-1.5 font-sans leading-relaxed border-t border-neutral-800/60 pt-1 sm:pt-1.5">
-                          {contextNoteText.translated}
-                        </div>
-                      )}
+                    <div className="text-xs sm:text-sm text-neutral-200 leading-relaxed font-sans whitespace-pre-line flex-1">
+                      {contextNoteText.en}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => playTTS('context-note', currentStep.contextNote)}
-                      className={`p-1.5 rounded-lg transition-colors shrink-0 cursor-pointer ${
-                        playingKey === 'context-note'
-                          ? 'text-amber-400 bg-amber-500/20 animate-pulse'
-                          : 'text-neutral-400 hover:text-amber-400 hover:bg-neutral-800'
-                      }`}
-                      title="Listen to explanation (Edge TTS)"
-                    >
-                      <Volume2 size={15} />
-                    </button>
+                    <LanguageAudioButton
+                      text={contextNoteText.en}
+                      language="en"
+                      label="Listen in English"
+                      size="xs"
+                    />
                   </div>
+
+                  {/* Translated Line (Somali / Swedish) if active */}
+                  {contextNoteText.translated && supportLang !== 'off' && supportLang !== 'en' && (
+                    <div className="flex items-start justify-between gap-2.5 mt-1.5 pt-1.5 border-t border-neutral-800/60">
+                      <div className="text-xs text-neutral-400 font-sans leading-relaxed flex-1">
+                        <span className="text-neutral-500 font-medium mr-1.5 select-none">
+                          {supportLang === 'so' ? 'Soomaali:' : 'Svenska:'}
+                        </span>
+                        <span>{contextNoteText.translated}</span>
+                      </div>
+                      <LanguageAudioButton
+                        text={contextNoteText.translated}
+                        language={supportLang as 'so' | 'sv'}
+                        label={supportLang === 'so' ? 'Listen in Somali' : 'Listen in Swedish'}
+                        size="xs"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -620,22 +611,32 @@ export function PythonVariablesLessonEngine({
                     return (
                       <div
                         key={item.label}
-                        className="p-2.5 sm:p-3 rounded-xl bg-neutral-900/90 border border-neutral-800"
+                        className="p-2.5 sm:p-3 rounded-xl bg-neutral-900/90 border border-neutral-800 flex flex-col justify-between"
                       >
                         <div className="font-mono text-sm font-bold text-amber-400">
                           {item.label}
                         </div>
                         {locDesc && (
-                          <>
-                            <div className="text-[11px] text-neutral-300 mt-0.5">
-                              {locDesc.en}
+                          <div className="mt-1 space-y-1">
+                            <div className="flex items-start justify-between gap-1 text-[11px] text-neutral-300">
+                              <span className="flex-1 leading-snug">{locDesc.en}</span>
+                              <LanguageAudioButton
+                                text={locDesc.en}
+                                language="en"
+                                size="xs"
+                              />
                             </div>
-                            {locDesc.translated && (
-                              <div className="text-[10px] text-neutral-400 mt-0.5 border-t border-neutral-800/50 pt-0.5">
-                                {locDesc.translated}
+                            {locDesc.translated && supportLang !== 'off' && supportLang !== 'en' && (
+                              <div className="flex items-start justify-between gap-1 text-[10px] text-neutral-400 border-t border-neutral-800/50 pt-1">
+                                <span className="flex-1 leading-snug">{locDesc.translated}</span>
+                                <LanguageAudioButton
+                                  text={locDesc.translated}
+                                  language={supportLang as 'so' | 'sv'}
+                                  size="xs"
+                                />
                               </div>
                             )}
-                          </>
+                          </div>
                         )}
                       </div>
                     );
@@ -668,33 +669,77 @@ export function PythonVariablesLessonEngine({
                 </div>
               )}
 
-              {/* Drill Prompt / Instruction / Question (with TTS speaker & translation) */}
+              {/* Drill Prompt / Instruction / Question (with dual English + Somali/Swedish TTS speakers) */}
               {promptText && (
-                <div className="w-full max-w-xl mx-auto mb-2 flex items-center justify-center gap-2">
-                  <div className="text-xs sm:text-sm font-mono text-neutral-300 text-center">
-                    <div>{promptText.en}</div>
-                    {promptText.translated && (
-                      <div className="text-xs text-neutral-400 mt-0.5 font-sans">
-                        {promptText.translated}
-                      </div>
-                    )}
+                <div className="w-full max-w-xl mx-auto mb-2 flex flex-col items-center justify-center gap-1">
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="text-xs sm:text-sm font-mono text-neutral-300 text-center">
+                      {promptText.en}
+                    </span>
+                    <LanguageAudioButton
+                      text={promptText.en}
+                      language="en"
+                      label="Listen in English"
+                      size="xs"
+                    />
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => playTTS(`prompt-${currentDrill.id}`, currentDrill.prompt)}
-                    className={`p-1.5 rounded-lg transition-colors shrink-0 cursor-pointer ${
-                      playingKey === `prompt-${currentDrill.id}`
-                        ? 'text-amber-400 bg-amber-500/20 animate-pulse'
-                        : 'text-neutral-400 hover:text-amber-400 hover:bg-neutral-800'
-                    }`}
-                    title="Listen to instruction (Edge TTS)"
-                  >
-                    <Volume2 size={15} />
-                  </button>
+                  {promptText.translated && supportLang !== 'off' && supportLang !== 'en' && (
+                    <div className="flex items-center justify-center gap-1.5 text-xs text-neutral-400 font-sans">
+                      <span>{promptText.translated}</span>
+                      <LanguageAudioButton
+                        text={promptText.translated}
+                        language={supportLang as 'so' | 'sv'}
+                        label={supportLang === 'so' ? 'Listen in Somali' : 'Listen in Swedish'}
+                        size="xs"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Core Code Typing Area (TypingText with Python multiline support) */}
+              {/* Translation Support for Idea Drills */}
+              {isIdeaMode && (
+                <div className="w-full max-w-xl mx-auto -mt-1 mb-2.5 flex flex-col items-center gap-1.5">
+                  {/* English Idea sentence audio playback */}
+                  <div className="flex items-center justify-center gap-2 text-xs text-amber-300/90 font-medium font-sans bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-xl">
+                    <span className="select-none text-amber-400 font-mono text-[11px]">English:</span>
+                    <span>{currentDrill.targetCode}</span>
+                    <LanguageAudioButton
+                      text={currentDrill.targetCode}
+                      language="en"
+                      label="Listen in English"
+                      size="xs"
+                    />
+                  </div>
+
+                  {/* Somali / Swedish Translation with its own independent audio playback */}
+                  {currentDrill.translationSupport &&
+                    (supportLang === 'so' || supportLang === 'sv') && (
+                      <div className="flex items-center justify-center gap-2 text-xs text-neutral-300 font-sans bg-neutral-900/80 border border-neutral-800 px-3 py-1.5 rounded-xl w-full max-w-xl">
+                        <span className="text-neutral-400 font-medium select-none text-[11px]">
+                          {supportLang === 'so' ? 'Soomaali:' : 'Svenska:'}
+                        </span>
+                        <span className="flex-1 text-center">
+                          {supportLang === 'so'
+                            ? currentDrill.translationSupport.so
+                            : currentDrill.translationSupport.sv}
+                        </span>
+                        <LanguageAudioButton
+                          text={
+                            supportLang === 'so'
+                              ? currentDrill.translationSupport.so
+                              : currentDrill.translationSupport.sv
+                          }
+                          language={supportLang}
+                          label={supportLang === 'so' ? 'Listen in Somali' : 'Listen in Swedish'}
+                          size="xs"
+                        />
+                      </div>
+                    )}
+                </div>
+              )}
+
+              {/* Core Code / Text Typing Area */}
               <div
                 className="w-full flex flex-col items-center justify-center min-h-[140px] cursor-text my-2"
                 onClick={focusInput}
@@ -709,7 +754,7 @@ export function PythonVariablesLessonEngine({
                   showHint={showHint || isDrillCompleted}
                   hintText={hintTextResolved}
                   disabled={isDrillCompleted}
-                  isCode={true}
+                  isCode={!isIdeaMode}
                   onContainerClick={focusInput}
                 />
               </div>
@@ -734,63 +779,71 @@ export function PythonVariablesLessonEngine({
                 </motion.div>
               )}
 
-              {/* Post Explanation Note (with TTS & translation) */}
+              {/* Post Explanation Note (with dual English + Somali/Swedish TTS speakers) */}
               {isDrillCompleted && currentDrill.explanationAfter && (
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mt-3 p-3 rounded-xl bg-neutral-900 border border-neutral-800 text-left max-w-xl w-full flex items-start justify-between gap-2"
+                  className="mt-3 p-3 rounded-xl bg-neutral-900 border border-neutral-800 text-left max-w-xl w-full flex flex-col gap-1.5"
                 >
-                  <div className="flex-1">
-                    <span className="font-semibold text-amber-400 mr-1 text-xs">Note:</span>
-                    {(() => {
-                      const locExp = translationService.getPythonText(
-                        currentDrill.explanationAfter,
-                        supportLang
-                      );
-                      if (!locExp) return null;
-                      return (
-                        <div className="inline">
-                          <span className="text-xs text-neutral-300 whitespace-pre-line">
+                  {(() => {
+                    const locExp = translationService.getPythonText(
+                      currentDrill.explanationAfter,
+                      supportLang
+                    );
+                    if (!locExp) return null;
+                    return (
+                      <>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="text-xs text-neutral-300 whitespace-pre-line flex-1">
+                            <span className="font-semibold text-amber-400 mr-1.5">Note:</span>
                             {locExp.en}
-                          </span>
-                          {locExp.translated && (
-                            <div className="text-xs text-neutral-400 mt-1 border-t border-neutral-800/60 pt-1">
+                          </div>
+                          <LanguageAudioButton
+                            text={locExp.en}
+                            language="en"
+                            label="Listen in English"
+                            size="xs"
+                          />
+                        </div>
+
+                        {locExp.translated && supportLang !== 'off' && supportLang !== 'en' && (
+                          <div className="flex items-start justify-between gap-2 border-t border-neutral-800/60 pt-1.5 mt-0.5">
+                            <div className="text-xs text-neutral-400 font-sans leading-relaxed flex-1">
+                              <span className="text-neutral-500 font-medium mr-1.5 select-none">
+                                {supportLang === 'so' ? 'Soomaali:' : 'Svenska:'}
+                              </span>
                               {locExp.translated}
                             </div>
-                          )}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => playTTS(`after-${currentDrill.id}`, currentDrill.explanationAfter)}
-                    className={`p-1.5 rounded-lg transition-colors shrink-0 cursor-pointer ${
-                      playingKey === `after-${currentDrill.id}`
-                        ? 'text-amber-400 bg-amber-500/20 animate-pulse'
-                        : 'text-neutral-400 hover:text-amber-400 hover:bg-neutral-800'
-                    }`}
-                    title="Listen to explanation (Edge TTS)"
-                  >
-                    <Volume2 size={15} />
-                  </button>
+                            <LanguageAudioButton
+                              text={locExp.translated}
+                              language={supportLang as 'so' | 'sv'}
+                              label={supportLang === 'so' ? 'Listen in Somali' : 'Listen in Swedish'}
+                              size="xs"
+                            />
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </motion.div>
               )}
 
-              {/* Mobile Quick-Symbol Toolbar */}
-              <div className="sm:hidden flex flex-wrap items-center justify-center gap-1.5 mt-3 w-full max-w-md">
-                {['=', '"', '(', ')', '_', ':', 'print', 'name', 'Enter'].map((sym) => (
-                  <button
-                    key={sym}
-                    type="button"
-                    onClick={() => insertSymbol(sym === 'Enter' ? '\n' : sym)}
-                    className="px-2.5 py-1 rounded bg-neutral-900 border border-neutral-800 text-xs font-mono text-neutral-300 active:bg-neutral-800 active:text-amber-400"
-                  >
-                    {sym}
-                  </button>
-                ))}
-              </div>
+              {/* Mobile Quick-Symbol Toolbar (Code drills only) */}
+              {!isIdeaMode && (
+                <div className="sm:hidden flex flex-wrap items-center justify-center gap-1.5 mt-3 w-full max-w-md">
+                  {['=', '"', '(', ')', '_', ':', 'print', 'name', 'Enter'].map((sym) => (
+                    <button
+                      key={sym}
+                      type="button"
+                      onClick={() => insertSymbol(sym === 'Enter' ? '\n' : sym)}
+                      className="px-2.5 py-1 rounded bg-neutral-900 border border-neutral-800 text-xs font-mono text-neutral-300 active:bg-neutral-800 active:text-amber-400"
+                    >
+                      {sym}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* Bottom Action Controls */}
               <div className="mt-4 sm:mt-6 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 w-full">

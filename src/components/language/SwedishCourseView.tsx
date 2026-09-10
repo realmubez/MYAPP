@@ -18,6 +18,7 @@ import { storageService } from '../../services/storage';
 import { useProgress } from '../../hooks/useProgress';
 import { typingSoundService } from '../../services/typingSoundService';
 import { PA_CAFE_LESSON } from '../../data/curriculumConfig';
+import { EN_VANLIG_MORGON_LESSON } from '../../data/courses/swedish/enVanligMorgonLesson';
 import {
   SWEDISH_VOICES,
   AVAILABLE_RATES,
@@ -48,6 +49,22 @@ const CURATED_SWEDISH_UNITS: CourseUnit[] = [
       },
     ],
   },
+  {
+    id: 'sv-b1-u-en-vanlig-morgon',
+    unitNumber: 2,
+    title: 'En vanlig morgon',
+    description: 'Följ Elias under hans första morgon på ett nytt jobb. Lär dig vardagliga ord och uttryck genom att läsa, lyssna och skriva.',
+    exercises: [
+      {
+        id: 'sv-en-vanlig-morgon',
+        exerciseNumber: 1,
+        title: 'En vanlig morgon',
+        mode: 'Interactive story',
+        icon: '📖',
+        lesson: EN_VANLIG_MORGON_LESSON,
+      },
+    ],
+  },
 ];
 
 export function SwedishCourseView() {
@@ -61,6 +78,7 @@ export function SwedishCourseView() {
   // Collapsible units state
   const [expandedUnits, setExpandedUnits] = useState<Record<string, boolean>>({
     'sv-b1-u-pa-cafe': true,
+    'sv-b1-u-en-vanlig-morgon': true,
   });
 
   // Book reference modal

@@ -6,7 +6,7 @@ export interface ExerciseItem {
   id: string;
   exerciseNumber: number;
   title: string;
-  mode: 'Word Mode' | 'Sentence Mode' | 'Dialogue Mode' | 'Interactive Mode' | 'Concept' | 'Type' | 'Code' | 'Recall' | 'Typing' | 'Code / Recall';
+  mode: 'Word Mode' | 'Sentence Mode' | 'Dialogue Mode' | 'Interactive Mode' | 'Interactive story' | 'Concept' | 'Type' | 'Code' | 'Recall' | 'Typing' | 'Code / Recall';
   icon: string;
   lesson: LanguageLesson;
 }
