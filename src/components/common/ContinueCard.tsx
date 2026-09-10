@@ -17,18 +17,18 @@ export function ContinueCard({ onPlay }: ContinueCardProps) {
   const renderIcon = () => {
     switch (subjectId) {
       case 'english':
-        return <BritishFlagIcon size={44} className="shrink-0" />;
+        return <BritishFlagIcon size={46} className="shrink-0" />;
       case 'python':
-        return <PythonLogoIcon size={44} className="shrink-0" />;
+        return <PythonLogoIcon size={46} className="shrink-0" />;
       case 'typing':
         return (
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/30 text-xl">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500/10 border border-amber-500/30 text-2xl">
             ⌨️
           </div>
         );
       case 'swedish':
       default:
-        return <SwedishFlagIcon size={44} className="shrink-0" />;
+        return <SwedishFlagIcon size={46} className="shrink-0" />;
     }
   };
 
@@ -38,18 +38,18 @@ export function ContinueCard({ onPlay }: ContinueCardProps) {
 
   const subjectLabel = subjectId.toUpperCase();
   const unitTitle = lastPos?.unitTitle || 'Beginner 1 · Hälsningar';
-  const exerciseTitle = lastPos?.exerciseTitle || 'Exercise 2 of 3 · Sentence Mode';
+  const exerciseTitle = lastPos?.exerciseTitle || 'Exercise 1 · Word Mode';
   const percentComplete = subjectProgress.percentComplete;
 
   return (
     <div
       id="continue-learning-card"
-      className="group relative overflow-hidden rounded-2xl border border-neutral-800/80 bg-neutral-900/80 p-4 transition-all hover:border-neutral-700/80"
+      className="group relative overflow-hidden rounded-3xl border border-neutral-800/80 bg-[#141210] p-4 sm:p-5 transition-all hover:border-neutral-700/80 shadow-sm flex flex-col justify-between h-full min-h-[140px]"
     >
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3.5">
         <Link
           to={getTargetRoute()}
-          className="flex items-center gap-3 flex-1 min-w-0"
+          className="flex items-center gap-3.5 flex-1 min-w-0"
           id="continue-card-link"
         >
           {renderIcon()}
@@ -58,7 +58,7 @@ export function ContinueCard({ onPlay }: ContinueCardProps) {
             <span className="block text-[10px] font-bold tracking-widest text-amber-400 uppercase">
               {subjectLabel}
             </span>
-            <h3 className="text-sm font-bold text-white truncate mt-0.5">
+            <h3 className="text-sm sm:text-base font-bold text-white truncate mt-0.5 group-hover:text-amber-300 transition-colors">
               {unitTitle}
             </h3>
             <p className="text-xs text-neutral-400 truncate mt-0.5">
@@ -67,20 +67,20 @@ export function ContinueCard({ onPlay }: ContinueCardProps) {
           </div>
         </Link>
 
-        {/* Amber Play Button */}
+        {/* Amber Round Play Button matching reference */}
         <Link
           to={getTargetRoute()}
           onClick={onPlay}
           id="continue-play-button"
           aria-label={`Continue ${subjectLabel} lesson`}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-400 text-neutral-950 shadow-lg shadow-amber-400/20 hover:bg-amber-300 active:scale-95 transition-all"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber-400 text-neutral-950 shadow-lg shadow-amber-400/20 hover:bg-amber-300 active:scale-95 transition-all cursor-pointer"
         >
-          <Play size={18} className="fill-neutral-950 translate-x-0.5" />
+          <Play size={20} className="fill-neutral-950 translate-x-0.5" />
         </Link>
       </div>
 
       {/* Progress Bar & Percentage */}
-      <div className="mt-3.5 flex items-center gap-3">
+      <div className="mt-4 flex items-center gap-3">
         <div className="h-1.5 flex-1 rounded-full bg-neutral-800/90 overflow-hidden">
           <div
             className="h-full rounded-full bg-amber-400 transition-all duration-500"

@@ -15,7 +15,7 @@ export function ProgressPage() {
   const subjectRows = [
     {
       id: 'swedish',
-      name: 'Swedish',
+      name: 'Swedish (Svenska)',
       flagOrIcon: '🇸🇪',
       data: progress.subjects.swedish,
     },
@@ -40,9 +40,9 @@ export function ProgressPage() {
   ];
 
   return (
-    <div id="progress-page" className="space-y-8">
+    <div id="progress-page" className="w-full max-w-5xl lg:max-w-6xl space-y-6 lg:space-y-8 pb-24 lg:pb-12 text-neutral-100">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-800 pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-800/80 pb-6">
         <div>
           <Link
             to="/"
@@ -52,72 +52,72 @@ export function ProgressPage() {
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Back to Dashboard</span>
           </Link>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white">Learning Progress</h1>
-          <p className="text-xs sm:text-sm text-neutral-400 mt-0.5">
-            Objective metrics tracking focus time, accuracy, and typing speed
+          <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Learning Progress</h1>
+          <p className="text-xs sm:text-sm text-neutral-400 mt-1">
+            Objective metrics tracking focus time, accuracy, and keyboard typing speed across all tracks
           </p>
         </div>
       </div>
 
       {/* Primary Metrics */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-4 sm:p-5">
+        <div className="rounded-3xl border border-neutral-800/80 bg-[#141210] p-4 sm:p-5 shadow-sm">
           <div className="flex items-center gap-2 text-neutral-400 text-xs mb-2">
             <Clock className="w-4 h-4 text-amber-400" />
             <span>Total Learning Time</span>
           </div>
-          <p className="text-2xl font-bold font-mono text-neutral-100">{formatSeconds(stats.totalTimeSeconds)}</p>
+          <p className="text-2xl sm:text-3xl font-bold font-mono text-neutral-100">{formatSeconds(stats.totalTimeSeconds)}</p>
           <span className="text-[11px] text-neutral-400 mt-1 block font-mono">{stats.completedExercisesCount} completed exercises</span>
         </div>
 
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-4 sm:p-5">
+        <div className="rounded-3xl border border-neutral-800/80 bg-[#141210] p-4 sm:p-5 shadow-sm">
           <div className="flex items-center gap-2 text-neutral-400 text-xs mb-2">
             <Target className="w-4 h-4 text-amber-300" />
             <span>Overall Accuracy</span>
           </div>
-          <p className="text-2xl font-bold font-mono text-neutral-100">{stats.averageAccuracy}%</p>
+          <p className="text-2xl sm:text-3xl font-bold font-mono text-neutral-100">{stats.averageAccuracy}%</p>
           <span className="text-[11px] text-neutral-400 mt-1 block">Live calculated average</span>
         </div>
 
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-4 sm:p-5">
+        <div className="rounded-3xl border border-neutral-800/80 bg-[#141210] p-4 sm:p-5 shadow-sm">
           <div className="flex items-center gap-2 text-neutral-400 text-xs mb-2">
             <Zap className="w-4 h-4 text-amber-400" />
             <span>Average Speed</span>
           </div>
-          <p className="text-2xl font-bold font-mono text-neutral-100">{stats.currentWpm} WPM</p>
+          <p className="text-2xl sm:text-3xl font-bold font-mono text-neutral-100">{stats.currentWpm} WPM</p>
           <span className="text-[11px] text-neutral-400 mt-1 block">Measured across all exercises</span>
         </div>
 
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-4 sm:p-5">
+        <div className="rounded-3xl border border-neutral-800/80 bg-[#141210] p-4 sm:p-5 shadow-sm">
           <div className="flex items-center gap-2 text-neutral-400 text-xs mb-2">
             <Flame className="w-4 h-4 text-amber-500" />
             <span>Daily Streak</span>
           </div>
-          <p className="text-2xl font-bold font-mono text-neutral-100">{stats.streakDays} {stats.streakDays === 1 ? 'day' : 'days'}</p>
+          <p className="text-2xl sm:text-3xl font-bold font-mono text-neutral-100">{stats.streakDays} {stats.streakDays === 1 ? 'day' : 'days'}</p>
           <span className="text-[11px] text-neutral-400 mt-1 block">Consecutive active days</span>
         </div>
       </div>
 
       {/* Subject Breakdown */}
       <div className="space-y-4">
-        <h2 className="text-base font-semibold text-neutral-200">Track Breakdown</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <h2 className="text-base sm:text-lg font-bold text-neutral-200">Track Breakdown</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-5">
           {subjectRows.map(({ id, name, flagOrIcon, data }) => (
             <div
               key={id}
-              className="rounded-2xl border border-neutral-800/80 bg-neutral-900/60 p-5 space-y-4"
+              className="rounded-3xl border border-neutral-800/80 bg-[#141210] p-5 space-y-4 shadow-sm"
             >
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-3">
                   <span className="text-2xl">{flagOrIcon}</span>
                   <div>
-                    <h3 className="text-sm font-semibold text-neutral-100">{name}</h3>
+                    <h3 className="text-sm sm:text-base font-bold text-neutral-100">{name}</h3>
                     <p className="text-[11px] text-neutral-400">
                       {data.completedLessons} / {data.totalLessons} lessons completed
                     </p>
                   </div>
                 </div>
-                <span className="text-xs font-mono font-medium text-amber-400">
+                <span className="text-xs font-mono font-bold text-amber-400">
                   {data.percentComplete}%
                 </span>
               </div>

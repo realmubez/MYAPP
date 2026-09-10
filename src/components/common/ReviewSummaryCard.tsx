@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Sparkles, ArrowRight, Play, CheckCircle2, RotateCcw } from 'lucide-react';
+import { Sparkles, ArrowRight } from 'lucide-react';
 import { useReview } from '../../hooks/useReview';
 
 interface ReviewSummaryCardProps {
@@ -17,23 +17,24 @@ export function ReviewSummaryCard({ onStartSession }: ReviewSummaryCardProps) {
     if (stats.swedishCount > 0) parts.push(`${stats.swedishCount} Swedish`);
     if (stats.englishCount > 0) parts.push(`${stats.englishCount} English`);
     if (stats.pythonCount > 0) parts.push(`${stats.pythonCount} Python`);
-    return parts.length > 0 ? parts.join(' · ') : 'All subjects clear';
+    return parts.length > 0 ? parts.join(' · ') : 'All clear';
   };
 
   return (
     <div
       id="dashboard-review-summary-card"
-      className="group relative overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900/80 p-4 transition-all hover:border-amber-500/40 hover:bg-neutral-900"
+      className="group relative overflow-hidden rounded-3xl border border-neutral-800/80 bg-[#141210] p-4 sm:p-5 transition-all hover:border-amber-500/40 shadow-sm flex flex-col justify-between h-full min-h-[140px]"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
-            <Sparkles className="w-5 h-5" />
+      <div className="flex items-start justify-between gap-3.5">
+        <div className="flex items-start gap-3.5 min-w-0 flex-1">
+          {/* Sparkle badge */}
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+            <Sparkles className="w-6 h-6" />
           </div>
 
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-white group-hover:text-amber-300 transition-colors">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-sm sm:text-base font-bold text-white group-hover:text-amber-300 transition-colors">
                 Mistake Review
               </h3>
               {totalDifficult > 0 && (
@@ -43,27 +44,32 @@ export function ReviewSummaryCard({ onStartSession }: ReviewSummaryCardProps) {
               )}
             </div>
 
-            <p className="text-xs text-neutral-400 mt-0.5">
+            <p className="text-xs text-neutral-400 mt-1">
               {totalDifficult === 0
                 ? 'No items to review · All clear'
                 : getSubBreakdown()}
             </p>
 
-            {totalDifficult > 0 && actionableCount > 0 && (
-              <p className="text-[11px] text-amber-400/90 font-medium mt-1">
-                {actionableCount} {actionableCount === 1 ? 'item needs' : 'items need'} practice
-              </p>
-            )}
+            <p className="text-[11px] text-neutral-500 font-normal mt-0.5">
+              {totalDifficult === 0
+                ? 'Great job! Keep learning!'
+                : `${actionableCount} item${actionableCount === 1 ? '' : 's'} ready for practice`}
+            </p>
           </div>
         </div>
+      </div>
 
+      {/* Footer link / button */}
+      <div className="mt-4 pt-3 border-t border-neutral-800/60 flex items-center justify-between">
+        <span className="text-[11px] text-neutral-400">
+          Personalized spaced repetition
+        </span>
         <Link
           to="/review"
           id="dashboard-review-card-action-btn"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400/10 hover:bg-amber-400 text-amber-300 hover:text-neutral-950 text-xs font-semibold border border-amber-400/20 transition-all shrink-0 active:scale-95"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-400 hover:text-amber-300 transition-colors"
         >
-          <span>{totalDifficult > 0 ? 'Practice' : 'View'}</span>
-          <ArrowRight className="w-3.5 h-3.5" />
+          <span>{totalDifficult > 0 ? 'Practice →' : 'View →'}</span>
         </Link>
       </div>
     </div>

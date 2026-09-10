@@ -9,7 +9,6 @@ import {
   X,
   Volume2,
   Check,
-  CheckCircle2,
 } from 'lucide-react';
 import { BritishFlagIcon } from '../common/FlagIcons';
 import { ENGLISH_UNITS, CourseUnit, ExerciseItem } from '../../data/englishUnits';
@@ -107,7 +106,7 @@ export function EnglishCourseView() {
   return (
     <div
       id="english-course-page"
-      className="w-full max-w-md mx-auto space-y-6 pb-24 text-neutral-100"
+      className="w-full max-w-5xl lg:max-w-6xl space-y-6 lg:space-y-8 pb-24 lg:pb-12 text-neutral-100"
     >
       {/* Active Focus Mode Overlay */}
       {activeFocusLesson && (
@@ -120,85 +119,103 @@ export function EnglishCourseView() {
         />
       )}
 
-      {/* Top Bar matching reference */}
-      <div className="flex items-center justify-between pt-1">
-        {/* Back button */}
-        <button
-          type="button"
-          id="back-to-dashboard-btn"
-          onClick={() => navigate('/')}
-          aria-label="Back to Dashboard"
-          className="flex h-10 w-10 items-center justify-center rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-900 active:scale-95 transition-all"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
+      {/* Course Header Banner */}
+      <div className="rounded-3xl border border-neutral-800/80 bg-[#141210] p-5 sm:p-7 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              id="back-to-dashboard-btn"
+              onClick={() => navigate('/')}
+              aria-label="Back to Dashboard"
+              className="flex h-10 w-10 items-center justify-center rounded-2xl border border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-white hover:border-neutral-700 active:scale-95 transition-all cursor-pointer shrink-0"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
 
-        {/* Center Title with Flag */}
-        <div className="flex items-center gap-3">
-          <BritishFlagIcon size={38} className="shrink-0" />
-          <div className="flex flex-col">
-            <h1 className="text-xl font-bold tracking-tight text-white leading-tight">
-              English
-            </h1>
-            <span className="text-xs text-neutral-400 font-medium">
-              Beginner 1
-            </span>
+            <div className="flex items-center gap-3.5">
+              <BritishFlagIcon size={44} className="shrink-0" />
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white leading-tight">
+                    English
+                  </h1>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 font-semibold">
+                    Beginner 1
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-neutral-400 mt-1">
+                  Learn natural English through listening, speaking, and fluent keyboard practice.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-2.5 self-end sm:self-auto shrink-0">
+            <button
+              type="button"
+              id="open-english-book-btn"
+              onClick={() => setIsBookModalOpen(true)}
+              aria-label="Course Guide & Voice Settings"
+              title="Course Guide & Voice Settings"
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-neutral-800 bg-neutral-900/90 text-neutral-300 hover:text-white hover:border-neutral-700 active:scale-95 transition-all text-xs font-semibold cursor-pointer"
+            >
+              <BookOpen className="w-4 h-4 text-amber-400" />
+              <span>Course Guide & Audio</span>
+            </button>
           </div>
         </div>
 
-        {/* Book Button */}
-        <button
-          type="button"
-          id="open-english-book-btn"
-          onClick={() => setIsBookModalOpen(true)}
-          aria-label="Course Guide & Voice Settings"
-          title="Course Guide & Voice Settings"
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900/80 text-neutral-400 hover:text-white hover:border-neutral-700 active:scale-95 transition-all"
+        {/* Progress Pill Bar */}
+        <div
+          id="english-progress-card"
+          className="rounded-2xl border border-neutral-800/90 bg-[#0d0c0a] py-3 px-4 flex items-center justify-between gap-4 shadow-inner"
         >
-          <BookOpen className="w-4 h-4" />
-        </button>
-      </div>
+          <span className="text-xs font-mono font-bold text-amber-400 shrink-0">
+            {englishProgress.percentComplete}% Complete
+          </span>
 
-      {/* Short Subtitle */}
-      <p className="text-xs text-neutral-400 text-center px-4 leading-relaxed">
-        Learn natural English through listening and typing.
-      </p>
+          <div className="h-2 flex-1 rounded-full bg-neutral-800/90 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-amber-400 transition-all duration-500"
+              style={{ width: `${Math.max(2, englishProgress.percentComplete)}%` }}
+            />
+          </div>
 
-      {/* Overall Progress Pill Card */}
-      <div
-        id="english-progress-card"
-        className="rounded-full border border-neutral-800/90 bg-neutral-900/90 py-2 px-3.5 flex items-center justify-between gap-3 shadow-inner"
-      >
-        <span className="text-xs font-mono font-bold text-amber-400 shrink-0">
-          {englishProgress.percentComplete}%
-        </span>
-
-        <div className="h-2 flex-1 rounded-full bg-neutral-800/90 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-amber-400 transition-all duration-500"
-            style={{ width: `${Math.max(2, englishProgress.percentComplete)}%` }}
-          />
+          <span className="text-xs font-mono text-neutral-400 shrink-0">
+            {englishProgress.completedLessons} / {englishProgress.totalLessons} lessons
+          </span>
         </div>
-
-        <span className="text-xs font-mono text-neutral-400 shrink-0">
-          {englishProgress.completedLessons} / {englishProgress.totalLessons} lessons
-        </span>
       </div>
 
       {/* Course Units Section */}
-      <div className="space-y-6 pt-2">
+      <div className="space-y-6">
         {ENGLISH_UNITS.map((unit: CourseUnit) => {
           const isExpanded = expandedUnits[unit.id] !== false;
 
           return (
-            <div key={unit.id} id={unit.id} className="space-y-3">
+            <div
+              key={unit.id}
+              id={unit.id}
+              className="rounded-3xl border border-neutral-800/80 bg-[#141210] p-5 sm:p-6 space-y-4 shadow-sm"
+            >
               {/* Unit Header */}
-              <div className="flex items-start justify-between gap-3">
+              <div
+                onClick={() => toggleUnit(unit.id)}
+                className="flex items-start justify-between gap-4 cursor-pointer select-none"
+              >
                 <div className="min-w-0 flex-1">
-                  <span className="text-xs font-semibold tracking-wide text-amber-400">
-                    Unit {unit.unitNumber}
-                  </span>
-                  <h2 className="text-base sm:text-lg font-bold text-white tracking-tight mt-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-bold tracking-wider text-amber-400 uppercase">
+                      Unit {unit.unitNumber.toString().padStart(2, '0')}
+                    </span>
+                    <span className="text-neutral-600">·</span>
+                    <span className="text-xs text-neutral-400">
+                      {unit.exercises.length} stages
+                    </span>
+                  </div>
+                  <h2 className="text-base sm:text-lg font-bold text-white tracking-tight mt-1">
                     {unit.title}
                   </h2>
                   <p className="text-xs text-neutral-400 mt-0.5 leading-relaxed">
@@ -206,95 +223,81 @@ export function EnglishCourseView() {
                   </p>
                 </div>
 
-                {/* Exercise count & Toggle button */}
+                {/* Toggle button */}
                 <button
                   type="button"
-                  onClick={() => toggleUnit(unit.id)}
-                  className="flex items-center gap-2 pt-1 shrink-0 text-neutral-400 hover:text-neutral-200"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleUnit(unit.id);
+                  }}
+                  className="flex h-8 w-8 items-center justify-center rounded-xl bg-neutral-900 border border-neutral-800 text-neutral-300 hover:text-white shrink-0 transition-colors"
                   aria-label={isExpanded ? 'Collapse unit' : 'Expand unit'}
                 >
-                  <span className="text-xs text-neutral-400">
-                    {unit.exercises.length} exercises
-                  </span>
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-neutral-800/80 text-neutral-300">
-                    {isExpanded ? (
-                      <ChevronUp className="w-3.5 h-3.5" />
-                    ) : (
-                      <ChevronDown className="w-3.5 h-3.5" />
-                    )}
-                  </span>
+                  {isExpanded ? (
+                    <ChevronUp className="w-4 h-4" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4" />
+                  )}
                 </button>
               </div>
 
-              {/* Learning Progression Path Cards */}
+              {/* Responsive Grid of Exercise Progression Cards */}
               {isExpanded && (
-                <div className="space-y-0 pt-0.5">
-                  {getProgressionSteps(unit).map((step, idx, arr) => {
-                    const isLast = idx === arr.length - 1;
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-2 border-t border-neutral-800/60">
+                  {getProgressionSteps(unit).map((step) => {
                     const isDone = step.exercise
                       ? isExerciseCompleted(step.exercise.id) || isExerciseCompleted(step.exercise.lesson.id)
                       : false;
 
                     return (
-                      <div key={step.id} className="relative">
-                        <div
-                          id={`exercise-card-${step.id}`}
-                          onClick={() => step.exercise && handleStartExercise(step.exercise, unit)}
-                          className={`group relative flex items-center justify-between rounded-2xl border p-3 sm:p-3.5 transition-all active:scale-[0.99] cursor-pointer ${
-                            isDone
-                              ? 'border-neutral-800/90 bg-neutral-900/60 hover:border-amber-500/40'
-                              : 'border-neutral-800/80 bg-neutral-900/80 hover:border-neutral-700/80'
-                          }`}
-                        >
-                          <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                            {/* Squircle Icon badge */}
-                            <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border text-xl shadow-sm transition-colors relative ${
-                              isDone ? 'bg-neutral-900 border-amber-500/30 text-amber-300' : 'bg-neutral-950 border-neutral-800 group-hover:border-amber-500/40'
-                            }`}>
-                              <span role="img" aria-label={step.label}>
-                                {step.icon}
+                      <div
+                        key={step.id}
+                        id={`exercise-card-${step.id}`}
+                        onClick={() => step.exercise && handleStartExercise(step.exercise, unit)}
+                        className={`group flex items-center justify-between rounded-2xl border p-3.5 transition-all active:scale-[0.99] cursor-pointer ${
+                          isDone
+                            ? 'border-neutral-800/90 bg-[#161412] hover:border-amber-500/40'
+                            : 'border-neutral-800/80 bg-[#181512] hover:border-neutral-700/80'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                          {/* Squircle Icon badge */}
+                          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border text-xl shadow-sm relative ${
+                            isDone ? 'bg-neutral-900 border-amber-500/30 text-amber-300' : 'bg-neutral-950 border-neutral-800 group-hover:border-amber-500/30'
+                          }`}>
+                            <span role="img" aria-label={step.label}>
+                              {step.icon}
+                            </span>
+                            {isDone && (
+                              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-neutral-950 text-[10px] font-bold">
+                                ✓
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Progression Details */}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-mono font-bold text-amber-400">
+                                {step.stepNumber} · {step.label}
                               </span>
                               {isDone && (
-                                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-neutral-950 text-[10px] font-bold">
-                                  ✓
+                                <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400 border border-amber-500/20 shrink-0">
+                                  Done
                                 </span>
                               )}
                             </div>
-
-                            {/* Progression Details */}
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-mono font-bold text-amber-400">
-                                  {step.stepNumber} — {step.label}
-                                </span>
-                                {isDone && (
-                                  <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400 border border-amber-500/20 shrink-0">
-                                    Completed
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-xs text-neutral-300 font-medium truncate mt-0.5">
-                                {step.subtitle}
-                              </p>
-                              <span className="text-[11px] text-neutral-500 font-mono mt-0.5 block">
-                                {step.itemCount}
-                              </span>
-                            </div>
+                            <p className="text-xs text-neutral-300 font-medium truncate mt-0.5">
+                              {step.subtitle}
+                            </p>
+                            <span className="text-[11px] text-neutral-500 font-mono mt-0.5 block">
+                              {step.itemCount}
+                            </span>
                           </div>
-
-                          {/* Right Amber Arrow */}
-                          <ChevronRight className="w-4 h-4 text-amber-400 shrink-0 group-hover:translate-x-0.5 transition-transform ml-2" />
                         </div>
 
-                        {/* Subtle vertical amber learning-path line */}
-                        {!isLast && (
-                          <div
-                            className="flex items-center pl-[35px] py-1"
-                            aria-hidden="true"
-                          >
-                            <div className="w-0.5 h-3.5 bg-gradient-to-b from-amber-400/70 to-amber-500/25 rounded-full" />
-                          </div>
-                        )}
+                        {/* Right Amber Arrow */}
+                        <ChevronRight className="w-4 h-4 text-amber-400 shrink-0 group-hover:translate-x-0.5 transition-transform" />
                       </div>
                     );
                   })}
@@ -417,7 +420,7 @@ export function EnglishCourseView() {
             <button
               type="button"
               onClick={() => setIsBookModalOpen(false)}
-              className="w-full rounded-xl bg-amber-500 hover:bg-amber-400 py-2.5 text-xs font-semibold text-neutral-950 shadow-lg shadow-amber-500/10 transition-colors"
+              className="w-full rounded-xl bg-amber-500 hover:bg-amber-400 py-2.5 text-xs font-semibold text-neutral-950 shadow-lg shadow-amber-500/10 transition-colors cursor-pointer"
             >
               Done
             </button>

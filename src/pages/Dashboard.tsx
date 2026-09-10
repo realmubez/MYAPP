@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Settings, Menu, X, ChevronRight, Sparkles } from 'lucide-react';
+import { Settings, Menu, X, ChevronRight, BookOpen, Clock, BarChart2 } from 'lucide-react';
 import { StatsRow } from '../components/common/StatsRow';
 import { ContinueCard } from '../components/common/ContinueCard';
 import { SubjectCard } from '../components/common/SubjectCard';
 import { QuickActions } from '../components/common/QuickActions';
 import { ReviewSummaryCard } from '../components/common/ReviewSummaryCard';
 import { SettingsModal } from '../components/common/SettingsModal';
+import { DashboardHero } from '../components/dashboard/DashboardHero';
+import { RecentActivity } from '../components/dashboard/RecentActivity';
+import { KeepGoing } from '../components/dashboard/KeepGoing';
 import { SUBJECTS } from '../data/mockData';
 import { useProgress } from '../hooks/useProgress';
 
@@ -16,12 +19,9 @@ export function Dashboard() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <div
-      id="dashboard-mobile-view"
-      className="w-full max-w-md mx-auto space-y-6 pb-24 text-neutral-100"
-    >
-      {/* 1. Header: MY LEARNING, tagline, settings and menu */}
-      <header className="flex items-center justify-between pt-1">
+    <div id="dashboard-view" className="w-full space-y-6 lg:space-y-8 text-neutral-100">
+      {/* 1. Mobile-Only Header (< 1024px) */}
+      <header className="flex lg:hidden items-center justify-between pt-1">
         <div className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-xs font-bold">
             &gt;_
@@ -44,7 +44,7 @@ export function Dashboard() {
             onClick={() => setIsSettingsOpen(true)}
             aria-label="Settings"
             title="Settings"
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900/80 text-neutral-400 hover:text-white hover:border-neutral-700 active:scale-95 transition-all"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900/80 text-neutral-400 hover:text-white hover:border-neutral-700 active:scale-95 transition-all cursor-pointer"
           >
             <Settings className="w-4 h-4" />
           </button>
@@ -56,18 +56,18 @@ export function Dashboard() {
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             aria-label="Navigation Menu"
             title="Navigation Menu"
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900/80 text-neutral-400 hover:text-white hover:border-neutral-700 active:scale-95 transition-all"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900/80 text-neutral-400 hover:text-white hover:border-neutral-700 active:scale-95 transition-all cursor-pointer"
           >
             {isMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
           </button>
         </div>
       </header>
 
-      {/* Slide-down Menu Drawer */}
+      {/* Mobile Slide-down Menu Drawer (< 1024px) */}
       {isMenuOpen && (
         <div
           id="dashboard-mobile-menu"
-          className="rounded-2xl border border-neutral-800 bg-neutral-900 p-3 space-y-1 animate-in fade-in slide-in-from-top-2"
+          className="lg:hidden rounded-2xl border border-neutral-800 bg-neutral-900 p-3 space-y-1 animate-in fade-in slide-in-from-top-2 shadow-xl"
         >
           <div className="text-[10px] font-semibold text-neutral-500 px-3 py-1 uppercase tracking-wider">
             Switch Track
@@ -141,49 +141,92 @@ export function Dashboard() {
         </div>
       )}
 
-      {/* 2. Continue Learning Section */}
-      <section className="space-y-2.5">
+      {/* 2. Hero Banner (Responsive for both Mobile & Desktop) */}
+      <DashboardHero />
+
+      {/* 3. Today's Overview / Stats Row */}
+      <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold text-white">Continue Learning</h2>
+          <div className="flex items-center gap-2">
+            <BarChart2 className="w-4 h-4 text-amber-400" />
+            <h2 className="text-sm sm:text-base font-bold text-white">Today's Overview</h2>
+          </div>
+          <Link
+            to="/progress"
+            className="text-xs font-medium text-neutral-400 hover:text-amber-400 transition-colors flex items-center gap-1"
+          >
+            <span>See details</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        <StatsRow stats={stats} />
+      </section>
+
+      {/* 4. Continue Learning & Mistake Review Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+        {/* Continue Learning (58% / col-span-7 on Desktop) */}
+        <section className="lg:col-span-7 flex flex-col space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm sm:text-base font-bold text-white">Continue Learning</h2>
+            <Link
+              to="/swedish"
+              className="text-xs font-medium text-neutral-400 hover:text-amber-400 transition-colors flex items-center gap-1"
+            >
+              <span>View all</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          <div className="flex-1">
+            <ContinueCard />
+          </div>
+        </section>
+
+        {/* Mistake Review (42% / col-span-5 on Desktop) */}
+        <section className="lg:col-span-5 flex flex-col space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm sm:text-base font-bold text-white">Mistake Review</h2>
+            <Link
+              to="/review"
+              className="text-xs font-medium text-neutral-400 hover:text-amber-400 transition-colors flex items-center gap-1"
+            >
+              <span>Manage items</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          <div className="flex-1">
+            <ReviewSummaryCard />
+          </div>
+        </section>
+      </div>
+
+      {/* 5. Your Subjects Section (3 Columns on Desktop) */}
+      <section className="space-y-3.5">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-amber-400" />
+              <h2 className="text-sm sm:text-base font-bold text-white">Your Subjects</h2>
+              <span className="text-xs text-neutral-400 font-mono ml-1">· 3 active</span>
+            </div>
+            <p className="text-xs text-neutral-400 mt-0.5">
+              Pick a subject to continue learning.
+            </p>
+          </div>
+
           <Link
             to="/swedish"
-            className="text-xs text-amber-400 hover:text-amber-300 transition-colors"
+            className="text-xs font-medium text-neutral-400 hover:text-amber-400 transition-colors hidden sm:flex items-center gap-1"
           >
-            View all &gt;
+            <span>View all courses</span>
+            <ChevronRight className="w-3.5 h-3.5" />
           </Link>
         </div>
 
-        <ContinueCard />
-      </section>
-
-      {/* 2.5 Mistake Review Section */}
-      <section className="space-y-2.5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold text-white">Mistake Review</h2>
-          <Link
-            to="/review"
-            className="text-xs text-amber-400 hover:text-amber-300 transition-colors"
-          >
-            Manage items &gt;
-          </Link>
-        </div>
-
-        <ReviewSummaryCard />
-      </section>
-
-      {/* 3. Your Subjects Section */}
-      <section className="space-y-2.5">
-        <div>
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-white">Your Subjects</h2>
-            <span className="text-xs text-neutral-400">3 active</span>
-          </div>
-          <p className="text-xs text-neutral-400 mt-0.5">
-            Pick a subject to continue learning.
-          </p>
-        </div>
-
-        <div className="space-y-2.5">
+        {/* Responsive Grid: 1 col on mobile, 3 cols on tablet/desktop */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5">
           <SubjectCard
             subject={SUBJECTS.swedish}
             progressData={progress.subjects.swedish}
@@ -199,24 +242,22 @@ export function Dashboard() {
         </div>
       </section>
 
-      {/* 4. Quick Actions */}
-      <section>
-        <QuickActions />
-      </section>
-
-      {/* 5. Today's Overview */}
-      <section className="space-y-2.5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold text-white">Today's Overview</h2>
-          <Link
-            to="/progress"
-            className="text-xs text-amber-400 hover:text-amber-300 transition-colors"
-          >
-            See details &gt;
-          </Link>
+      {/* 6. Lower Dashboard: Recent Activity & Keep Going Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-2">
+        {/* Recent Activity (col-span-7) */}
+        <div className="lg:col-span-7">
+          <RecentActivity />
         </div>
 
-        <StatsRow stats={stats} />
+        {/* Keep Going (col-span-5) */}
+        <div className="lg:col-span-5">
+          <KeepGoing />
+        </div>
+      </div>
+
+      {/* 7. Quick Actions Row */}
+      <section className="pt-2">
+        <QuickActions />
       </section>
 
       {/* Settings Modal */}
