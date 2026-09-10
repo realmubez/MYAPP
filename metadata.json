@@ -1,0 +1,6 @@
+{
+  "name": "MY LEARNING",
+  "description": "Private personal learning web application to learn Swedish, English, Python, and Typing through typing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

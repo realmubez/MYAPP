@@ -1,0 +1,489 @@
+import { SubjectId, ReviewItem, MasteryLevel, ReviewSessionSummary } from '../types';
+import { SWEDISH_UNITS } from '../data/swedishUnits';
+import { ENGLISH_UNITS } from '../data/englishUnits';
+import { SWEDISH_LESSONS } from '../data/swedishLessons';
+import { ENGLISH_LESSONS } from '../data/englishLessons';
+import { PYTHON_UNITS } from '../data/pythonUnits';
+
+export const REVIEW_STORAGE_KEY = 'mylearning_review_items_v1';
+export const REVIEW_UPDATED_EVENT = 'mylearning_review_changed';
+const LEGACY_DIFFICULT_WORDS_KEY = 'my-learning-difficult-words';
+
+/**
+ * Determine Mastery Level from score (0 to 100)
+ * 0–39  = Needs Practice
+ * 40–79 = Improving
+ * 80–100 = Mastered
+ */
+export function getMasteryLevel(score: number): MasteryLevel {
+  if (score >= 80) return 'mastered';
+  if (score >= 40) return 'improving';
+  return 'needs_practice';
+}
+
+/**
+ * Helper to look up an example sentence for a given word in the curriculum
+ */
+function findExampleSentenceForWord(
+  word: string,
+  lang: 'sv' | 'en'
+): { text: string; translation?: string; unitTitle?: string } | undefined {
+  const clean = word.toLowerCase().trim();
+
+  if (lang === 'sv') {
+    // Check Swedish units
+    for (const unit of SWEDISH_UNITS) {
+      for (const ex of unit.exercises) {
+        for (const s of ex.lesson.sentences) {
+          const words = s.text.toLowerCase().split(/\s+/);
+          if (words.some((w) => w.replace(/[^a-zåäöA-ZÅÄÖ]/g, '') === clean) && s.text.length > clean.length) {
+            return {
+              text: s.text,
+              translation: s.translation,
+              unitTitle: unit.title,
+            };
+          }
+        }
+      }
+    }
+    // Check standalone Swedish lessons
+    for (const lesson of SWEDISH_LESSONS) {
+      for (const s of lesson.sentences) {
+        const words = s.text.toLowerCase().split(/\s+/);
+        if (words.some((w) => w.replace(/[^a-zåäöA-ZÅÄÖ]/g, '') === clean) && s.text.length > clean.length) {
+          return {
+            text: s.text,
+            translation: s.translation,
+            unitTitle: lesson.title,
+          };
+        }
+      }
+    }
+  } else {
+    // Check English units
+    for (const unit of ENGLISH_UNITS) {
+      for (const ex of unit.exercises) {
+        for (const s of ex.lesson.sentences) {
+          const words = s.text.toLowerCase().split(/\s+/);
+          if (words.some((w) => w.replace(/[^a-zA-Z]/g, '') === clean) && s.text.length > clean.length) {
+            return {
+              text: s.text,
+              translation: s.translation,
+              unitTitle: unit.title,
+            };
+          }
+        }
+      }
+    }
+    // Check standalone English lessons
+    for (const lesson of ENGLISH_LESSONS) {
+      for (const s of lesson.sentences) {
+        const words = s.text.toLowerCase().split(/\s+/);
+        if (words.some((w) => w.replace(/[^a-zA-Z]/g, '') === clean) && s.text.length > clean.length) {
+          return {
+            text: s.text,
+            translation: s.translation,
+            unitTitle: lesson.title,
+          };
+        }
+      }
+    }
+  }
+
+  return undefined;
+}
+
+class ReviewService {
+  private cache: Record<string, ReviewItem> | null = null;
+
+  constructor() {
+    // Run migration safely on startup
+    this.init();
+  }
+
+  private init(): void {
+    if (typeof window === 'undefined') return;
+    this.loadAndMigrate();
+  }
+
+  private loadAndMigrate(): Record<string, ReviewItem> {
+    if (this.cache) return this.cache;
+
+    let items: Record<string, ReviewItem> = {};
+
+    // 1. Try to read current schema
+    try {
+      const raw = localStorage.getItem(REVIEW_STORAGE_KEY);
+      if (raw) {
+        items = JSON.parse(raw);
+      }
+    } catch (e) {
+      console.warn('Could not parse review items from storage:', e);
+    }
+
+    // 2. Migrate legacy 'my-learning-difficult-words' if present
+    try {
+      const legacyRaw = localStorage.getItem(LEGACY_DIFFICULT_WORDS_KEY);
+      if (legacyRaw) {
+        const legacyList = JSON.parse(legacyRaw);
+        if (Array.isArray(legacyList)) {
+          legacyList.forEach((leg: any) => {
+            if (leg && leg.word) {
+              const lang = leg.language === 'en' ? 'en' : 'sv';
+              const subjectId: SubjectId = lang === 'en' ? 'english' : 'swedish';
+              const cleanWord = leg.word.toLowerCase().trim();
+              const key = `${subjectId}:${cleanWord}`;
+
+              if (!items[key]) {
+                const mistakes = Number(leg.mistakes) || 1;
+                const example = findExampleSentenceForWord(cleanWord, lang);
+                items[key] = {
+                  id: key,
+                  subjectId,
+                  text: cleanWord,
+                  displayTitle: cleanWord,
+                  category: 'Vocabulary',
+                  unitTitle: example?.unitTitle,
+                  exampleSentence: example ? { text: example.text, translation: example.translation } : undefined,
+                  mistakeCount: mistakes,
+                  correctCount: 0,
+                  lastMistakeDate: new Date(leg.lastMistakeAt || Date.now()).toISOString(),
+                  masteryScore: Math.max(10, 40 - mistakes * 8),
+                  language: lang,
+                };
+              }
+            }
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Error during legacy difficult words migration:', e);
+    }
+
+    // 3. Migrate from central progress difficultWords if any exist
+    try {
+      const progressRaw = localStorage.getItem('mylearning_progress_v1');
+      if (progressRaw) {
+        const prog = JSON.parse(progressRaw);
+        if (prog && prog.difficultWords) {
+          Object.values(prog.difficultWords).forEach((dw: any) => {
+            if (dw && dw.word) {
+              const subId: SubjectId = dw.subjectId || 'swedish';
+              const lang = subId === 'english' ? 'en' : 'sv';
+              const cleanWord = dw.word.toLowerCase().trim();
+              const key = `${subId}:${cleanWord}`;
+
+              if (!items[key]) {
+                const mistakes = Number(dw.mistakes) || 1;
+                const example = findExampleSentenceForWord(cleanWord, lang);
+                items[key] = {
+                  id: key,
+                  subjectId: subId,
+                  text: cleanWord,
+                  displayTitle: cleanWord,
+                  category: 'Vocabulary',
+                  unitTitle: example?.unitTitle,
+                  exampleSentence: example ? { text: example.text, translation: example.translation } : undefined,
+                  mistakeCount: mistakes,
+                  correctCount: 0,
+                  lastMistakeDate: new Date(dw.lastMistakeAt || Date.now()).toISOString(),
+                  masteryScore: Math.max(10, 40 - mistakes * 8),
+                  language: lang,
+                };
+              }
+            }
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Error during progress difficultWords migration:', e);
+    }
+
+    this.cache = items;
+    this.save(items);
+    return items;
+  }
+
+  private save(items: Record<string, ReviewItem>): void {
+    this.cache = items;
+    try {
+      localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(items));
+    } catch (e) {
+      console.warn('Failed to save review items to localStorage:', e);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(REVIEW_UPDATED_EVENT, { detail: items }));
+    }
+  }
+
+  /**
+   * Get all review items, optionally filtered by subject
+   */
+  public getReviewItems(subjectId?: SubjectId | 'all'): ReviewItem[] {
+    const items = this.loadAndMigrate();
+    const list = Object.values(items);
+    if (!subjectId || subjectId === 'all') {
+      return list.sort((a, b) => a.masteryScore - b.masteryScore || b.mistakeCount - a.mistakeCount);
+    }
+    return list
+      .filter((item) => item.subjectId === subjectId)
+      .sort((a, b) => a.masteryScore - b.masteryScore || b.mistakeCount - a.mistakeCount);
+  }
+
+  /**
+   * Get review items grouped by Mastery level (Needs Practice, Improving, Mastered)
+   */
+  public getReviewItemsByMastery(subjectId?: SubjectId | 'all'): {
+    needsPractice: ReviewItem[];
+    improving: ReviewItem[];
+    mastered: ReviewItem[];
+  } {
+    const all = this.getReviewItems(subjectId);
+    const needsPractice: ReviewItem[] = [];
+    const improving: ReviewItem[] = [];
+    const mastered: ReviewItem[] = [];
+
+    all.forEach((item) => {
+      const level = getMasteryLevel(item.masteryScore);
+      if (level === 'needs_practice') {
+        needsPractice.push(item);
+      } else if (level === 'improving') {
+        improving.push(item);
+      } else {
+        mastered.push(item);
+      }
+    });
+
+    return { needsPractice, improving, mastered };
+  }
+
+  /**
+   * Record a mistake in Swedish or English
+   */
+  public recordLanguageMistake(options: {
+    word: string;
+    language: 'sv' | 'en';
+    sentenceText?: string;
+    sentenceTranslation?: string;
+    unitId?: string;
+    unitTitle?: string;
+    lessonId?: string;
+  }): void {
+    const cleanWord = options.word.toLowerCase().replace(/[^a-zåäöA-ZÅÄÖ]/g, '').trim();
+    if (!cleanWord || cleanWord.length < 2) return;
+
+    const subjectId: SubjectId = options.language === 'en' ? 'english' : 'swedish';
+    const key = `${subjectId}:${cleanWord}`;
+    const items = this.loadAndMigrate();
+    const nowIso = new Date().toISOString();
+
+    const existing = items[key];
+
+    if (existing) {
+      existing.mistakeCount += 1;
+      existing.lastMistakeDate = nowIso;
+      // Decrease mastery score on repeated mistakes
+      existing.masteryScore = Math.max(0, existing.masteryScore - 15);
+      if (options.sentenceText && (!existing.exampleSentence || existing.exampleSentence.text.length < options.sentenceText.length)) {
+        existing.exampleSentence = {
+          text: options.sentenceText,
+          translation: options.sentenceTranslation,
+        };
+      }
+    } else {
+      let example = options.sentenceText
+        ? { text: options.sentenceText, translation: options.sentenceTranslation }
+        : findExampleSentenceForWord(cleanWord, options.language);
+
+      items[key] = {
+        id: key,
+        subjectId,
+        text: cleanWord,
+        displayTitle: cleanWord,
+        category: 'Vocabulary',
+        unitId: options.unitId,
+        unitTitle: options.unitTitle,
+        lessonId: options.lessonId,
+        exampleSentence: example ? { text: example.text, translation: example.translation } : undefined,
+        mistakeCount: 1,
+        correctCount: 0,
+        lastMistakeDate: nowIso,
+        masteryScore: 25, // Initial mastery starts in Needs Practice
+        language: options.language,
+      };
+    }
+
+    this.save(items);
+  }
+
+  /**
+   * Record a mistake on a Python exercise
+   */
+  public recordPythonMistake(options: {
+    exerciseId: string;
+    exerciseTitle: string;
+    conceptPrompt?: string;
+    contentToType: string;
+    unitId?: string;
+    unitTitle?: string;
+    explanation?: string;
+    mistakesCount?: number;
+  }): void {
+    const key = `python:${options.exerciseId}`;
+    const items = this.loadAndMigrate();
+    const nowIso = new Date().toISOString();
+    const mistakes = options.mistakesCount || 1;
+
+    const existing = items[key];
+    const displayTopic = options.unitTitle || options.exerciseTitle || 'Python Syntax';
+
+    if (existing) {
+      existing.mistakeCount += mistakes;
+      existing.lastMistakeDate = nowIso;
+      existing.masteryScore = Math.max(0, existing.masteryScore - 15);
+    } else {
+      items[key] = {
+        id: key,
+        subjectId: 'python',
+        text: options.contentToType,
+        displayTitle: displayTopic,
+        category: 'Code & Syntax',
+        unitId: options.unitId,
+        unitTitle: options.unitTitle,
+        concept: options.unitTitle || 'Python Basics',
+        prompt: options.conceptPrompt || options.explanation || 'Type the code accurately:',
+        codeSnippet: options.contentToType,
+        mistakeCount: mistakes,
+        correctCount: 0,
+        lastMistakeDate: nowIso,
+        masteryScore: 25, // Initial mastery in Needs Practice
+        language: 'python',
+      };
+    }
+
+    this.save(items);
+  }
+
+  /**
+   * Record outcome of practicing a specific review item during a session
+   */
+  public recordSessionItemResult(itemId: string, isCorrect: boolean, mistakesMade: number): void {
+    const items = this.loadAndMigrate();
+    const item = items[itemId];
+    if (!item) return;
+
+    const nowIso = new Date().toISOString();
+    item.lastReviewedDate = nowIso;
+
+    if (isCorrect && mistakesMade === 0) {
+      item.correctCount += 1;
+      // Increase mastery (+25 points)
+      item.masteryScore = Math.min(100, item.masteryScore + 25);
+    } else {
+      item.mistakeCount += Math.max(1, mistakesMade);
+      item.lastMistakeDate = nowIso;
+      // Drop mastery (-15 points)
+      item.masteryScore = Math.max(0, item.masteryScore - 15);
+    }
+
+    this.save(items);
+  }
+
+  /**
+   * Select a prioritized set of items for a review session
+   */
+  public getReviewSessionItems(subjectId?: SubjectId | 'all', maxCount: number = 8): ReviewItem[] {
+    const all = this.getReviewItems(subjectId);
+    if (all.length === 0) return [];
+
+    // Prioritization:
+    // 1. Needs Practice items first (< 40)
+    // 2. Improving items next (40-79)
+    // 3. Mastered items last (for occasional refresh)
+    const needsPractice = all.filter((i) => i.masteryScore < 40);
+    const improving = all.filter((i) => i.masteryScore >= 40 && i.masteryScore < 80);
+    const mastered = all.filter((i) => i.masteryScore >= 80);
+
+    // Sort within buckets by mistakeCount descending, then most recent mistake
+    const sortByHardest = (a: ReviewItem, b: ReviewItem) => {
+      if (b.mistakeCount !== a.mistakeCount) {
+        return b.mistakeCount - a.mistakeCount;
+      }
+      return new Date(b.lastMistakeDate).getTime() - new Date(a.lastMistakeDate).getTime();
+    };
+
+    needsPractice.sort(sortByHardest);
+    improving.sort(sortByHardest);
+    mastered.sort(sortByHardest);
+
+    const selected: ReviewItem[] = [];
+
+    // Fill up to maxCount
+    for (const item of needsPractice) {
+      if (selected.length < maxCount) selected.push(item);
+    }
+    for (const item of improving) {
+      if (selected.length < maxCount) selected.push(item);
+    }
+    for (const item of mastered) {
+      if (selected.length < maxCount) selected.push(item);
+    }
+
+    return selected;
+  }
+
+  /**
+   * Overall counts and stats for the Dashboard & Review views
+   */
+  public getStats() {
+    const all = this.getReviewItems();
+    let swedishCount = 0;
+    let englishCount = 0;
+    let pythonCount = 0;
+    let needsPracticeCount = 0;
+    let improvingCount = 0;
+    let masteredCount = 0;
+
+    all.forEach((item) => {
+      if (item.subjectId === 'swedish') swedishCount++;
+      else if (item.subjectId === 'english') englishCount++;
+      else if (item.subjectId === 'python') pythonCount++;
+
+      const lvl = getMasteryLevel(item.masteryScore);
+      if (lvl === 'needs_practice') needsPracticeCount++;
+      else if (lvl === 'improving') improvingCount++;
+      else masteredCount++;
+    });
+
+    return {
+      totalCount: all.length,
+      swedishCount,
+      englishCount,
+      pythonCount,
+      needsPracticeCount,
+      improvingCount,
+      masteredCount,
+    };
+  }
+
+  /**
+   * Remove or reset a review item if explicitly requested
+   */
+  public deleteReviewItem(id: string): void {
+    const items = this.loadAndMigrate();
+    if (items[id]) {
+      delete items[id];
+      this.save(items);
+    }
+  }
+
+  /**
+   * Reset all review items
+   */
+  public resetAll(): void {
+    this.save({});
+  }
+}
+
+export const reviewService = new ReviewService();

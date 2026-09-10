@@ -1,0 +1,84 @@
+import { useState } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
+import { BottomNav } from './BottomNav';
+import { SettingsModal } from '../common/SettingsModal';
+
+export function Layout() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // If route is /lesson/:id or /focus/*, bypass standard nav wrappers for pure focus mode
+  const isFocusLesson =
+    location.pathname.startsWith('/lesson') ||
+    location.pathname.startsWith('/focus');
+
+  if (isFocusLesson) {
+    return (
+      <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col antialiased selection:bg-amber-500/30 selection:text-white">
+        <Outlet />
+      </div>
+    );
+  }
+
+  // Determine if this is a secondary page that needs a back button
+  const isCustomHeaderPage =
+    location.pathname === '/' ||
+    location.pathname === '/swedish' ||
+    location.pathname === '/english' ||
+    location.pathname === '/python';
+
+  const getPageTitle = () => {
+    switch (location.pathname) {
+      case '/english':
+        return 'English Course';
+      case '/python':
+        return 'Python Course';
+      case '/typing':
+        return 'Typing Practice';
+      case '/progress':
+        return 'Learning Progress';
+      default:
+        return 'My Learning';
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col antialiased selection:bg-amber-500/30 selection:text-white">
+      {/* Secondary page top header */}
+      {!isCustomHeaderPage && (
+        <header className="sticky top-0 z-30 w-full bg-neutral-950/95 backdrop-blur-md border-b border-neutral-900 px-4 py-2.5">
+          <div className="max-w-md mx-auto flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-white transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Dashboard</span>
+            </button>
+            <span className="text-sm font-bold text-white">
+              {getPageTitle()}
+            </span>
+            <div className="w-12" /> {/* Spacer for balance */}
+          </div>
+        </header>
+      )}
+
+      {/* Main Content Area */}
+      <main className="flex-1 w-full max-w-md mx-auto px-4 pt-3 pb-24">
+        <Outlet />
+      </main>
+
+      {/* Fixed Bottom Navigation matching reference */}
+      <BottomNav onOpenSettings={() => setIsSettingsOpen(true)} />
+
+      {/* Global Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+      />
+    </div>
+  );
+}
