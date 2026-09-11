@@ -117,6 +117,17 @@ export function Dashboard() {
             <ChevronRight className="w-3.5 h-3.5 text-neutral-500" />
           </Link>
           <Link
+            to="/typing/day-1"
+            onClick={() => setIsMenuOpen(false)}
+            className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-amber-300/90 hover:text-amber-200 hover:bg-amber-500/10"
+          >
+            <span className="flex items-center gap-2">
+              <span>⌨️</span>
+              <span>Touch Typing · Day 1</span>
+            </span>
+            <ChevronRight className="w-3.5 h-3.5 text-amber-400" />
+          </Link>
+          <Link
             to="/review"
             onClick={() => setIsMenuOpen(false)}
             className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-neutral-300 hover:text-white hover:bg-neutral-800/60"

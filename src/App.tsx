@@ -5,6 +5,7 @@ import { SwedishPage } from './pages/SwedishPage';
 import { EnglishPage } from './pages/EnglishPage';
 import { PythonPage } from './pages/PythonPage';
 import { TypingPage } from './pages/TypingPage';
+import { TouchTypingPage } from './pages/TouchTypingPage';
 import { ProgressPage } from './pages/ProgressPage';
 import { ReviewPage } from './pages/ReviewPage';
 import { FocusLessonPage } from './pages/FocusLessonPage';
@@ -21,6 +22,8 @@ export default function App() {
             <Route path="/english" element={<EnglishPage />} />
             <Route path="/python" element={<PythonPage />} />
             <Route path="/typing" element={<TypingPage />} />
+            <Route path="/typing/day-1" element={<TouchTypingPage />} />
+            <Route path="/typing/day/:dayNumber" element={<TouchTypingPage />} />
             <Route path="/progress" element={<ProgressPage />} />
             <Route path="/review" element={<ReviewPage />} />
             <Route path="/focus/:subject/:lessonId" element={<FocusLessonPage />} />

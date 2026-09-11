@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Play, ArrowLeft, Timer, Sliders } from 'lucide-react';
+import { Play, ArrowLeft, Timer, Sliders, Sparkles, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getTouchTypingProgress } from '../data/typingCurriculum';
 
 export function TypingPage() {
   const [selectedMode, setSelectedMode] = useState<'words' | 'time' | 'quotes' | 'swedish' | 'code'>('words');
   const [timeLimit, setTimeLimit] = useState<number>(30);
+  const touchProgress = getTouchTypingProgress(1);
 
   const practiceModes = [
     {
@@ -68,6 +70,45 @@ export function TypingPage() {
           <Play className="w-4 h-4 fill-neutral-950 translate-x-0.5" />
           <span>Launch Typing Session</span>
         </Link>
+      </div>
+
+      {/* Touch Typing Practice Hub - Day 1 Home Row */}
+      <div className="rounded-3xl border border-amber-500/40 bg-gradient-to-br from-[#1c1712] via-[#141210] to-[#0d0c0a] p-5 sm:p-7 space-y-4 shadow-xl relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1.5 max-w-xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs font-mono font-semibold uppercase tracking-wider">
+              <Sparkles size={12} />
+              <span>Touch Typing · Muscle Memory</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+              Day 1 · Home Row Basics
+            </h2>
+            <p className="text-xs sm:text-sm text-neutral-300">
+              Build true physical keyboard muscle memory. Practice exclusively with:
+            </p>
+            <div className="inline-flex items-center gap-2 pt-1 font-mono text-xs sm:text-sm font-bold text-amber-300">
+              <span className="px-2.5 py-1 rounded-lg bg-neutral-900 border border-neutral-800">a s d f</span>
+              <span className="text-neutral-500">·</span>
+              <span className="px-2.5 py-1 rounded-lg bg-neutral-900 border border-neutral-800">j k l ;</span>
+            </div>
+          </div>
+
+          <Link
+            to="/typing/day-1"
+            id="start-touch-typing-day1-btn"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-400 px-6 py-3.5 text-xs sm:text-sm font-bold text-neutral-950 shadow-lg shadow-amber-400/20 hover:bg-amber-300 transition-all cursor-pointer active:scale-95 shrink-0"
+          >
+            <Play className="w-4 h-4 fill-neutral-950 translate-x-0.5" />
+            <span>
+              {touchProgress.completed
+                ? 'Practice Day 1 Again'
+                : touchProgress.currentExerciseIndex > 0
+                ? `Resume Day 1 (${touchProgress.currentExerciseIndex + 1}/10)`
+                : 'Start Day 1 Practice'}
+            </span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
       </div>
 
       {/* Mode Selector (Minimalist bar) */}

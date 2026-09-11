@@ -23,10 +23,11 @@ export function Layout() {
     });
   };
 
-  // If route is /lesson/:id or /focus/*, bypass standard nav wrappers for pure focus mode
+  // If route is /lesson/:id, /focus/*, or /typing/day*, bypass standard nav wrappers for pure focus mode
   const isFocusLesson =
     location.pathname.startsWith('/lesson') ||
-    location.pathname.startsWith('/focus');
+    location.pathname.startsWith('/focus') ||
+    location.pathname.startsWith('/typing/day');
 
   if (isFocusLesson) {
     return (
