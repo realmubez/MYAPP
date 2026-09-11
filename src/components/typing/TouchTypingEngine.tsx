@@ -380,10 +380,10 @@ export const TouchTypingEngine: React.FC<TouchTypingEngineProps> = ({
   return (
     <div
       id="touch-typing-focus-container"
-      className="min-h-screen bg-[#0a0908] text-neutral-100 flex flex-col justify-between selection:bg-amber-500/30 selection:text-white"
+      className="min-h-screen bg-[#0a0908] text-neutral-100 flex flex-col justify-between selection:bg-amber-500/30 selection:text-white overflow-x-hidden w-full"
     >
       {/* TOP HEADER */}
-      <header className="sticky top-0 z-30 w-full border-b border-neutral-900/80 bg-[#0d0c0a]/90 backdrop-blur-md px-4 py-2.5 sm:py-3">
+      <header className="sticky top-0 z-30 w-full border-b border-neutral-900/80 bg-[#0d0c0a]/90 backdrop-blur-md px-3 sm:px-6 py-2.5 sm:py-3">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
           {/* Back Button & Title */}
           <div className="flex items-center gap-2.5">
@@ -459,7 +459,7 @@ export const TouchTypingEngine: React.FC<TouchTypingEngineProps> = ({
       </header>
 
       {/* MAIN BODY */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-4 sm:py-6 flex flex-col justify-center items-center">
+      <main className="flex-1 max-w-4xl w-full mx-auto px-2 sm:px-4 py-2 sm:py-5 flex flex-col justify-center items-center overflow-x-hidden">
         {showIntro ? (
           /* F & J HOME POSITION INTRO */
           <HomeKeysIntro onStart={handleStartPractice} />
@@ -545,18 +545,18 @@ export const TouchTypingEngine: React.FC<TouchTypingEngineProps> = ({
         ) : (
           /* ACTIVE TYPING PRACTICE VIEW */
           <div
-            className="w-full flex flex-col items-center text-center cursor-text py-2 select-none"
+            className="w-full flex flex-col items-center text-center cursor-text py-1 sm:py-2 select-none"
             onClick={focusInput}
           >
             {/* MAIN LABEL */}
-            <div className="mb-4 sm:mb-6">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-mono uppercase tracking-wider mb-1.5">
+            <div className="mb-2 sm:mb-4">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[11px] font-mono uppercase tracking-wider mb-1">
                 <span>⌨️ TYPE & PRACTICE</span>
               </div>
-              <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
+              <h2 className="text-sm sm:text-lg font-bold text-white tracking-tight">
                 {dayData.title}
               </h2>
-              <p className="text-xs text-neutral-400 font-mono mt-0.5">
+              <p className="text-[11px] sm:text-xs text-neutral-400 font-mono mt-0.5">
                 Practice: <span className="text-amber-300">a s d f</span> &nbsp;{' '}
                 <span className="text-amber-300">j k l ;</span>
               </p>
@@ -581,8 +581,8 @@ export const TouchTypingEngine: React.FC<TouchTypingEngineProps> = ({
             />
 
             {/* TYPING TARGET (Large, centered, monospace) */}
-            <div className="w-full min-h-[90px] sm:min-h-[120px] flex items-center justify-center my-2 sm:my-4 px-2">
-              <div className="font-mono font-medium text-center flex flex-wrap justify-center items-center text-[clamp(2.2rem,8vw,3.75rem)] leading-[1.3] break-all tracking-wider">
+            <div className="w-full min-h-[58px] sm:min-h-[86px] flex items-center justify-center my-1 sm:my-2 px-2">
+              <div className="font-mono font-medium text-center flex flex-wrap justify-center items-center text-[clamp(1.85rem,6.5vw,3.5rem)] leading-[1.25] break-all tracking-wider">
                 {targetText.split('').map((char, index) => {
                   const isCurrent = index === typedText.length;
                   const isTyped = index < typedText.length;
@@ -620,7 +620,7 @@ export const TouchTypingEngine: React.FC<TouchTypingEngineProps> = ({
             </div>
 
             {/* LIVE METRICS (WPM, Accuracy & Day 1 Accuracy Rule) */}
-            <div className="h-10 flex flex-col items-center justify-center my-1">
+            <div className="h-8 sm:h-9 flex flex-col items-center justify-center my-0.5 sm:my-1">
               <div className="flex items-center gap-3 text-xs font-mono text-neutral-400">
                 <span>
                   <strong className="text-neutral-200">{exerciseWpm}</strong> WPM
@@ -691,7 +691,7 @@ export const TouchTypingEngine: React.FC<TouchTypingEngineProps> = ({
               </div>
             ) : (
               /* KEYBOARD GUIDE (A S D F  J K L ;) */
-              <div className="w-full mt-2 sm:mt-3">
+              <div className="w-full mt-1 sm:mt-2 flex justify-center">
                 <TypingGuideKeyboard
                   nextChar={expectedChar}
                   allowedKeys={dayData.allowedKeys}

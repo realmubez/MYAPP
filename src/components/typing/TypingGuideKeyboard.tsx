@@ -1,83 +1,17 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
-
-// ---------- Layout constants from TypingGuide ----------
-const KEY = 44;
-const GAP = 6;
-const UNIT = KEY + GAP; // 50px
-
-const ROW_NUM = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
-const ROW_TOP = ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'];
-const ROW_HOME = ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';'];
-const ROW_BOT = ['z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/'];
-
-// Coordinate system where all rows are >= 0 for clean container sizing
-const ROW_Y = {
-  num: 0,
-  top: UNIT,
-  home: UNIT * 2,
-  bot: UNIT * 3,
-  space: UNIT * 4,
-};
-
-const ROW_INDENT = {
-  num: 0,
-  top: 0.5,
-  home: 0.75,
-  bot: 1.25,
-};
-
-function rowKeyMap(row: string[], indent: number, y: number) {
-  const map: Record<string, { x: number; y: number; col: number; w?: number }> = {};
-  row.forEach((k, i) => {
-    map[k] = { x: indent * UNIT + i * UNIT, y, col: i };
-  });
-  return map;
-}
-
-const KEY_POS: Record<string, { x: number; y: number; col?: number; w?: number }> = {
-  ...rowKeyMap(ROW_NUM, ROW_INDENT.num, ROW_Y.num),
-  ...rowKeyMap(ROW_TOP, ROW_INDENT.top, ROW_Y.top),
-  ...rowKeyMap(ROW_HOME, ROW_INDENT.home, ROW_Y.home),
-  ...rowKeyMap(ROW_BOT, ROW_INDENT.bot, ROW_Y.bot),
-  ' ': { x: ROW_INDENT.home * UNIT + UNIT * 2.5, y: ROW_Y.space, w: UNIT * 5 - GAP },
-};
-
-// finger id -> home key
-export const FINGER_HOME: Record<string, string> = {
-  lp: 'a',
-  lr: 's',
-  lm: 'd',
-  li: 'f',
-  ri: 'j',
-  rm: 'k',
-  rr: 'l',
-  rp: ';',
-};
-
-// char -> finger id
-export const CHAR_FINGER: Record<string, string> = {};
-const assign = (fid: string, chars: string[]) => chars.forEach((c) => (CHAR_FINGER[c] = fid));
-assign('lp', ['q', 'a', 'z', '1']);
-assign('lr', ['w', 's', 'x', '2']);
-assign('lm', ['e', 'd', 'c', '3']);
-assign('li', ['r', 'f', 'v', 't', 'g', 'b', '4', '5']);
-assign('ri', ['y', 'h', 'n', 'u', 'j', 'm', '6', '7']);
-assign('rm', ['i', 'k', ',', '8']);
-assign('rr', ['o', 'l', '.', '9']);
-assign('rp', ['p', ';', '/', '0']);
-
-export const FINGER_ORDER = ['lp', 'lr', 'lm', 'li', 'ri', 'rm', 'rr', 'rp'];
-
-export const FINGER_LABELS: Record<string, { name: string; hand: 'left' | 'right'; fingerName: string }> = {
-  lp: { name: 'LEFT PINKY', hand: 'left', fingerName: 'Pinky' },
-  lr: { name: 'LEFT RING', hand: 'left', fingerName: 'Ring' },
-  lm: { name: 'LEFT MIDDLE', hand: 'left', fingerName: 'Middle' },
-  li: { name: 'LEFT INDEX', hand: 'left', fingerName: 'Index' },
-  ri: { name: 'RIGHT INDEX', hand: 'right', fingerName: 'Index' },
-  rm: { name: 'RIGHT MIDDLE', hand: 'right', fingerName: 'Middle' },
-  rr: { name: 'RIGHT RING', hand: 'right', fingerName: 'Ring' },
-  rp: { name: 'RIGHT PINKY', hand: 'right', fingerName: 'Pinky' },
-};
+import {
+  DeviceTier,
+  ROW_NUM,
+  ROW_TOP,
+  ROW_HOME,
+  ROW_BOT,
+  CHAR_FINGER,
+  FINGER_LABELS,
+  getKeyboardGeometry,
+} from './keyboardData';
+import { KeyboardKey } from './KeyboardKey';
+import { HandGuide } from './HandGuide';
+import { FingerGuide } from './FingerGuide';
 
 interface TypingGuideKeyboardProps {
   nextChar: string | null;
@@ -90,34 +24,90 @@ export const TypingGuideKeyboard: React.FC<TypingGuideKeyboardProps> = ({
   allowedKeys = ['a', 's', 'd', 'f', 'j', 'k', 'l', ';', ' '],
   onKeyClick,
 }) => {
-  const [scale, setScale] = useState(1);
-  const [kbSize, setKbSize] = useState({ w: 534, h: 290 });
-
   const kbWrapRef = useRef<HTMLDivElement | null>(null);
-  const kbInnerRef = useRef<HTMLDivElement | null>(null);
 
-  // Set of keys learned for this Day
+  // Initial responsive tier detection
+  const [containerWidth, setContainerWidth] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      return Math.min(window.innerWidth - 32, 780);
+    }
+    return 500;
+  });
+
+  // Observe container width continuously to guarantee responsive fitting
+  useEffect(() => {
+    if (!kbWrapRef.current) return;
+    const el = kbWrapRef.current;
+
+    const measure = () => {
+      const w = el.clientWidth;
+      if (w > 0) {
+        setContainerWidth(w);
+      }
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    window.addEventListener('resize', measure);
+    window.addEventListener('orientationchange', measure);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('orientationchange', measure);
+    };
+  }, []);
+
+  // Determine device tier
+  const tier: DeviceTier = useMemo(() => {
+    if (containerWidth < 768) return 'mobile';
+    if (containerWidth < 1024) return 'tablet';
+    return 'desktop';
+  }, [containerWidth]);
+
+  // Centralized keyboard geometry for current tier
+  const geo = useMemo(() => {
+    return getKeyboardGeometry(tier);
+  }, [tier]);
+
+  // Scaled dimensions calculation:
+  // Visible keyboard NEVER exceeds container width (accounting for safety margins)
+  const scale = useMemo(() => {
+    const horizontalPadding = tier === 'mobile' ? 8 : 16;
+    const usableWidth = Math.max(260, containerWidth - horizontalPadding);
+    const maxScale = tier === 'mobile' ? 1.0 : tier === 'tablet' ? 1.15 : 1.1;
+    const calculatedScale = usableWidth / geo.naturalWidth;
+    return Math.min(maxScale, calculatedScale);
+  }, [containerWidth, geo.naturalWidth, tier]);
+
+  // Allowed keys set for Day 1
   const allowedKeysSet = useMemo(() => {
     return new Set(allowedKeys.map((k) => k.toLowerCase()));
   }, [allowedKeys]);
 
   const normalizedNext = nextChar ? nextChar.toLowerCase() : null;
   const isSpace = normalizedNext === ' ';
-  const activeFinger = normalizedNext ? (isSpace ? 'thumb' : CHAR_FINGER[normalizedNext] || null) : null;
-  const activeKeyPos = normalizedNext ? KEY_POS[normalizedNext] : null;
+  const activeFinger = normalizedNext
+    ? isSpace
+      ? 'thumb'
+      : CHAR_FINGER[normalizedNext] || null
+    : null;
+  const activeKeyPos = normalizedNext ? geo.keyPos[normalizedNext] || null : null;
 
-  // Active finger display info
+  // Active finger instruction banner
   const activeFingerInfo = useMemo(() => {
     if (!normalizedNext) return null;
     if (isSpace) {
       return {
-        label: 'THUMB (SPACE)',
+        label: 'THUMB',
         handText: 'BOTH HANDS',
         keyText: 'SPACE',
         isSpace: true,
       };
     }
-    const info = CHAR_FINGER[normalizedNext] ? FINGER_LABELS[CHAR_FINGER[normalizedNext]] : null;
+    const fid = CHAR_FINGER[normalizedNext];
+    const info = fid ? FINGER_LABELS[fid] : null;
     if (info) {
       return {
         label: info.name,
@@ -129,240 +119,29 @@ export const TypingGuideKeyboard: React.FC<TypingGuideKeyboardProps> = ({
     return null;
   }, [normalizedNext, isSpace]);
 
-  // Measure keyboard's natural unscaled width and height once
-  useEffect(() => {
-    if (!kbInnerRef.current) return;
-    const rect = kbInnerRef.current.getBoundingClientRect();
-    const naturalW = rect.width / (scale || 1);
-    const naturalH = rect.height / (scale || 1);
-    if (naturalW > 0 && naturalH > 0) {
-      setKbSize((prev) =>
-        Math.abs(prev.w - naturalW) < 2 && Math.abs(prev.h - naturalH) < 2
-          ? prev
-          : { w: naturalW, h: naturalH }
-      );
-    }
-  }, [scale]);
-
-  // Responsive scaling logic from TypingGuide: rescales to fit available width seamlessly
-  useEffect(() => {
-    if (!kbWrapRef.current || !kbSize.w) return;
-    const el = kbWrapRef.current;
-    const updateScale = () => {
-      const available = el.clientWidth;
-      if (available > 0) {
-        const next = Math.min(1, (available - 8) / kbSize.w);
-        setScale(next > 0 ? next : 1);
-      }
-    };
-
-    updateScale();
-    const ro = new ResizeObserver(updateScale);
-    ro.observe(el);
-    window.addEventListener('orientationchange', updateScale);
-    window.addEventListener('resize', updateScale);
-
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('orientationchange', updateScale);
-      window.removeEventListener('resize', updateScale);
-    };
-  }, [kbSize.w]);
-
-  // Keycap rendering helper with Day 1 focus & tactile home indicators
-  const renderKeyCap = (label: string, pos: { x: number; y: number; w?: number }, size = KEY) => {
-    const isTargetKey = normalizedNext === label;
-    const isAllowed = allowedKeysSet.has(label);
-    const hasTactileBump = label === 'f' || label === 'j';
-    const isHomeRow = ROW_HOME.includes(label);
-
-    // Styling rules:
-    // 1. Next expected key: vibrant amber #F5B942 with dark text & glow
-    // 2. Allowed Day 1 keys: prominent high-contrast neutral
-    // 3. Other keys: dark muted background to establish keyboard context
-    let bg = '#12100e';
-    let color = '#443e37';
-    let border = '1px solid #1c1815';
-    let boxShadow = '0 1px 0 rgba(255,255,255,0.02) inset';
-    let zIndex = 3;
-
-    if (isTargetKey) {
-      bg = '#F5B942';
-      color = '#0F1115';
-      border = '1px solid #F5B942';
-      boxShadow = '0 0 0 3px rgba(245,185,66,0.28), 0 2px 10px rgba(0,0,0,0.6), 0 0 16px rgba(245,185,66,0.45)';
-      zIndex = 10;
-    } else if (isAllowed) {
-      bg = '#201b16';
-      color = '#f5efe6';
-      border = '1px solid #383027';
-      boxShadow = '0 1px 2px rgba(0,0,0,0.35)';
-      zIndex = 4;
-    } else if (isHomeRow) {
-      // Home row unlearned keys (g, h) slightly discernible
-      bg = '#161311';
-      color = '#61584e';
-      border = '1px solid #231e1a';
-    }
-
-    return (
-      <div
-        key={label + pos.x}
-        onClick={() => onKeyClick?.(label)}
-        style={{
-          position: 'absolute',
-          left: pos.x,
-          top: pos.y,
-          width: pos.w || size,
-          height: size,
-          borderRadius: 9,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: label === ' ' ? 11 : 14,
-          fontWeight: isTargetKey || isAllowed ? 600 : 500,
-          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-          color,
-          background: bg,
-          border,
-          boxShadow,
-          transition: 'background 120ms ease, box-shadow 120ms ease, color 120ms ease, border 120ms ease',
-          zIndex,
-          cursor: isAllowed ? 'pointer' : 'default',
-          userSelect: 'none',
-        }}
-      >
-        <span>{label === ' ' ? 'space' : label.toUpperCase()}</span>
-
-        {/* Tactile home bump indicators for F and J */}
-        {hasTactileBump && (
-          <div
-            style={{
-              position: 'absolute',
-              bottom: 5,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: 13,
-              height: 2.5,
-              borderRadius: 2,
-              background: isTargetKey ? '#0F1115' : '#F5B942',
-              boxShadow: isTargetKey ? 'none' : '0 0 4px rgba(245,185,66,0.5)',
-              transition: 'background 120ms ease',
-            }}
-          />
-        )}
-      </div>
-    );
-  };
-
-  // Hand layer from TypingGuide: 8 finger capsules resting over home keys
-  const renderHandLayer = () => {
-    return FINGER_ORDER.map((fid) => {
-      const homeChar = FINGER_HOME[fid];
-      const home = KEY_POS[homeChar];
-      const isActive = fid === activeFinger;
-
-      // For Day 1, fingers rest on home row keys
-      // Target position is home key position
-      const target = isActive && activeKeyPos ? activeKeyPos : home;
-      const dx = target.x - home.x;
-      const dy = target.y - home.y;
-      const isLeft = fid[0] === 'l';
-
-      return (
-        <div
-          key={fid}
-          style={{
-            position: 'absolute',
-            left: home.x + KEY / 2 - 13,
-            top: ROW_Y.home - 4,
-            width: 26,
-            height: 76,
-            borderRadius: 13,
-            background: isActive
-              ? 'rgba(245,185,66,0.55)'
-              : 'rgba(180,165,145,0.14)',
-            border: isActive
-              ? '1.5px solid rgba(245,185,66,0.85)'
-              : '1px solid rgba(180,165,145,0.22)',
-            transform: `translate(${dx}px, ${dy}px)`,
-            transition: 'transform 240ms cubic-bezier(.4,0,.2,1), background 160ms, border 160ms',
-            transformOrigin: '50% 100%',
-            zIndex: isActive ? 6 : 2,
-            pointerEvents: 'none',
-          }}
-        >
-          {/* Active finger elliptical glow aura */}
-          {isActive && (
-            <svg
-              width="46"
-              height="66"
-              viewBox="0 0 46 66"
-              style={{
-                position: 'absolute',
-                left: -10,
-                top: -14,
-                overflow: 'visible',
-              }}
-            >
-              <ellipse
-                cx="23"
-                cy="30"
-                rx="16"
-                ry="26"
-                fill="none"
-                stroke="#F5B942"
-                strokeWidth="3"
-                strokeLinecap="round"
-                transform={`rotate(${isLeft ? -10 : 10} 23 30)`}
-                style={{
-                  strokeDasharray: 130,
-                  strokeDashoffset: 0,
-                  filter: 'drop-shadow(0 0 6px rgba(245,185,66,0.6))',
-                }}
-              />
-            </svg>
-          )}
-        </div>
-      );
-    });
-  };
-
-  // Palm base layer from TypingGuide
-  const renderPalm = (side: 'left' | 'right') => {
-    const cols = side === 'left' ? [0, 1, 2, 3] : [6, 7, 8, 9];
-    const xs = cols.map((c) => ROW_INDENT.home * UNIT + c * UNIT);
-    const left = Math.min(...xs) - 6;
-    const width = Math.max(...xs) - Math.min(...xs) + KEY + 12;
-    return (
-      <div
-        style={{
-          position: 'absolute',
-          left,
-          top: ROW_Y.bot + KEY + 8,
-          width,
-          height: 42,
-          borderRadius: '40% 40% 50% 50%',
-          background: 'rgba(180,165,145,0.08)',
-          border: '1px solid rgba(180,165,145,0.14)',
-          zIndex: 1,
-          pointerEvents: 'none',
-        }}
-      />
-    );
-  };
+  // Measured wrapper dimensions: exactly match visible scaled size
+  const scaledWidth = Math.round(geo.naturalWidth * scale);
+  const scaledHeight = Math.round(geo.naturalHeight * scale);
 
   return (
-    <div className="w-full flex flex-col items-center select-none pt-1">
+    <div
+      ref={kbWrapRef}
+      className="w-full flex flex-col items-center select-none"
+      style={{
+        overflow: 'hidden',
+        maxWidth: tier === 'desktop' ? '820px' : tier === 'tablet' ? '680px' : '100%',
+      }}
+    >
       {/* Active Finger & Key Instruction Banner */}
-      <div className="h-7 flex items-center justify-center text-xs font-mono mb-2">
+      <div className="h-7 sm:h-8 flex items-center justify-center text-xs font-mono mb-1.5 sm:mb-2">
         {activeFingerInfo ? (
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 animate-in fade-in duration-150 shadow-sm">
+          <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 py-1 sm:px-3 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 animate-in fade-in duration-150 shadow-sm">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-            <span className="font-bold tracking-wide">{activeFingerInfo.label}</span>
-            <span className="text-neutral-500">→</span>
-            <span className="text-white font-bold bg-[#26201a] px-2 py-0.5 rounded border border-amber-500/40">
+            <span className="font-bold tracking-wide text-[11px] sm:text-xs">
+              {activeFingerInfo.label}
+            </span>
+            <span className="text-neutral-500 text-[10px]">→</span>
+            <span className="text-white font-bold bg-[#241e18] px-2 py-0.5 rounded border border-amber-500/40 text-[11px] sm:text-xs">
               {activeFingerInfo.keyText}
             </span>
           </div>
@@ -373,53 +152,116 @@ export const TypingGuideKeyboard: React.FC<TypingGuideKeyboardProps> = ({
         )}
       </div>
 
-      {/* Keyboard + Hands Wrapper — Scales dynamically to fit screen width */}
+      {/* Sized Wrapper Matching Visible Scaled Dimensions (Zero Horizontal Overflow) */}
       <div
-        ref={kbWrapRef}
+        id="visual-keyboard-container"
         style={{
-          width: '100%',
-          maxWidth: '560px',
-          height: kbSize.h * scale,
+          width: scaledWidth,
+          height: scaledHeight,
+          position: 'relative',
           overflow: 'visible',
-          display: 'flex',
-          justifyContent: 'center',
+          flexShrink: 0,
         }}
       >
+        {/* Unscaled Coordinate Stage with Exact scale() Transform */}
         <div
-          ref={kbInnerRef}
           style={{
-            position: 'relative',
-            width: 10 * UNIT - GAP + 40,
-            height: ROW_Y.space + KEY + 24,
-            margin: '0 auto',
-            padding: '16px 20px 20px',
+            width: geo.naturalWidth,
+            height: geo.naturalHeight,
+            position: 'absolute',
+            top: 0,
+            left: 0,
             transform: `scale(${scale})`,
-            transformOrigin: 'top center',
+            transformOrigin: 'top left',
           }}
         >
-          {/* Palms */}
-          {renderPalm('left')}
-          {renderPalm('right')}
+          {/* Hands and Palms */}
+          <HandGuide geo={geo} isSpace={isSpace} tier={tier} />
 
-          {/* Hands and fingers */}
-          {renderHandLayer()}
+          {/* 8 Fingers on Home Row */}
+          <FingerGuide
+            geo={geo}
+            activeFinger={activeFinger}
+            activeKeyPos={activeKeyPos}
+            tier={tier}
+          />
 
-          {/* Keyboard Keys: 4 rows + Spacebar */}
-          {ROW_NUM.map((k) => renderKeyCap(k, KEY_POS[k]))}
-          {ROW_TOP.map((k) => renderKeyCap(k, KEY_POS[k]))}
-          {ROW_HOME.map((k) => renderKeyCap(k, KEY_POS[k]))}
-          {ROW_BOT.map((k) => renderKeyCap(k, KEY_POS[k]))}
-          {renderKeyCap(' ', KEY_POS[' '], KEY)}
+          {/* Number Row */}
+          {ROW_NUM.map((k) => (
+            <KeyboardKey
+              key={k}
+              label={k}
+              pos={geo.keyPos[k]}
+              isTargetKey={normalizedNext === k}
+              isAllowed={allowedKeysSet.has(k)}
+              isHomeRow={false}
+              tier={tier}
+              onClick={() => onKeyClick?.(k)}
+            />
+          ))}
+
+          {/* Top Row (QWERTY) */}
+          {ROW_TOP.map((k) => (
+            <KeyboardKey
+              key={k}
+              label={k}
+              pos={geo.keyPos[k]}
+              isTargetKey={normalizedNext === k}
+              isAllowed={allowedKeysSet.has(k)}
+              isHomeRow={false}
+              tier={tier}
+              onClick={() => onKeyClick?.(k)}
+            />
+          ))}
+
+          {/* Home Row (A-;) */}
+          {ROW_HOME.map((k) => (
+            <KeyboardKey
+              key={k}
+              label={k}
+              pos={geo.keyPos[k]}
+              isTargetKey={normalizedNext === k}
+              isAllowed={allowedKeysSet.has(k)}
+              isHomeRow={true}
+              tier={tier}
+              onClick={() => onKeyClick?.(k)}
+            />
+          ))}
+
+          {/* Bottom Row (Z-/) */}
+          {ROW_BOT.map((k) => (
+            <KeyboardKey
+              key={k}
+              label={k}
+              pos={geo.keyPos[k]}
+              isTargetKey={normalizedNext === k}
+              isAllowed={allowedKeysSet.has(k)}
+              isHomeRow={false}
+              tier={tier}
+              onClick={() => onKeyClick?.(k)}
+            />
+          ))}
+
+          {/* Spacebar */}
+          <KeyboardKey
+            label=" "
+            pos={geo.keyPos[' ']}
+            isTargetKey={normalizedNext === ' '}
+            isAllowed={allowedKeysSet.has(' ')}
+            isHomeRow={false}
+            tier={tier}
+            onClick={() => onKeyClick?.(' ')}
+          />
         </div>
       </div>
 
       {/* Hands Guide Label beneath keyboard */}
-      <div className="flex items-center justify-between w-full max-w-[340px] text-[11px] text-neutral-400 font-mono mt-1 px-4">
+      <div className="flex items-center justify-between w-full max-w-[320px] text-[10px] sm:text-[11px] text-neutral-500 font-mono mt-1.5 px-2">
         <span className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-neutral-600" />
           <span>LEFT HAND</span>
         </span>
-        <span className="text-neutral-600 text-[10px]">·</span>
+        <span className="text-neutral-700 text-[9px]">·</span>
         <span className="flex items-center gap-1.5">
           <span>RIGHT HAND</span>
           <span className="w-1.5 h-1.5 rounded-full bg-neutral-600" />
