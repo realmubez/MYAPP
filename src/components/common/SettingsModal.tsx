@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { X, Volume2, VolumeX, Type, Eye, Languages, Send, Bot, CheckCircle, AlertCircle, Loader2, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { X, Volume2, VolumeX, Type, Eye, Languages, Send, Bot, CheckCircle, AlertCircle, Loader2, ExternalLink, LogOut } from 'lucide-react';
 import { AppSettings } from '../../types';
 import { storageService } from '../../services/storage';
 import { typingSoundService } from '../../services/typingSoundService';
 import { translationService, TranslationLang } from '../../services/translationPreference';
+import { useAuth } from '../../context/AuthContext';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -34,6 +36,20 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionFeedback, setActionFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showSetupHelp, setShowSetupHelp] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      onClose();
+      await logout();
+      navigate('/login');
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -498,8 +514,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </div>
         </div>
 
-        {/* 7. Done Button */}
-        <div className="pt-2 border-t border-neutral-800">
+        {/* 7. Done Button & Subtle Logout */}
+        <div className="pt-2 border-t border-neutral-800 space-y-2">
           <button
             id="done-settings-btn"
             type="button"
@@ -508,6 +524,22 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           >
             Done
           </button>
+
+          <div className="flex items-center justify-between px-1 pt-1">
+            <button
+              id="logout-session-btn"
+              type="button"
+              disabled={isLoggingOut}
+              onClick={handleLogout}
+              className="inline-flex items-center gap-1.5 text-xs text-neutral-500 hover:text-red-400 transition-colors cursor-pointer py-1 disabled:opacity-50"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>{isLoggingOut ? 'Logging out...' : 'Log out of session'}</span>
+            </button>
+            <span className="text-[10px] text-neutral-600 font-mono">
+              MY LEARNING
+            </span>
+          </div>
         </div>
       </div>
     </div>

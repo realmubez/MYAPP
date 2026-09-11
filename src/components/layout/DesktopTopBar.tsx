@@ -1,6 +1,7 @@
-import { useState, FormEvent } from 'react';
-import { Search, Bell, Sun, ChevronDown } from 'lucide-react';
+import { useState, useRef, useEffect, FormEvent } from 'react';
+import { Search, Bell, Sun, ChevronDown, Settings, LogOut, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 interface DesktopTopBarProps {
   onOpenSettings: () => void;
@@ -8,7 +9,27 @@ interface DesktopTopBarProps {
 
 export function DesktopTopBar({ onOpenSettings }: DesktopTopBarProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLogout = async () => {
+    setIsMenuOpen(false);
+    await logout();
+    navigate('/login');
+  };
 
   const handleSearchSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -93,26 +114,66 @@ export function DesktopTopBar({ onOpenSettings }: DesktopTopBarProps) {
           </span>
         </button>
 
-        {/* User Profile Pill matching reference */}
-        <button
-          type="button"
-          id="desktop-user-profile-pill"
-          onClick={onOpenSettings}
-          className="flex items-center gap-3 pl-2 pr-3 py-1.5 rounded-2xl border border-neutral-800 bg-[#141210] hover:border-neutral-700 transition-all cursor-pointer text-left"
-        >
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-700 text-white font-bold text-xs">
-            M
-          </div>
-          <div className="flex flex-col">
-            <span className="text-xs font-semibold text-white leading-tight">
-              Welcome back
-            </span>
-            <span className="text-[11px] text-neutral-400 font-normal">
-              Keep learning!
-            </span>
-          </div>
-          <ChevronDown className="w-3.5 h-3.5 text-neutral-500 ml-1" />
-        </button>
+        {/* User Profile Pill with Dropdown */}
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            id="desktop-user-profile-pill"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="flex items-center gap-3 pl-2 pr-3 py-1.5 rounded-2xl border border-neutral-800 bg-[#141210] hover:border-neutral-700 transition-all cursor-pointer text-left"
+          >
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-700 text-white font-bold text-xs">
+              M
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs font-semibold text-white leading-tight">
+                Welcome back
+              </span>
+              <span className="text-[11px] text-neutral-400 font-normal">
+                Keep learning!
+              </span>
+            </div>
+            <ChevronDown className={`w-3.5 h-3.5 text-neutral-500 ml-1 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Profile Dropdown Menu */}
+          {isMenuOpen && (
+            <div className="absolute right-0 mt-2 w-52 rounded-2xl border border-neutral-800 bg-[#141210] shadow-2xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+              <div className="px-3 py-2 border-b border-neutral-800/80 mb-1">
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-400">
+                  <Shield className="w-3 h-3" />
+                  <span>Private Session</span>
+                </div>
+                <p className="text-[10px] text-neutral-400 font-mono mt-0.5">
+                  “I learn by typing.”
+                </p>
+              </div>
+
+              <button
+                type="button"
+                id="profile-dropdown-settings-btn"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  onOpenSettings();
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-neutral-300 hover:text-white hover:bg-neutral-900/90 transition-colors text-left cursor-pointer"
+              >
+                <Settings className="w-3.5 h-3.5 text-neutral-400" />
+                <span>Settings</span>
+              </button>
+
+              <button
+                type="button"
+                id="profile-dropdown-logout-btn"
+                onClick={handleLogout}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-neutral-400 hover:text-red-400 hover:bg-red-950/20 transition-colors text-left cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Log out</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

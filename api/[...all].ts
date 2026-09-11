@@ -10,9 +10,15 @@ import {
   handleTelegramWebhook,
 } from '../server/telegram';
 import { updateProgress, liveTelegramProgress } from '../server/telegramData';
+import {
+  verifyPassword,
+  createSessionCookie,
+  clearSessionCookie,
+  isAuthenticatedRequest,
+} from '../server/auth';
 
 /**
- * Vercel Serverless Function entry point for all /api/telegram/* routes
+ * Vercel Serverless Function entry point for all /api/auth/* and /api/telegram/* routes
  */
 export default async function handler(req: any, res: any) {
   // Normalize path
@@ -27,6 +33,65 @@ export default async function handler(req: any, res: any) {
     } catch {
       // keep as is
     }
+  }
+
+  // ==========================================
+  // AUTHENTICATION ROUTES
+  // ==========================================
+
+  // POST /api/auth/login
+  if (url.includes('/auth/login') && method === 'POST') {
+    const { password } = body || {};
+    if (!password || typeof password !== 'string') {
+      return res.status(400).json({ ok: false, error: 'Password is required' });
+    }
+
+    const clientIp =
+      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      req.socket?.remoteAddress ||
+      '127.0.0.1';
+
+    const result = verifyPassword(password, clientIp);
+    if (!result.success) {
+      return res.status(result.status || 401).json({
+        ok: false,
+        error: result.error || 'Incorrect password',
+      });
+    }
+
+    const isProduction = process.env.NODE_ENV === 'production';
+    const cookieHeader = createSessionCookie(isProduction);
+    res.setHeader('Set-Cookie', cookieHeader);
+    return res.status(200).json({ ok: true });
+  }
+
+  // GET /api/auth/check
+  if (url.includes('/auth/check') && method === 'GET') {
+    const authenticated = isAuthenticatedRequest(req);
+    return res.status(200).json({ authenticated });
+  }
+
+  // POST /api/auth/logout
+  if (url.includes('/auth/logout') && method === 'POST') {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const cookieHeader = clearSessionCookie(isProduction);
+    res.setHeader('Set-Cookie', cookieHeader);
+    return res.status(200).json({ ok: true });
+  }
+
+  // ==========================================
+  // TELEGRAM ROUTES (PROTECTED EXCEPT WEBHOOK)
+  // ==========================================
+
+  // 6. Webhook: POST /api/telegram/webhook (Open for Telegram servers)
+  if (url.includes('/telegram/webhook') && method === 'POST') {
+    const result = await handleTelegramWebhook(body);
+    return res.status(200).json(result);
+  }
+
+  // All other Telegram routes require an authenticated session
+  if (url.includes('/telegram/') && !isAuthenticatedRequest(req)) {
+    return res.status(401).json({ error: 'Unauthorized. Please log in.' });
   }
 
   // 1. Status: GET /api/telegram/status
@@ -70,12 +135,6 @@ export default async function handler(req: any, res: any) {
     const appUrl = (req.headers.origin || req.headers.referer || '').toString().replace(/\/$/, '');
     const result = await sendTelegramMistakeReview(body, appUrl);
     return res.status(result.ok ? 200 : 400).json(result);
-  }
-
-  // 6. Webhook: POST /api/telegram/webhook
-  if (url.includes('/webhook') && method === 'POST') {
-    const result = await handleTelegramWebhook(body);
-    return res.status(200).json(result);
   }
 
   // 7. Sync Progress: POST /api/telegram/sync-progress

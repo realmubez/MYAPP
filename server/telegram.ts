@@ -563,6 +563,8 @@ export async function sendTelegramMistakeReview(
 export function getAppBaseUrl(): string {
   if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, '');
   if (process.env.PUBLIC_APP_URL) return process.env.PUBLIC_APP_URL.replace(/\/$/, '');
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL.replace(/\/$/, '')}`;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL.replace(/\/$/, '')}`;
   return 'https://ais-dev-yujrwrksrvdvcf4hpj3arr-163897255455.europe-west2.run.app';
 }
 
