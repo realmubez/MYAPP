@@ -5,37 +5,41 @@ import { useProgress } from '../hooks/useProgress';
 export function ProgressPage() {
   const { stats, progress } = useProgress();
 
-  const formatSeconds = (sec: number) => {
-    const hours = Math.floor(sec / 3600);
-    const mins = Math.floor((sec % 3600) / 60);
+  const formatSeconds = (sec?: number) => {
+    const s = typeof sec === 'number' && !isNaN(sec) ? Math.max(0, sec) : 0;
+    const hours = Math.floor(s / 3600);
+    const mins = Math.floor((s % 3600) / 60);
     if (hours === 0) return `${mins}m`;
     return `${hours}h ${mins}m`;
   };
+
+  const totalTime = progress?.overall?.totalTimeSeconds ?? (stats.todayLearningMinutes * 60);
+  const totalExercises = progress?.overall?.totalExercisesCompleted ?? stats.totalExercisesCompleted;
 
   const subjectRows = [
     {
       id: 'swedish',
       name: 'Swedish (Svenska)',
       flagOrIcon: '🇸🇪',
-      data: progress.subjects.swedish,
+      data: progress?.subjects?.swedish,
     },
     {
       id: 'english',
       name: 'English',
       flagOrIcon: '🇬🇧',
-      data: progress.subjects.english,
+      data: progress?.subjects?.english,
     },
     {
       id: 'python',
       name: 'Python',
       flagOrIcon: '🐍',
-      data: progress.subjects.python,
+      data: progress?.subjects?.python,
     },
     {
       id: 'typing',
       name: 'Typing Practice',
       flagOrIcon: '⌨️',
-      data: progress.subjects.typing,
+      data: progress?.subjects?.typing,
     },
   ];
 
@@ -66,8 +70,8 @@ export function ProgressPage() {
             <Clock className="w-4 h-4 text-amber-400" />
             <span>Total Learning Time</span>
           </div>
-          <p className="text-2xl sm:text-3xl font-bold font-mono text-neutral-100">{formatSeconds(stats.totalTimeSeconds)}</p>
-          <span className="text-[11px] text-neutral-400 mt-1 block font-mono">{stats.completedExercisesCount} completed exercises</span>
+          <p className="text-2xl sm:text-3xl font-bold font-mono text-neutral-100">{formatSeconds(totalTime)}</p>
+          <span className="text-[11px] text-neutral-400 mt-1 block font-mono">{totalExercises} completed exercises</span>
         </div>
 
         <div className="rounded-3xl border border-neutral-800/80 bg-[#141210] p-4 sm:p-5 shadow-sm">
@@ -75,7 +79,7 @@ export function ProgressPage() {
             <Target className="w-4 h-4 text-amber-300" />
             <span>Overall Accuracy</span>
           </div>
-          <p className="text-2xl sm:text-3xl font-bold font-mono text-neutral-100">{stats.averageAccuracy}%</p>
+          <p className="text-2xl sm:text-3xl font-bold font-mono text-neutral-100">{stats.averageAccuracy || 0}%</p>
           <span className="text-[11px] text-neutral-400 mt-1 block">Live calculated average</span>
         </div>
 
@@ -84,7 +88,7 @@ export function ProgressPage() {
             <Zap className="w-4 h-4 text-amber-400" />
             <span>Average Speed</span>
           </div>
-          <p className="text-2xl sm:text-3xl font-bold font-mono text-neutral-100">{stats.currentWpm} WPM</p>
+          <p className="text-2xl sm:text-3xl font-bold font-mono text-neutral-100">{stats.currentWpm || 0} WPM</p>
           <span className="text-[11px] text-neutral-400 mt-1 block">Measured across all exercises</span>
         </div>
 
@@ -93,7 +97,7 @@ export function ProgressPage() {
             <Flame className="w-4 h-4 text-amber-500" />
             <span>Daily Streak</span>
           </div>
-          <p className="text-2xl sm:text-3xl font-bold font-mono text-neutral-100">{stats.streakDays} {stats.streakDays === 1 ? 'day' : 'days'}</p>
+          <p className="text-2xl sm:text-3xl font-bold font-mono text-neutral-100">{stats.streakDays || 0} {(stats.streakDays || 0) === 1 ? 'day' : 'days'}</p>
           <span className="text-[11px] text-neutral-400 mt-1 block">Consecutive active days</span>
         </div>
       </div>
@@ -102,43 +106,52 @@ export function ProgressPage() {
       <div className="space-y-4">
         <h2 className="text-base sm:text-lg font-bold text-neutral-200">Track Breakdown</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-5">
-          {subjectRows.map(({ id, name, flagOrIcon, data }) => (
-            <div
-              key={id}
-              className="rounded-3xl border border-neutral-800/80 bg-[#141210] p-5 space-y-4 shadow-sm"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{flagOrIcon}</span>
-                  <div>
-                    <h3 className="text-sm sm:text-base font-bold text-neutral-100">{name}</h3>
-                    <p className="text-[11px] text-neutral-400">
-                      {data.completedLessons} / {data.totalLessons} lessons completed
-                    </p>
+          {subjectRows.map(({ id, name, flagOrIcon, data }) => {
+            const completed = data?.completedLessons ?? 0;
+            const total = data?.totalLessons ?? 1;
+            const pct = data?.percentComplete ?? 0;
+            const wpm = data?.averageWpm ?? 0;
+            const accuracy = data?.averageAccuracy ?? 0;
+            const studyTime = data?.totalStudyTimeSeconds ?? 0;
+
+            return (
+              <div
+                key={id}
+                className="rounded-3xl border border-neutral-800/80 bg-[#141210] p-5 space-y-4 shadow-sm"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{flagOrIcon}</span>
+                    <div>
+                      <h3 className="text-sm sm:text-base font-bold text-neutral-100">{name}</h3>
+                      <p className="text-[11px] text-neutral-400">
+                        {completed} / {total} lessons completed
+                      </p>
+                    </div>
                   </div>
+                  <span className="text-xs font-mono font-bold text-amber-400">
+                    {pct}%
+                  </span>
                 </div>
-                <span className="text-xs font-mono font-bold text-amber-400">
-                  {data.percentComplete}%
-                </span>
-              </div>
 
-              {/* Progress Bar in Amber Brand Color */}
-              <div className="h-1.5 w-full rounded-full bg-neutral-950 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-amber-400 transition-all duration-500"
-                  style={{
-                    width: `${Math.max(2, data.percentComplete)}%`,
-                  }}
-                />
-              </div>
+                {/* Progress Bar in Amber Brand Color */}
+                <div className="h-1.5 w-full rounded-full bg-neutral-950 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-amber-400 transition-all duration-500"
+                    style={{
+                      width: `${Math.max(2, pct)}%`,
+                    }}
+                  />
+                </div>
 
-              <div className="flex items-center justify-between text-xs font-mono text-neutral-400 pt-1">
-                <span>Speed: {data.averageWpm || 0} WPM</span>
-                <span>Accuracy: {data.accuracy || 0}%</span>
-                <span>Time: {formatSeconds(data.timeSpentSeconds)}</span>
+                <div className="flex items-center justify-between text-xs font-mono text-neutral-400 pt-1">
+                  <span>Speed: {wpm} WPM</span>
+                  <span>Accuracy: {accuracy}%</span>
+                  <span>Time: {formatSeconds(studyTime)}</span>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

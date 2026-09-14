@@ -43,11 +43,13 @@ export function getYesterdayDateString(): string {
   return `${year}-${month}-${day}`;
 }
 
-export function formatTimeAgo(timestampStr: string): string {
+export function formatTimeAgo(timestampStr?: string | null): string {
+  if (!timestampStr || typeof timestampStr !== 'string') return 'Recently';
   try {
     const time = new Date(timestampStr).getTime();
-    if (isNaN(time)) return timestampStr;
+    if (isNaN(time) || time <= 0) return 'Recently';
     const diff = Date.now() - time;
+    if (diff < 0) return 'Just now';
     const mins = Math.floor(diff / (1000 * 60));
     if (mins < 1) return 'Just now';
     if (mins < 60) return `${mins} min ago`;
@@ -58,7 +60,7 @@ export function formatTimeAgo(timestampStr: string): string {
     if (days < 7) return `${days} days ago`;
     return new Date(timestampStr).toLocaleDateString();
   } catch {
-    return timestampStr;
+    return 'Recently';
   }
 }
 
@@ -176,8 +178,8 @@ class ProgressService {
     try {
       const raw = localStorage.getItem(PROGRESS_STORAGE_KEY);
       if (raw) {
-        const parsed = JSON.parse(raw) as LearningProgress;
-        if (parsed && parsed.version === 1 && parsed.subjects && parsed.streak) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
           this.memoryCache = this.validateAndHydrateProgress(parsed);
           return this.memoryCache;
         }
@@ -207,49 +209,85 @@ class ProgressService {
     }
   }
 
-  private validateAndHydrateProgress(p: LearningProgress): LearningProgress {
+  private validateAndHydrateProgress(p: any): LearningProgress {
     const today = getTodayDateString();
     const defaults = createInitialProgress();
 
-    // Ensure all subjects exist
-    const subjects = { ...defaults.subjects, ...p.subjects };
-    Object.keys(defaults.subjects).forEach((subKey) => {
-      const key = subKey as SubjectId;
-      subjects[key].totalLessons = TOTAL_LESSONS_BY_SUBJECT[key];
-      
-      let completedCount = 0;
+    // Deep merge and validate each subject
+    const rawSubjects = (p && typeof p.subjects === 'object' && p.subjects !== null) ? p.subjects : {};
+    const subjects: Record<SubjectId, SubjectProgress> = { ...defaults.subjects };
+
+    (Object.keys(defaults.subjects) as SubjectId[]).forEach((key) => {
+      const defSub = defaults.subjects[key];
+      const rawSub = rawSubjects[key] && typeof rawSubjects[key] === 'object' ? rawSubjects[key] : {};
+
+      const completedExerciseIds: string[] = Array.isArray(rawSub.completedExerciseIds)
+        ? rawSub.completedExerciseIds.filter((id: any): id is string => typeof id === 'string')
+        : [];
+
+      let completedCount = typeof rawSub.completedLessons === 'number' ? rawSub.completedLessons : 0;
+
       if (key === 'swedish') {
-        const u1 = p.exercises?.['sv-pa-cafe']?.completed || 
-          p.subjects?.swedish?.completedExerciseIds?.includes('sv-pa-cafe') ? 1 : 0;
-        const u2 = p.exercises?.['sv-en-vanlig-morgon']?.completed || 
-          p.subjects?.swedish?.completedExerciseIds?.includes('sv-en-vanlig-morgon') ? 1 : 0;
-        completedCount = u1 + u2;
-        if (completedCount === 0 && (p.subjects?.swedish?.completedLessons ?? 0) > 0) {
-          completedCount = Math.min(2, p.subjects?.swedish?.completedLessons || 1);
+        const u1 = p?.exercises?.['sv-pa-cafe']?.completed ||
+          completedExerciseIds.includes('sv-pa-cafe') ? 1 : 0;
+        const u2 = p?.exercises?.['sv-en-vanlig-morgon']?.completed ||
+          completedExerciseIds.includes('sv-en-vanlig-morgon') ? 1 : 0;
+        const derived = u1 + u2;
+        if (derived > 0) {
+          completedCount = derived;
+        } else if (completedCount === 0 && (rawSub.completedLessons ?? 0) > 0) {
+          completedCount = Math.min(2, rawSub.completedLessons || 1);
         }
       } else if (key === 'english') {
-        const isCompleted = p.exercises?.['en-phone-plans']?.completed || 
-          p.subjects?.english?.completedExerciseIds?.includes('en-phone-plans') ||
-          (p.subjects?.english?.completedLessons ?? 0) > 0;
-        completedCount = isCompleted ? 1 : 0;
+        const isCompleted = p?.exercises?.['en-phone-plans']?.completed ||
+          completedExerciseIds.includes('en-phone-plans') ||
+          (rawSub.completedLessons ?? 0) > 0;
+        completedCount = isCompleted ? 1 : completedCount;
       } else if (key === 'python') {
-        const isCompleted = p.exercises?.['py-variables']?.completed || 
-          p.subjects?.python?.completedExerciseIds?.includes('py-variables') ||
-          (p.subjects?.python?.completedLessons ?? 0) > 0;
-        completedCount = isCompleted ? 1 : 0;
-      } else {
-        completedCount = Math.min(subjects[key].totalLessons, subjects[key].completedExerciseIds?.length || subjects[key].completedLessons || 0);
+        const isCompleted = p?.exercises?.['py-variables']?.completed ||
+          completedExerciseIds.includes('py-variables') ||
+          (rawSub.completedLessons ?? 0) > 0;
+        completedCount = isCompleted ? 1 : completedCount;
       }
 
-      subjects[key].completedLessons = completedCount;
-      subjects[key].percentComplete = Math.min(
-        100,
-        Math.round((completedCount / subjects[key].totalLessons) * 100)
-      );
+      const totalLessons = TOTAL_LESSONS_BY_SUBJECT[key] || defSub.totalLessons || 1;
+      const finalCompleted = Math.min(totalLessons, Math.max(0, completedCount));
+      const percentComplete = Math.min(100, Math.round((finalCompleted / totalLessons) * 100));
+
+      subjects[key] = {
+        subjectId: key,
+        completedLessons: finalCompleted,
+        totalLessons,
+        percentComplete,
+        totalStudyTimeSeconds: typeof rawSub.totalStudyTimeSeconds === 'number' ? rawSub.totalStudyTimeSeconds : 0,
+        averageWpm: typeof rawSub.averageWpm === 'number' ? rawSub.averageWpm : 0,
+        averageAccuracy: typeof rawSub.averageAccuracy === 'number' ? rawSub.averageAccuracy : 0,
+        lastUnitId: rawSub.lastUnitId || defSub.lastUnitId,
+        lastUnitTitle: rawSub.lastUnitTitle || defSub.lastUnitTitle,
+        lastExerciseId: rawSub.lastExerciseId || defSub.lastExerciseId,
+        lastExerciseTitle: rawSub.lastExerciseTitle || defSub.lastExerciseTitle,
+        lastCompletedAt: rawSub.lastCompletedAt,
+        completedExerciseIds,
+      };
     });
 
-    // Ensure today daily activity entry exists
-    const dailyActivities = { ...p.dailyActivities };
+    // Ensure daily activities structure
+    const dailyActivities: Record<string, DailyActivity> = {};
+    if (p?.dailyActivities && typeof p.dailyActivities === 'object') {
+      Object.entries(p.dailyActivities).forEach(([dateStr, rec]: [string, any]) => {
+        if (rec && typeof rec === 'object') {
+          dailyActivities[dateStr] = {
+            date: dateStr,
+            studyTimeSeconds: typeof rec.studyTimeSeconds === 'number' ? rec.studyTimeSeconds : 0,
+            lessonsCompleted: typeof rec.lessonsCompleted === 'number' ? rec.lessonsCompleted : 0,
+            exercisesCompleted: typeof rec.exercisesCompleted === 'number' ? rec.exercisesCompleted : 0,
+            wpmSamples: Array.isArray(rec.wpmSamples) ? rec.wpmSamples.filter((w: any) => typeof w === 'number') : [],
+            accuracySamples: Array.isArray(rec.accuracySamples) ? rec.accuracySamples.filter((a: any) => typeof a === 'number') : [],
+          };
+        }
+      });
+    }
+
     if (!dailyActivities[today]) {
       dailyActivities[today] = {
         date: today,
@@ -261,16 +299,45 @@ class ProgressService {
       };
     }
 
+    // Validate streak
+    const streak = {
+      currentStreak: typeof p?.streak?.currentStreak === 'number' ? p.streak.currentStreak : defaults.streak.currentStreak,
+      longestStreak: typeof p?.streak?.longestStreak === 'number' ? p.streak.longestStreak : defaults.streak.longestStreak,
+      lastActiveDate: typeof p?.streak?.lastActiveDate === 'string' ? p.streak.lastActiveDate : defaults.streak.lastActiveDate,
+    };
+
+    // Validate overall
+    const overall = {
+      totalTimeSeconds: typeof p?.overall?.totalTimeSeconds === 'number' ? p.overall.totalTimeSeconds : defaults.overall.totalTimeSeconds,
+      totalExercisesCompleted: typeof p?.overall?.totalExercisesCompleted === 'number' ? p.overall.totalExercisesCompleted : defaults.overall.totalExercisesCompleted,
+      totalLessonsCompleted: typeof p?.overall?.totalLessonsCompleted === 'number' ? p.overall.totalLessonsCompleted : defaults.overall.totalLessonsCompleted,
+      averageWpm: typeof p?.overall?.averageWpm === 'number' ? p.overall.averageWpm : defaults.overall.averageWpm,
+      averageAccuracy: typeof p?.overall?.averageAccuracy === 'number' ? p.overall.averageAccuracy : defaults.overall.averageAccuracy,
+    };
+
+    // Validate last position
+    const rawPos = p?.lastPosition && typeof p.lastPosition === 'object' ? p.lastPosition : {};
+    const lastPosSubjectId = (rawPos.subjectId && defaults.subjects[rawPos.subjectId as SubjectId])
+      ? (rawPos.subjectId as SubjectId)
+      : 'swedish';
+
+    const lastPosition: LastPosition = {
+      ...defaults.lastPosition,
+      ...rawPos,
+      subjectId: lastPosSubjectId,
+      updatedAt: rawPos.updatedAt || new Date().toISOString(),
+    };
+
     return {
-      ...defaults,
-      ...p,
+      version: 1,
+      lastPosition,
       subjects,
       dailyActivities,
-      exercises: p.exercises || {},
-      recentSessions: p.recentSessions || [],
-      difficultWords: p.difficultWords || {},
-      streak: p.streak || defaults.streak,
-      overall: p.overall || defaults.overall,
+      exercises: p?.exercises && typeof p.exercises === 'object' ? p.exercises : {},
+      recentSessions: Array.isArray(p?.recentSessions) ? p.recentSessions : [],
+      difficultWords: p?.difficultWords && typeof p.difficultWords === 'object' ? p.difficultWords : {},
+      streak,
+      overall,
     };
   }
 
@@ -511,95 +578,139 @@ class ProgressService {
   }
 
   public getUserStats(): UserStats {
-    const progress = this.getProgress();
-    const today = getTodayDateString();
-    const day = progress.dailyActivities[today];
+    try {
+      const progress = this.getProgress();
+      const today = getTodayDateString();
+      const day = progress?.dailyActivities?.[today];
 
-    const todayMinutes = day ? Math.round(day.studyTimeSeconds / 60) : 0;
-    const lessonsToday = day ? day.lessonsCompleted : 0;
+      const todayMinutes = (day && typeof day.studyTimeSeconds === 'number')
+        ? Math.round(day.studyTimeSeconds / 60)
+        : 0;
+      const lessonsToday = (day && typeof day.lessonsCompleted === 'number')
+        ? day.lessonsCompleted
+        : 0;
 
-    // Calculate accuracy & WPM from today or overall
-    let accuracy = progress.overall.averageAccuracy;
-    let wpm = progress.overall.averageWpm;
+      // Calculate accuracy & WPM from today or overall
+      let accuracy = progress?.overall?.averageAccuracy ?? 0;
+      let wpm = progress?.overall?.averageWpm ?? 0;
 
-    if (day && day.accuracySamples.length > 0) {
-      const sum = day.accuracySamples.reduce((a, b) => a + b, 0);
-      accuracy = Math.round((sum / day.accuracySamples.length) * 10) / 10;
+      if (day && Array.isArray(day.accuracySamples) && day.accuracySamples.length > 0) {
+        const sum = day.accuracySamples.reduce((a, b) => a + (Number(b) || 0), 0);
+        accuracy = Math.round((sum / day.accuracySamples.length) * 10) / 10;
+      }
+      if (day && Array.isArray(day.wpmSamples) && day.wpmSamples.length > 0) {
+        const sum = day.wpmSamples.reduce((a, b) => a + (Number(b) || 0), 0);
+        wpm = Math.round(sum / day.wpmSamples.length);
+      }
+
+      return {
+        todayLearningMinutes: todayMinutes,
+        lessonsCompletedToday: lessonsToday,
+        averageAccuracy: accuracy || 0,
+        currentWpm: wpm || 0,
+        streakDays: progress?.streak?.currentStreak || 0,
+        totalExercisesCompleted: progress?.overall?.totalExercisesCompleted || 0,
+      };
+    } catch (e) {
+      console.warn('Error in getUserStats:', e);
+      return {
+        todayLearningMinutes: 0,
+        lessonsCompletedToday: 0,
+        averageAccuracy: 0,
+        currentWpm: 0,
+        streakDays: 0,
+        totalExercisesCompleted: 0,
+      };
     }
-    if (day && day.wpmSamples.length > 0) {
-      const sum = day.wpmSamples.reduce((a, b) => a + b, 0);
-      wpm = Math.round(sum / day.wpmSamples.length);
-    }
-
-    return {
-      todayLearningMinutes: todayMinutes,
-      lessonsCompletedToday: lessonsToday,
-      averageAccuracy: accuracy || 0,
-      currentWpm: wpm || 0,
-      streakDays: progress.streak.currentStreak || 0,
-      totalExercisesCompleted: progress.overall.totalExercisesCompleted || 0,
-    };
   }
 
   public getContinueInfo(): ContinueInfo {
-    const progress = this.getProgress();
-    const lastPos = progress.lastPosition;
-    const subjectId = lastPos?.subjectId || 'swedish';
-    const subject = progress.subjects[subjectId] || progress.subjects.swedish;
-    const curated = CURATED_LESSONS[subjectId] || CURATED_LESSONS.swedish;
+    try {
+      const progress = this.getProgress();
+      const lastPos: LastPosition = progress?.lastPosition || {
+        subjectId: 'swedish',
+        unitId: 'sv-pa-cafe',
+        unitTitle: 'Beginner 1 · På café',
+        exerciseId: 'sv-pa-cafe',
+        exerciseTitle: 'På café · Interactive Session',
+        stage: 'interactive',
+        updatedAt: new Date().toISOString(),
+      };
+      const subjectId = (lastPos.subjectId && CURATED_LESSONS[lastPos.subjectId])
+        ? lastPos.subjectId
+        : 'swedish';
+      const subject = progress?.subjects?.[subjectId] || progress?.subjects?.swedish || { percentComplete: 0 };
+      const curated = CURATED_LESSONS[subjectId] || CURATED_LESSONS.swedish;
 
-    const subjectName = SUBJECT_DISPLAY_NAMES[subjectId] || 'Swedish';
-    
-    // Use curated module & lesson title if old/hidden IDs are present
-    const isLegacyUnit =
-      !lastPos.unitId ||
-      lastPos.unitId.startsWith('unit-') ||
-      lastPos.unitTitle?.includes('Hälsningar') ||
-      lastPos.unitTitle?.includes('Greetings');
+      const subjectName = SUBJECT_DISPLAY_NAMES[subjectId] || 'Swedish';
 
-    const moduleName = isLegacyUnit ? `${curated.courseLevel} · ${curated.lessonTitle}` : (lastPos.unitTitle || `${curated.courseLevel} · ${curated.lessonTitle}`);
-    const lessonTitle = isLegacyUnit ? `${curated.lessonTitle} · ${curated.badge}` : (lastPos.exerciseTitle || `${curated.lessonTitle} · ${curated.badge}`);
-    
-    let exerciseSnippet = 'Listen and type directly to build muscle memory.';
-    let stage = lastPos.stage || 'interactive';
-    let nextStep = 'Start curated interactive lesson';
-    let targetRoute = curated.route;
+      // Use curated module & lesson title if old/hidden IDs are present
+      const isLegacyUnit =
+        !lastPos.unitId ||
+        (typeof lastPos.unitId === 'string' && lastPos.unitId.startsWith('unit-')) ||
+        (typeof lastPos.unitTitle === 'string' && (lastPos.unitTitle.includes('Hälsningar') || lastPos.unitTitle.includes('Greetings')));
 
-    if (subjectId === 'swedish') {
-      if (lastPos.exerciseId === 'sv-en-vanlig-morgon' || lastPos.unitId?.includes('morgon')) {
-        exerciseSnippet = 'Kapitel 1: Det var en kall morgon i november.';
-        nextStep = 'Continue Swedish story';
-        targetRoute = '/focus/swedish/en-vanlig-morgon';
-      } else {
-        exerciseSnippet = 'Lyssna och skriv: Jag skulle vilja ha en kaffe.';
-        nextStep = 'Type Swedish café dialogue';
-        targetRoute = '/swedish';
+      const moduleName = isLegacyUnit
+        ? `${curated.courseLevel} · ${curated.lessonTitle}`
+        : (lastPos.unitTitle || `${curated.courseLevel} · ${curated.lessonTitle}`);
+      const lessonTitle = isLegacyUnit
+        ? `${curated.lessonTitle} · ${curated.badge}`
+        : (lastPos.exerciseTitle || `${curated.lessonTitle} · ${curated.badge}`);
+
+      let exerciseSnippet = 'Listen and type directly to build muscle memory.';
+      let stage = lastPos.stage || 'interactive';
+      let nextStep = 'Start curated interactive lesson';
+      let targetRoute = curated.route;
+
+      if (subjectId === 'swedish') {
+        if (lastPos.exerciseId === 'sv-en-vanlig-morgon' || (typeof lastPos.unitId === 'string' && lastPos.unitId.includes('morgon'))) {
+          exerciseSnippet = 'Kapitel 1: Det var en kall morgon i november.';
+          nextStep = 'Continue Swedish story';
+          targetRoute = '/focus/swedish/en-vanlig-morgon';
+        } else {
+          exerciseSnippet = 'Lyssna och skriv: Jag skulle vilja ha en kaffe.';
+          nextStep = 'Type Swedish café dialogue';
+          targetRoute = '/swedish';
+        }
+      } else if (subjectId === 'english') {
+        exerciseSnippet = 'Listen and type: I need a plan with lots of data.';
+        nextStep = 'Type English phone plan dialogue';
+        targetRoute = '/english';
+      } else if (subjectId === 'python') {
+        exerciseSnippet = 'Concept & Code: name = "Ali"';
+        nextStep = 'Type Python variables & code';
+        targetRoute = '/python';
+      } else if (subjectId === 'typing') {
+        exerciseSnippet = 'Nordic special characters: å, ä, ö';
+        nextStep = 'Practice typing speed';
+        targetRoute = '/typing';
       }
-    } else if (subjectId === 'english') {
-      exerciseSnippet = 'Listen and type: I need a plan with lots of data.';
-      nextStep = 'Type English phone plan dialogue';
-      targetRoute = '/english';
-    } else if (subjectId === 'python') {
-      exerciseSnippet = 'Concept & Code: name = "Ali"';
-      nextStep = 'Type Python variables & code';
-      targetRoute = '/python';
-    } else if (subjectId === 'typing') {
-      exerciseSnippet = 'Nordic special characters: å, ä, ö';
-      nextStep = 'Practice typing speed';
-      targetRoute = '/typing';
-    }
 
-    return {
-      subjectId,
-      subjectName,
-      moduleName,
-      lessonTitle,
-      exerciseSnippet,
-      stage,
-      nextStep,
-      percentComplete: subject.percentComplete || 0,
-      targetRoute,
-    };
+      return {
+        subjectId,
+        subjectName,
+        moduleName,
+        lessonTitle,
+        exerciseSnippet,
+        stage,
+        nextStep,
+        percentComplete: typeof subject.percentComplete === 'number' ? subject.percentComplete : 0,
+        targetRoute,
+      };
+    } catch (e) {
+      console.warn('Error in getContinueInfo:', e);
+      return {
+        subjectId: 'swedish',
+        subjectName: 'Swedish',
+        moduleName: 'Beginner 1 · På café',
+        lessonTitle: 'På café · Interactive Session',
+        exerciseSnippet: 'Lyssna och skriv: Jag skulle vilja ha en kaffe.',
+        stage: 'listen_type',
+        nextStep: 'Type Swedish café dialogue',
+        percentComplete: 0,
+        targetRoute: '/swedish',
+      };
+    }
   }
 
   public getRecentSessions(): RecentSessionRecord[] {

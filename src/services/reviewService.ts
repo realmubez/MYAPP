@@ -22,72 +22,158 @@ export function getMasteryLevel(score: number): MasteryLevel {
 }
 
 /**
+ * Helper to safely convert any date input to ISO string without throwing RangeError
+ */
+function safeIsoDate(input?: unknown): string {
+  if (!input) return new Date().toISOString();
+  try {
+    const d = new Date(input as any);
+    if (!isNaN(d.getTime())) {
+      return d.toISOString();
+    }
+  } catch {}
+  return new Date().toISOString();
+}
+
+/**
+ * Normalizes any raw/persisted item into a guaranteed, valid ReviewItem
+ */
+function normalizeReviewItem(raw: any, fallbackKey: string): ReviewItem | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const id = String(raw.id || fallbackKey);
+  const text = String(raw.text || raw.word || raw.codeSnippet || '').trim();
+  if (!text) return null;
+
+  const subjectId: SubjectId =
+    raw.subjectId === 'english' || raw.subjectId === 'python' || raw.subjectId === 'typing'
+      ? raw.subjectId
+      : 'swedish';
+
+  const mistakeCount = typeof raw.mistakeCount === 'number'
+    ? raw.mistakeCount
+    : (Number(raw.mistakes) || 1);
+  const correctCount = typeof raw.correctCount === 'number' ? raw.correctCount : 0;
+  const masteryScore = typeof raw.masteryScore === 'number'
+    ? Math.max(0, Math.min(100, raw.masteryScore))
+    : Math.max(10, 40 - mistakeCount * 8);
+
+  return {
+    id,
+    subjectId,
+    text,
+    displayTitle: String(raw.displayTitle || text),
+    category: raw.category || (subjectId === 'python' ? 'Code & Syntax' : 'Vocabulary'),
+    unitId: raw.unitId ? String(raw.unitId) : undefined,
+    unitTitle: raw.unitTitle ? String(raw.unitTitle) : undefined,
+    lessonId: raw.lessonId ? String(raw.lessonId) : undefined,
+    concept: raw.concept ? String(raw.concept) : undefined,
+    prompt: raw.prompt ? String(raw.prompt) : undefined,
+    codeSnippet: raw.codeSnippet ? String(raw.codeSnippet) : undefined,
+    exampleSentence: raw.exampleSentence && typeof raw.exampleSentence === 'object' && typeof raw.exampleSentence.text === 'string'
+      ? {
+          text: raw.exampleSentence.text,
+          translation: raw.exampleSentence.translation ? String(raw.exampleSentence.translation) : undefined,
+        }
+      : undefined,
+    mistakeCount,
+    correctCount,
+    lastMistakeDate: safeIsoDate(raw.lastMistakeDate || raw.lastMistakeAt),
+    lastReviewedDate: raw.lastReviewedDate ? safeIsoDate(raw.lastReviewedDate) : undefined,
+    masteryScore,
+    language: raw.language === 'en' ? 'en' : raw.language === 'python' ? 'python' : 'sv',
+  };
+}
+
+/**
  * Helper to look up an example sentence for a given word in the curriculum
  */
 function findExampleSentenceForWord(
   word: string,
   lang: 'sv' | 'en'
 ): { text: string; translation?: string; unitTitle?: string } | undefined {
+  if (!word || typeof word !== 'string') return undefined;
   const clean = word.toLowerCase().trim();
 
-  if (lang === 'sv') {
-    // Check Swedish units
-    for (const unit of SWEDISH_UNITS) {
-      for (const ex of unit.exercises) {
-        for (const s of ex.lesson.sentences) {
-          const words = s.text.toLowerCase().split(/\s+/);
-          if (words.some((w) => w.replace(/[^a-zåäöA-ZÅÄÖ]/g, '') === clean) && s.text.length > clean.length) {
-            return {
-              text: s.text,
-              translation: s.translation,
-              unitTitle: unit.title,
-            };
+  try {
+    if (lang === 'sv') {
+      // Check Swedish units
+      if (Array.isArray(SWEDISH_UNITS)) {
+        for (const unit of SWEDISH_UNITS) {
+          if (!unit || !Array.isArray(unit.exercises)) continue;
+          for (const ex of unit.exercises) {
+            if (!ex || !ex.lesson || !Array.isArray(ex.lesson.sentences)) continue;
+            for (const s of ex.lesson.sentences) {
+              if (!s || typeof s.text !== 'string') continue;
+              const words = s.text.toLowerCase().split(/\s+/);
+              if (words.some((w) => w.replace(/[^a-zåäöA-ZÅÄÖ]/g, '') === clean) && s.text.length > clean.length) {
+                return {
+                  text: s.text,
+                  translation: s.translation,
+                  unitTitle: unit.title,
+                };
+              }
+            }
+          }
+        }
+      }
+      // Check standalone Swedish lessons
+      if (Array.isArray(SWEDISH_LESSONS)) {
+        for (const lesson of SWEDISH_LESSONS) {
+          if (!lesson || !Array.isArray(lesson.sentences)) continue;
+          for (const s of lesson.sentences) {
+            if (!s || typeof s.text !== 'string') continue;
+            const words = s.text.toLowerCase().split(/\s+/);
+            if (words.some((w) => w.replace(/[^a-zåäöA-ZÅÄÖ]/g, '') === clean) && s.text.length > clean.length) {
+              return {
+                text: s.text,
+                translation: s.translation,
+                unitTitle: lesson.title,
+              };
+            }
+          }
+        }
+      }
+    } else {
+      // Check English units
+      if (Array.isArray(ENGLISH_UNITS)) {
+        for (const unit of ENGLISH_UNITS) {
+          if (!unit || !Array.isArray(unit.exercises)) continue;
+          for (const ex of unit.exercises) {
+            if (!ex || !ex.lesson || !Array.isArray(ex.lesson.sentences)) continue;
+            for (const s of ex.lesson.sentences) {
+              if (!s || typeof s.text !== 'string') continue;
+              const words = s.text.toLowerCase().split(/\s+/);
+              if (words.some((w) => w.replace(/[^a-zA-Z]/g, '') === clean) && s.text.length > clean.length) {
+                return {
+                  text: s.text,
+                  translation: s.translation,
+                  unitTitle: unit.title,
+                };
+              }
+            }
+          }
+        }
+      }
+      // Check standalone English lessons
+      if (Array.isArray(ENGLISH_LESSONS)) {
+        for (const lesson of ENGLISH_LESSONS) {
+          if (!lesson || !Array.isArray(lesson.sentences)) continue;
+          for (const s of lesson.sentences) {
+            if (!s || typeof s.text !== 'string') continue;
+            const words = s.text.toLowerCase().split(/\s+/);
+            if (words.some((w) => w.replace(/[^a-zA-Z]/g, '') === clean) && s.text.length > clean.length) {
+              return {
+                text: s.text,
+                translation: s.translation,
+                unitTitle: lesson.title,
+              };
+            }
           }
         }
       }
     }
-    // Check standalone Swedish lessons
-    for (const lesson of SWEDISH_LESSONS) {
-      for (const s of lesson.sentences) {
-        const words = s.text.toLowerCase().split(/\s+/);
-        if (words.some((w) => w.replace(/[^a-zåäöA-ZÅÄÖ]/g, '') === clean) && s.text.length > clean.length) {
-          return {
-            text: s.text,
-            translation: s.translation,
-            unitTitle: lesson.title,
-          };
-        }
-      }
-    }
-  } else {
-    // Check English units
-    for (const unit of ENGLISH_UNITS) {
-      for (const ex of unit.exercises) {
-        for (const s of ex.lesson.sentences) {
-          const words = s.text.toLowerCase().split(/\s+/);
-          if (words.some((w) => w.replace(/[^a-zA-Z]/g, '') === clean) && s.text.length > clean.length) {
-            return {
-              text: s.text,
-              translation: s.translation,
-              unitTitle: unit.title,
-            };
-          }
-        }
-      }
-    }
-    // Check standalone English lessons
-    for (const lesson of ENGLISH_LESSONS) {
-      for (const s of lesson.sentences) {
-        const words = s.text.toLowerCase().split(/\s+/);
-        if (words.some((w) => w.replace(/[^a-zA-Z]/g, '') === clean) && s.text.length > clean.length) {
-          return {
-            text: s.text,
-            translation: s.translation,
-            unitTitle: lesson.title,
-          };
-        }
-      }
-    }
+  } catch (e) {
+    console.warn('findExampleSentenceForWord error:', e);
   }
 
   return undefined;
@@ -103,7 +189,12 @@ class ReviewService {
 
   private init(): void {
     if (typeof window === 'undefined') return;
-    this.loadAndMigrate();
+    try {
+      this.loadAndMigrate();
+    } catch (e) {
+      console.warn('ReviewService init error caught:', e);
+      this.cache = {};
+    }
   }
 
   private loadAndMigrate(): Record<string, ReviewItem> {
@@ -115,7 +206,19 @@ class ReviewService {
     try {
       const raw = localStorage.getItem(REVIEW_STORAGE_KEY);
       if (raw) {
-        items = JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          const rawEntries = Array.isArray(parsed)
+            ? parsed.map((it, idx) => [it?.id || `item-${idx}`, it])
+            : Object.entries(parsed);
+
+          for (const [key, val] of rawEntries) {
+            const normalized = normalizeReviewItem(val, key);
+            if (normalized) {
+              items[normalized.id] = normalized;
+            }
+          }
+        }
       }
     } catch (e) {
       console.warn('Could not parse review items from storage:', e);
@@ -131,7 +234,7 @@ class ReviewService {
             if (leg && leg.word) {
               const lang = leg.language === 'en' ? 'en' : 'sv';
               const subjectId: SubjectId = lang === 'en' ? 'english' : 'swedish';
-              const cleanWord = leg.word.toLowerCase().trim();
+              const cleanWord = String(leg.word).toLowerCase().trim();
               const key = `${subjectId}:${cleanWord}`;
 
               if (!items[key]) {
@@ -147,7 +250,7 @@ class ReviewService {
                   exampleSentence: example ? { text: example.text, translation: example.translation } : undefined,
                   mistakeCount: mistakes,
                   correctCount: 0,
-                  lastMistakeDate: new Date(leg.lastMistakeAt || Date.now()).toISOString(),
+                  lastMistakeDate: safeIsoDate(leg.lastMistakeAt),
                   masteryScore: Math.max(10, 40 - mistakes * 8),
                   language: lang,
                 };
@@ -165,12 +268,16 @@ class ReviewService {
       const progressRaw = localStorage.getItem('mylearning_progress_v1');
       if (progressRaw) {
         const prog = JSON.parse(progressRaw);
-        if (prog && prog.difficultWords) {
-          Object.values(prog.difficultWords).forEach((dw: any) => {
+        if (prog && prog.difficultWords && typeof prog.difficultWords === 'object') {
+          const list = Array.isArray(prog.difficultWords)
+            ? prog.difficultWords
+            : Object.values(prog.difficultWords);
+
+          list.forEach((dw: any) => {
             if (dw && dw.word) {
               const subId: SubjectId = dw.subjectId || 'swedish';
               const lang = subId === 'english' ? 'en' : 'sv';
-              const cleanWord = dw.word.toLowerCase().trim();
+              const cleanWord = String(dw.word).toLowerCase().trim();
               const key = `${subId}:${cleanWord}`;
 
               if (!items[key]) {
@@ -186,7 +293,7 @@ class ReviewService {
                   exampleSentence: example ? { text: example.text, translation: example.translation } : undefined,
                   mistakeCount: mistakes,
                   correctCount: 0,
-                  lastMistakeDate: new Date(dw.lastMistakeAt || Date.now()).toISOString(),
+                  lastMistakeDate: safeIsoDate(dw.lastMistakeAt),
                   masteryScore: Math.max(10, 40 - mistakes * 8),
                   language: lang,
                 };
@@ -221,14 +328,24 @@ class ReviewService {
    * Get all review items, optionally filtered by subject
    */
   public getReviewItems(subjectId?: SubjectId | 'all'): ReviewItem[] {
-    const items = this.loadAndMigrate();
-    const list = Object.values(items);
-    if (!subjectId || subjectId === 'all') {
-      return list.sort((a, b) => a.masteryScore - b.masteryScore || b.mistakeCount - a.mistakeCount);
+    try {
+      const items = this.loadAndMigrate();
+      const list = Object.values(items).filter((item): item is ReviewItem => !!item && typeof item === 'object');
+      const filtered = (!subjectId || subjectId === 'all')
+        ? list
+        : list.filter((item) => item.subjectId === subjectId);
+
+      return filtered.sort((a, b) => {
+        const aScore = typeof a.masteryScore === 'number' ? a.masteryScore : 0;
+        const bScore = typeof b.masteryScore === 'number' ? b.masteryScore : 0;
+        const aMistakes = typeof a.mistakeCount === 'number' ? a.mistakeCount : 0;
+        const bMistakes = typeof b.mistakeCount === 'number' ? b.mistakeCount : 0;
+        return aScore - bScore || bMistakes - aMistakes;
+      });
+    } catch (e) {
+      console.warn('Error in getReviewItems:', e);
+      return [];
     }
-    return list
-      .filter((item) => item.subjectId === subjectId)
-      .sort((a, b) => a.masteryScore - b.masteryScore || b.mistakeCount - a.mistakeCount);
   }
 
   /**
@@ -239,23 +356,29 @@ class ReviewService {
     improving: ReviewItem[];
     mastered: ReviewItem[];
   } {
-    const all = this.getReviewItems(subjectId);
-    const needsPractice: ReviewItem[] = [];
-    const improving: ReviewItem[] = [];
-    const mastered: ReviewItem[] = [];
+    try {
+      const all = this.getReviewItems(subjectId);
+      const needsPractice: ReviewItem[] = [];
+      const improving: ReviewItem[] = [];
+      const mastered: ReviewItem[] = [];
 
-    all.forEach((item) => {
-      const level = getMasteryLevel(item.masteryScore);
-      if (level === 'needs_practice') {
-        needsPractice.push(item);
-      } else if (level === 'improving') {
-        improving.push(item);
-      } else {
-        mastered.push(item);
-      }
-    });
+      all.forEach((item) => {
+        if (!item) return;
+        const level = getMasteryLevel(typeof item.masteryScore === 'number' ? item.masteryScore : 0);
+        if (level === 'needs_practice') {
+          needsPractice.push(item);
+        } else if (level === 'improving') {
+          improving.push(item);
+        } else {
+          mastered.push(item);
+        }
+      });
 
-    return { needsPractice, improving, mastered };
+      return { needsPractice, improving, mastered };
+    } catch (e) {
+      console.warn('Error in getReviewItemsByMastery:', e);
+      return { needsPractice: [], improving: [], mastered: [] };
+    }
   }
 
   /**
@@ -394,77 +517,103 @@ class ReviewService {
    * Select a prioritized set of items for a review session
    */
   public getReviewSessionItems(subjectId?: SubjectId | 'all', maxCount: number = 8): ReviewItem[] {
-    const all = this.getReviewItems(subjectId);
-    if (all.length === 0) return [];
+    try {
+      const all = this.getReviewItems(subjectId);
+      if (all.length === 0) return [];
 
-    // Prioritization:
-    // 1. Needs Practice items first (< 40)
-    // 2. Improving items next (40-79)
-    // 3. Mastered items last (for occasional refresh)
-    const needsPractice = all.filter((i) => i.masteryScore < 40);
-    const improving = all.filter((i) => i.masteryScore >= 40 && i.masteryScore < 80);
-    const mastered = all.filter((i) => i.masteryScore >= 80);
+      // Prioritization:
+      // 1. Needs Practice items first (< 40)
+      // 2. Improving items next (40-79)
+      // 3. Mastered items last (for occasional refresh)
+      const needsPractice = all.filter((i) => (typeof i.masteryScore === 'number' ? i.masteryScore : 0) < 40);
+      const improving = all.filter((i) => {
+        const score = typeof i.masteryScore === 'number' ? i.masteryScore : 0;
+        return score >= 40 && score < 80;
+      });
+      const mastered = all.filter((i) => (typeof i.masteryScore === 'number' ? i.masteryScore : 0) >= 80);
 
-    // Sort within buckets by mistakeCount descending, then most recent mistake
-    const sortByHardest = (a: ReviewItem, b: ReviewItem) => {
-      if (b.mistakeCount !== a.mistakeCount) {
-        return b.mistakeCount - a.mistakeCount;
+      // Sort within buckets by mistakeCount descending, then most recent mistake
+      const sortByHardest = (a: ReviewItem, b: ReviewItem) => {
+        const aMistakes = typeof a.mistakeCount === 'number' ? a.mistakeCount : 0;
+        const bMistakes = typeof b.mistakeCount === 'number' ? b.mistakeCount : 0;
+        if (bMistakes !== aMistakes) {
+          return bMistakes - aMistakes;
+        }
+        const aTime = a.lastMistakeDate ? new Date(a.lastMistakeDate).getTime() : 0;
+        const bTime = b.lastMistakeDate ? new Date(b.lastMistakeDate).getTime() : 0;
+        return (isNaN(bTime) ? 0 : bTime) - (isNaN(aTime) ? 0 : aTime);
+      };
+
+      needsPractice.sort(sortByHardest);
+      improving.sort(sortByHardest);
+      mastered.sort(sortByHardest);
+
+      const selected: ReviewItem[] = [];
+
+      // Fill up to maxCount
+      for (const item of needsPractice) {
+        if (selected.length < maxCount) selected.push(item);
       }
-      return new Date(b.lastMistakeDate).getTime() - new Date(a.lastMistakeDate).getTime();
-    };
+      for (const item of improving) {
+        if (selected.length < maxCount) selected.push(item);
+      }
+      for (const item of mastered) {
+        if (selected.length < maxCount) selected.push(item);
+      }
 
-    needsPractice.sort(sortByHardest);
-    improving.sort(sortByHardest);
-    mastered.sort(sortByHardest);
-
-    const selected: ReviewItem[] = [];
-
-    // Fill up to maxCount
-    for (const item of needsPractice) {
-      if (selected.length < maxCount) selected.push(item);
+      return selected;
+    } catch (e) {
+      console.warn('Error in getReviewSessionItems:', e);
+      return [];
     }
-    for (const item of improving) {
-      if (selected.length < maxCount) selected.push(item);
-    }
-    for (const item of mastered) {
-      if (selected.length < maxCount) selected.push(item);
-    }
-
-    return selected;
   }
 
   /**
    * Overall counts and stats for the Dashboard & Review views
    */
   public getStats() {
-    const all = this.getReviewItems();
-    let swedishCount = 0;
-    let englishCount = 0;
-    let pythonCount = 0;
-    let needsPracticeCount = 0;
-    let improvingCount = 0;
-    let masteredCount = 0;
+    try {
+      const all = this.getReviewItems();
+      let swedishCount = 0;
+      let englishCount = 0;
+      let pythonCount = 0;
+      let needsPracticeCount = 0;
+      let improvingCount = 0;
+      let masteredCount = 0;
 
-    all.forEach((item) => {
-      if (item.subjectId === 'swedish') swedishCount++;
-      else if (item.subjectId === 'english') englishCount++;
-      else if (item.subjectId === 'python') pythonCount++;
+      all.forEach((item) => {
+        if (!item) return;
+        if (item.subjectId === 'swedish') swedishCount++;
+        else if (item.subjectId === 'english') englishCount++;
+        else if (item.subjectId === 'python') pythonCount++;
 
-      const lvl = getMasteryLevel(item.masteryScore);
-      if (lvl === 'needs_practice') needsPracticeCount++;
-      else if (lvl === 'improving') improvingCount++;
-      else masteredCount++;
-    });
+        const lvl = getMasteryLevel(typeof item.masteryScore === 'number' ? item.masteryScore : 0);
+        if (lvl === 'needs_practice') needsPracticeCount++;
+        else if (lvl === 'improving') improvingCount++;
+        else masteredCount++;
+      });
 
-    return {
-      totalCount: all.length,
-      swedishCount,
-      englishCount,
-      pythonCount,
-      needsPracticeCount,
-      improvingCount,
-      masteredCount,
-    };
+      return {
+        totalCount: all.length,
+        swedishCount,
+        englishCount,
+        pythonCount,
+        needsPracticeCount,
+        improvingCount,
+        masteredCount,
+      };
+    } catch (e) {
+      console.warn('Error in getStats:', e);
+      return {
+        totalCount: 0,
+        swedishCount: 0,
+        englishCount: 0,
+        pythonCount: 0,
+        needsPracticeCount: 0,
+        improvingCount: 0,
+        masteredCount: 0,
+      };
+    }
   }
 
   /**

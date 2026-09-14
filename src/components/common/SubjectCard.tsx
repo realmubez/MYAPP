@@ -10,15 +10,15 @@ interface SubjectCardProps {
 }
 
 export function SubjectCard({ subject, progressData }: SubjectCardProps) {
-  const completedLessons = progressData ? progressData.completedLessons : subject.completedLessons;
-  const totalLessons = progressData ? progressData.totalLessons : (subject.totalLessons || 1);
-  const percentCompleted = progressData
+  const completedLessons = Number(progressData ? progressData.completedLessons : subject?.completedLessons) || 0;
+  const totalLessons = Number(progressData ? progressData.totalLessons : (subject?.totalLessons || 1)) || 1;
+  const percentCompleted = progressData && typeof progressData.percentComplete === 'number'
     ? progressData.percentComplete
-    : Math.round((completedLessons / totalLessons) * 100);
+    : Math.min(100, Math.round((completedLessons / totalLessons) * 100));
 
-  const curated = CURATED_LESSONS[subject.id as keyof typeof CURATED_LESSONS];
+  const curated = CURATED_LESSONS[subject?.id as keyof typeof CURATED_LESSONS];
   const unitNoun = totalLessons === 1 ? 'lesson' : 'lessons';
-  const modeSequence = curated?.modeSequence || (subject.id === 'python'
+  const modeSequence = curated?.modeSequence || (subject?.id === 'python'
     ? 'Concept → Type → Predict → Code'
     : 'Listen → Type → Speak');
   

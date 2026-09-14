@@ -10,10 +10,10 @@ interface ContinueCardProps {
 
 export function ContinueCard({ onPlay }: ContinueCardProps) {
   const { progress } = useProgress();
-  const lastPos = progress.lastPosition;
+  const lastPos = progress?.lastPosition;
 
   const subjectId = lastPos?.subjectId || 'swedish';
-  const subjectProgress = progress.subjects[subjectId] || progress.subjects.swedish;
+  const subjectProgress = progress?.subjects?.[subjectId] || progress?.subjects?.swedish;
   const curated = CURATED_LESSONS[subjectId] || CURATED_LESSONS.swedish;
 
   const renderIcon = () => {
@@ -42,9 +42,8 @@ export function ContinueCard({ onPlay }: ContinueCardProps) {
   
   const isLegacyUnit =
     !lastPos?.unitId ||
-    lastPos.unitId.startsWith('unit-') ||
-    lastPos.unitTitle?.includes('Hälsningar') ||
-    lastPos.unitTitle?.includes('Greetings');
+    (typeof lastPos.unitId === 'string' && lastPos.unitId.startsWith('unit-')) ||
+    (typeof lastPos.unitTitle === 'string' && (lastPos.unitTitle.includes('Hälsningar') || lastPos.unitTitle.includes('Greetings')));
 
   const unitTitle = isLegacyUnit
     ? `${curated.courseLevel} · ${curated.lessonTitle}`
@@ -54,7 +53,7 @@ export function ContinueCard({ onPlay }: ContinueCardProps) {
     ? `${curated.lessonTitle} · ${curated.badge}`
     : (lastPos?.exerciseTitle || `${curated.lessonTitle} · ${curated.badge}`);
 
-  const percentComplete = subjectProgress.percentComplete;
+  const percentComplete = typeof subjectProgress?.percentComplete === 'number' ? subjectProgress.percentComplete : 0;
 
   return (
     <div

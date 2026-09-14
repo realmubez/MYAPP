@@ -7,16 +7,16 @@ interface ReviewSummaryCardProps {
 }
 
 export function ReviewSummaryCard({ onStartSession }: ReviewSummaryCardProps) {
-  const { items, stats, needsPractice } = useReview();
+  const { items = [], stats, needsPractice = [] } = useReview();
 
-  const totalDifficult = items.length;
-  const actionableCount = needsPractice.length;
+  const totalDifficult = Array.isArray(items) ? items.length : 0;
+  const actionableCount = Array.isArray(needsPractice) ? needsPractice.length : 0;
 
   const getSubBreakdown = () => {
     const parts: string[] = [];
-    if (stats.swedishCount > 0) parts.push(`${stats.swedishCount} Swedish`);
-    if (stats.englishCount > 0) parts.push(`${stats.englishCount} English`);
-    if (stats.pythonCount > 0) parts.push(`${stats.pythonCount} Python`);
+    if ((stats?.swedishCount ?? 0) > 0) parts.push(`${stats.swedishCount} Swedish`);
+    if ((stats?.englishCount ?? 0) > 0) parts.push(`${stats.englishCount} English`);
+    if ((stats?.pythonCount ?? 0) > 0) parts.push(`${stats.pythonCount} Python`);
     return parts.length > 0 ? parts.join(' · ') : 'All clear';
   };
 

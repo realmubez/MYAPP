@@ -178,16 +178,7 @@ export const TYPING_CURRICULUM: Record<number, TypingDay> = {
 const STORAGE_PREFIX = 'mylearning_touch_typing_day_';
 
 export function getTouchTypingProgress(day: number): TouchTypingProgress {
-  try {
-    const raw = localStorage.getItem(`${STORAGE_PREFIX}${day}`);
-    if (raw) {
-      return JSON.parse(raw);
-    }
-  } catch (e) {
-    console.warn('Failed to read touch typing progress:', e);
-  }
-
-  return {
+  const defaults: TouchTypingProgress = {
     day,
     currentExerciseIndex: 0,
     completed: false,
@@ -199,6 +190,24 @@ export function getTouchTypingProgress(day: number): TouchTypingProgress {
     lastActiveAt: new Date().toISOString(),
     introSeen: false,
   };
+
+  try {
+    const raw = localStorage.getItem(`${STORAGE_PREFIX}${day}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          ...defaults,
+          ...parsed,
+          exerciseResults: Array.isArray(parsed.exerciseResults) ? parsed.exerciseResults : [],
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to read touch typing progress:', e);
+  }
+
+  return defaults;
 }
 
 export function saveTouchTypingProgress(progress: TouchTypingProgress): void {

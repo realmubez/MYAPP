@@ -45,7 +45,10 @@ export const storageService = {
     try {
       const data = localStorage.getItem(SETTINGS_KEY);
       if (data) {
-        return { ...DEFAULT_SETTINGS, ...JSON.parse(data) };
+        const parsed = JSON.parse(data);
+        if (parsed && typeof parsed === 'object') {
+          return { ...DEFAULT_SETTINGS, ...parsed };
+        }
       }
     } catch (e) {
       console.warn('Could not read settings from localStorage:', e);

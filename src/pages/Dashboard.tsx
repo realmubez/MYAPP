@@ -240,15 +240,15 @@ export function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4 lg:gap-5">
           <SubjectCard
             subject={SUBJECTS.swedish}
-            progressData={progress.subjects.swedish}
+            progressData={progress?.subjects?.swedish}
           />
           <SubjectCard
             subject={SUBJECTS.english}
-            progressData={progress.subjects.english}
+            progressData={progress?.subjects?.english}
           />
           <SubjectCard
             subject={SUBJECTS.python}
-            progressData={progress.subjects.python}
+            progressData={progress?.subjects?.python}
           />
         </div>
       </section>

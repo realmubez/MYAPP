@@ -4,7 +4,7 @@ import { useProgress } from '../../hooks/useProgress';
 
 export function DashboardHero() {
   const { progress } = useProgress();
-  const lastPos = progress.lastPosition;
+  const lastPos = progress?.lastPosition;
   const continueRoute = lastPos?.subjectId ? `/${lastPos.subjectId}` : '/swedish';
 
   return (

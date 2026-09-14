@@ -40,8 +40,9 @@ export function saveDifficultWord(word: string, language: Language) {
 
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.DIFFICULT_WORDS);
-    const list: DifficultWord[] = raw ? JSON.parse(raw) : [];
-    const existing = list.find((item) => item.word.toLowerCase() === clean && item.language === language);
+    const parsed = raw ? JSON.parse(raw) : [];
+    const list: DifficultWord[] = Array.isArray(parsed) ? parsed : [];
+    const existing = list.find((item) => item && typeof item === 'object' && item.word && item.word.toLowerCase() === clean && item.language === language);
     if (existing) {
       existing.mistakes += 1;
       existing.lastMistakeAt = Date.now();
@@ -63,7 +64,8 @@ export function getDifficultWords(language?: Language): DifficultWord[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.DIFFICULT_WORDS);
     if (!raw) return [];
-    const list: DifficultWord[] = JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    const list: DifficultWord[] = Array.isArray(parsed) ? parsed.filter((item) => item && typeof item === 'object') : [];
     if (language) {
       return list.filter((item) => item.language === language);
     }
