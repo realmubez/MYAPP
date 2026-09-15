@@ -4,7 +4,7 @@ import {
   createSessionCookie,
   clearSessionCookie,
   isAuthenticatedRequest,
-} from './auth';
+} from './auth.ts';
 
 export const authRouter = Router();
 

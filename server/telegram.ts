@@ -15,7 +15,7 @@ import {
   liveTelegramSettings,
   toggleSomaliVoice,
   toggleTranslation,
-} from './telegramData';
+} from './telegramData.ts';
 
 export interface TelegramConfig {
   botToken: string;

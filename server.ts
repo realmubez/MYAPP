@@ -2,10 +2,10 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
-import { telegramRouter } from './server/router';
-import { startPollingLoop } from './server/telegram';
-import { authRouter } from './server/authRouter';
-import { isAuthenticatedRequest } from './server/auth';
+import { telegramRouter } from './server/router.ts';
+import { startPollingLoop } from './server/telegram.ts';
+import { authRouter } from './server/authRouter.ts';
+import { isAuthenticatedRequest } from './server/auth.ts';
 
 // Load local environment variables if available
 dotenv.config();

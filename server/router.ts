@@ -9,8 +9,8 @@ import {
   sendTelegramSomaliSample,
   sendTelegramMistakeReview,
   handleTelegramWebhook,
-} from './telegram';
-import { updateProgress, liveTelegramProgress } from './telegramData';
+} from './telegram.ts';
+import { updateProgress, liveTelegramProgress } from './telegramData.ts';
 
 export const telegramRouter = Router();
 
