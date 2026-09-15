@@ -212,6 +212,6 @@ export interface ContinueInfo {
 }
 
 export type LoginResult =
-  | { ok: true; message?: string; error?: string }
-  | { ok: false; message: string; error: string };
+  | { ok: true; message?: string; error?: string; code?: string }
+  | { ok: false; message: string; error: string; code?: string };
 

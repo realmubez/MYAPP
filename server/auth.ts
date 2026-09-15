@@ -15,30 +15,33 @@ interface RateLimitRecord {
 
 const rateLimitMap = new Map<string, RateLimitRecord>();
 
-// Cleanup stale rate limit records periodically
-setInterval(() => {
+/**
+ * Periodically or on-demand clean up stale rate limit entries without persistent intervals.
+ */
+function cleanupStaleRateLimits(): void {
   const now = Date.now();
   for (const [ip, record] of rateLimitMap.entries()) {
     if (now > record.lockUntil && now - record.lastAttempt > 60 * 60 * 1000) {
       rateLimitMap.delete(ip);
     }
   }
-}, 10 * 60 * 1000).unref();
+}
 
 /**
  * Gets the server-side signing secret derived from the configured password or environment.
  */
 function getSigningSecret(): string {
   const password = process.env.MY_LEARNING_PASSWORD || '';
-  if (!password) {
-    // Development fallback if not set yet, logs warning
-    if (process.env.NODE_ENV !== 'production') {
+  const explicitSecret = process.env.SESSION_SECRET || '';
+  const secretSource = explicitSecret || password;
+  if (!secretSource) {
+    if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
       return 'mylearning-default-dev-secret-change-in-production-env';
     }
-    return 'mylearning-unconfigured-secret';
+    return 'mylearning-unconfigured-secret-fallback';
   }
   // Derive a strong HMAC key using SHA-256
-  return crypto.createHash('sha256').update(`mylearning-salt:${password}`).digest('hex');
+  return crypto.createHash('sha256').update(`mylearning-salt:${secretSource}`).digest('hex');
 }
 
 /**
@@ -91,15 +94,28 @@ export function verifySessionToken(token: string | undefined): boolean {
   return crypto.timingSafeEqual(sigBuffer, expectedBuffer);
 }
 
+export interface VerifyPasswordResult {
+  success: boolean;
+  error?: string;
+  message?: string;
+  status?: number;
+  code?: 'AUTH_CONFIG_ERROR' | 'INVALID_PASSWORD' | 'RATE_LIMITED' | 'AUTH_INTERNAL_ERROR';
+}
+
 /**
  * Verifies the submitted password against MY_LEARNING_PASSWORD with brute-force rate-limiting.
  */
 export function verifyPassword(
   inputPassword: string,
   clientIp: string
-): { success: boolean; error?: string; status?: number } {
+): VerifyPasswordResult {
   const now = Date.now();
   const normalizedIp = clientIp || '127.0.0.1';
+
+  // Periodic cleanup if map grows large
+  if (rateLimitMap.size > 200) {
+    cleanupStaleRateLimits();
+  }
 
   // Check rate limit
   const record = rateLimitMap.get(normalizedIp);
@@ -108,7 +124,11 @@ export function verifyPassword(
     return {
       success: false,
       status: 429,
+      code: 'RATE_LIMITED',
       error: `Too many failed attempts. Please try again in ${minutesLeft} minute${
+        minutesLeft === 1 ? '' : 's'
+      }.`,
+      message: `Too many failed attempts. Please try again in ${minutesLeft} minute${
         minutesLeft === 1 ? '' : 's'
       }.`,
     };
@@ -117,25 +137,35 @@ export function verifyPassword(
   let targetPassword = process.env.MY_LEARNING_PASSWORD;
 
   if (!targetPassword) {
-    if (process.env.NODE_ENV !== 'production') {
+    // Only allow development fallback if explicitly not in production and not running on Vercel
+    if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
       targetPassword = 'mylearning';
       console.warn(
         '[AUTH NOTICE] MY_LEARNING_PASSWORD is not set in environment variables. Using development password "mylearning". Please define MY_LEARNING_PASSWORD in your .env file or Vercel settings.'
       );
     } else {
+      console.error(
+        `[AUTH CONFIG ERROR] MY_LEARNING_PASSWORD is missing at runtime. (VERCEL=${Boolean(
+          process.env.VERCEL
+        )}, VERCEL_ENV=${process.env.VERCEL_ENV || 'unset'}, NODE_ENV=${process.env.NODE_ENV})`
+      );
       return {
         success: false,
         status: 500,
-        error: 'Server authentication is not configured. Please set MY_LEARNING_PASSWORD in environment variables.',
+        code: 'AUTH_CONFIG_ERROR',
+        error: 'Authentication service unavailable',
+        message: 'Authentication service unavailable',
       };
     }
   }
 
-  // Constant-time comparison to prevent timing attacks
-  const inputHash = crypto.createHash('sha256').update(inputPassword || '').digest();
-  const targetHash = crypto.createHash('sha256').update(targetPassword).digest();
+  // Constant-time comparison to prevent timing attacks.
+  // Both strings are SHA-256 hashed first to guarantee identical 32-byte buffers.
+  const inputHash = crypto.createHash('sha256').update(String(inputPassword || '')).digest();
+  const targetHash = crypto.createHash('sha256').update(String(targetPassword)).digest();
 
-  const isMatch = crypto.timingSafeEqual(inputHash, targetHash);
+  const isMatch =
+    inputHash.length === targetHash.length && crypto.timingSafeEqual(inputHash, targetHash);
 
   if (isMatch) {
     // Reset failed attempts on success
@@ -161,7 +191,9 @@ export function verifyPassword(
   return {
     success: false,
     status: 401,
+    code: 'INVALID_PASSWORD',
     error: 'Incorrect password',
+    message: 'Incorrect password',
   };
 }
 

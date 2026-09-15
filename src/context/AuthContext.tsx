@@ -157,6 +157,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         defaultFallback = 'Incorrect password';
       } else if (response.status === 429) {
         defaultFallback = 'Too many attempts. Please try again later.';
+      } else if (data?.code === 'AUTH_CONFIG_ERROR') {
+        defaultFallback = 'Authentication service unavailable';
       }
 
       const safeMessage = normalizeAuthError(data, defaultFallback);
@@ -165,6 +167,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ok: false,
         message: safeMessage,
         error: safeMessage,
+        code: typeof data?.code === 'string' ? data.code : undefined,
       };
     } catch {
       return {
