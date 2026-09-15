@@ -44,13 +44,16 @@ authRouter.post('/login', (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/auth/check
+ * GET /api/auth/check and GET /api/auth/session
  * Verifies if the request currently holds a valid session.
  */
-authRouter.get('/check', (req: Request, res: Response) => {
+const handleSessionCheck = (req: Request, res: Response) => {
   const authenticated = isAuthenticatedRequest(req);
-  return res.status(200).json({ authenticated });
-});
+  return res.status(200).json({ authenticated, ok: authenticated });
+};
+
+authRouter.get('/check', handleSessionCheck);
+authRouter.get('/session', handleSessionCheck);
 
 /**
  * POST /api/auth/logout

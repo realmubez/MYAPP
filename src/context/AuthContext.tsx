@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const checkSession = useCallback(async (): Promise<boolean> => {
     try {
-      const response = await fetch('/api/auth/check', {
+      const response = await fetch('/api/auth/session', {
         method: 'GET',
         headers: {
           'Accept': 'application/json',

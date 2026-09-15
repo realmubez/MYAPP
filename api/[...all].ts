@@ -10,15 +10,10 @@ import {
   handleTelegramWebhook,
 } from '../server/telegram';
 import { updateProgress, liveTelegramProgress } from '../server/telegramData';
-import {
-  verifyPassword,
-  createSessionCookie,
-  clearSessionCookie,
-  isAuthenticatedRequest,
-} from '../server/auth';
+import { isAuthenticatedRequest } from '../server/auth';
 
 /**
- * Vercel Serverless Function entry point for all /api/auth/* and /api/telegram/* routes
+ * Vercel Serverless Function entry point for /api/telegram/* routes
  */
 export default async function handler(req: any, res: any) {
   // Normalize path
@@ -33,52 +28,6 @@ export default async function handler(req: any, res: any) {
     } catch {
       // keep as is
     }
-  }
-
-  // ==========================================
-  // AUTHENTICATION ROUTES
-  // ==========================================
-
-  // POST /api/auth/login
-  if (url.includes('/auth/login') && method === 'POST') {
-    const { password } = body || {};
-    if (!password || typeof password !== 'string') {
-      return res.status(400).json({ ok: false, error: 'Password is required', message: 'Password is required' });
-    }
-
-    const clientIp =
-      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-      req.socket?.remoteAddress ||
-      '127.0.0.1';
-
-    const result = verifyPassword(password, clientIp);
-    if (!result.success) {
-      const errorMsg = result.error || 'Incorrect password';
-      return res.status(result.status || 401).json({
-        ok: false,
-        error: errorMsg,
-        message: errorMsg,
-      });
-    }
-
-    const isProduction = process.env.NODE_ENV === 'production';
-    const cookieHeader = createSessionCookie(isProduction);
-    res.setHeader('Set-Cookie', cookieHeader);
-    return res.status(200).json({ ok: true });
-  }
-
-  // GET /api/auth/check
-  if (url.includes('/auth/check') && method === 'GET') {
-    const authenticated = isAuthenticatedRequest(req);
-    return res.status(200).json({ authenticated });
-  }
-
-  // POST /api/auth/logout
-  if (url.includes('/auth/logout') && method === 'POST') {
-    const isProduction = process.env.NODE_ENV === 'production';
-    const cookieHeader = clearSessionCookie(isProduction);
-    res.setHeader('Set-Cookie', cookieHeader);
-    return res.status(200).json({ ok: true });
   }
 
   // ==========================================
