@@ -1,9 +1,58 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { LoginResult } from '../types';
+
+/**
+ * Safely extracts a user-facing string error message from any API response, error object, or status.
+ * Guarantees that the returned value is ALWAYS a string and NEVER an object.
+ */
+export function normalizeAuthError(value: unknown, defaultMessage = 'Unable to sign in. Please try again.'): string {
+  if (!value) {
+    return defaultMessage;
+  }
+
+  // 1. Direct string
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : defaultMessage;
+  }
+
+  // 2. Objects: handle { error: { message: "..." } }, { error: "..." }, { code: "...", message: "..." }, etc.
+  if (typeof value === 'object') {
+    const obj = value as Record<string, any>;
+
+    // Nested `error` property check
+    if (obj.error !== undefined && obj.error !== null) {
+      if (typeof obj.error === 'string' && obj.error.trim()) {
+        return obj.error.trim();
+      }
+      if (typeof obj.error === 'object') {
+        if (typeof obj.error.message === 'string' && obj.error.message.trim()) {
+          return obj.error.message.trim();
+        }
+        if (typeof obj.error.description === 'string' && obj.error.description.trim()) {
+          return obj.error.description.trim();
+        }
+      }
+    }
+
+    // Direct `message` property (e.g. { code: "...", message: "..." } or Error instance)
+    if (typeof obj.message === 'string' && obj.message.trim()) {
+      return obj.message.trim();
+    }
+
+    // Direct `description` property
+    if (typeof obj.description === 'string' && obj.description.trim()) {
+      return obj.description.trim();
+    }
+  }
+
+  return defaultMessage;
+}
 
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (password: string) => Promise<{ ok: boolean; error?: string }>;
+  login: (password: string) => Promise<LoginResult>;
   logout: () => Promise<void>;
   checkSession: () => Promise<boolean>;
 }
@@ -53,31 +102,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkSession();
   }, [checkSession]);
 
-  const login = async (password: string): Promise<{ ok: boolean; error?: string }> => {
+  const login = async (password: string): Promise<LoginResult> => {
     try {
+      const trimmedPassword = (password || '').trim();
+      if (!trimmedPassword) {
+        return {
+          ok: false,
+          message: 'Enter your password',
+          error: 'Enter your password',
+        };
+      }
+
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ password: trimmedPassword }),
         credentials: 'same-origin',
       });
 
-      const data = await response.json().catch(() => ({}));
+      const contentType = response.headers.get('content-type') || '';
+      const isJson = contentType.includes('application/json');
 
-      if (response.ok && data.ok) {
+      if (!isJson) {
+        if (response.status === 401) {
+          return { ok: false, message: 'Incorrect password', error: 'Incorrect password' };
+        }
+        if (response.status === 429) {
+          return {
+            ok: false,
+            message: 'Too many attempts. Please try again later.',
+            error: 'Too many attempts. Please try again later.',
+          };
+        }
+        return {
+          ok: false,
+          message: 'Unable to sign in. Please try again.',
+          error: 'Unable to sign in. Please try again.',
+        };
+      }
+
+      const data = await response.json().catch(() => null);
+
+      if (response.ok && data?.ok) {
         setIsAuthenticated(true);
         return { ok: true };
       }
 
+      // Safe normalization of message from response data
+      let defaultFallback = 'Unable to sign in. Please try again.';
+      if (response.status === 401) {
+        defaultFallback = 'Incorrect password';
+      } else if (response.status === 429) {
+        defaultFallback = 'Too many attempts. Please try again later.';
+      }
+
+      const safeMessage = normalizeAuthError(data, defaultFallback);
+
       return {
         ok: false,
-        error: data.error || (response.status === 429 ? 'Too many attempts. Please try again later.' : 'Incorrect password'),
+        message: safeMessage,
+        error: safeMessage,
       };
     } catch {
-      return { ok: false, error: 'Connection error. Please try again.' };
+      return {
+        ok: false,
+        message: 'Unable to connect. Please try again.',
+        error: 'Unable to connect. Please try again.',
+      };
     }
   };
 

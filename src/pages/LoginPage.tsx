@@ -1,7 +1,7 @@
 import { useState, FormEvent, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, normalizeAuthError } from '../context/AuthContext';
 
 /**
  * Validates and sanitizes the redirect URL to prevent open redirect vulnerabilities.
@@ -48,17 +48,33 @@ export function LoginPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!password.trim() || isSubmitting) return;
+    const cleanPassword = password.trim();
+
+    if (!cleanPassword) {
+      setError('Enter your password');
+      passwordInputRef.current?.focus();
+      return;
+    }
+
+    if (isSubmitting) return;
 
     setError(null);
     setIsSubmitting(true);
 
-    const result = await login(password.trim());
+    try {
+      const result = await login(cleanPassword);
 
-    if (result.ok) {
-      navigate(safeRedirect, { replace: true });
-    } else {
-      setError(result.error || 'Incorrect password');
+      if (result.ok) {
+        navigate(safeRedirect, { replace: true });
+      } else {
+        const errorText = normalizeAuthError(result.message || result.error, 'Incorrect password');
+        setError(errorText);
+        setIsSubmitting(false);
+        setPassword('');
+        passwordInputRef.current?.focus();
+      }
+    } catch (err) {
+      setError(normalizeAuthError(err, 'Unable to sign in. Please try again.'));
       setIsSubmitting(false);
       setPassword('');
       passwordInputRef.current?.focus();
@@ -117,7 +133,7 @@ export function LoginPage() {
           </div>
 
           {/* Error Message */}
-          {error && (
+          {error && typeof error === 'string' && (
             <div
               role="alert"
               className="flex items-start gap-2.5 p-3 rounded-xl bg-red-950/40 border border-red-800/50 text-red-300 text-xs animate-in fade-in duration-200"

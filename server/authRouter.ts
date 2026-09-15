@@ -16,7 +16,7 @@ authRouter.post('/login', (req: Request, res: Response) => {
   const { password } = req.body || {};
 
   if (!password || typeof password !== 'string') {
-    return res.status(400).json({ ok: false, error: 'Password is required' });
+    return res.status(400).json({ ok: false, error: 'Password is required', message: 'Password is required' });
   }
 
   const clientIp =
@@ -28,9 +28,11 @@ authRouter.post('/login', (req: Request, res: Response) => {
   const result = verifyPassword(password, clientIp);
 
   if (!result.success) {
+    const errorMsg = result.error || 'Incorrect password';
     return res.status(result.status || 401).json({
       ok: false,
-      error: result.error || 'Incorrect password',
+      error: errorMsg,
+      message: errorMsg,
     });
   }
 

@@ -23,7 +23,7 @@ setInterval(() => {
       rateLimitMap.delete(ip);
     }
   }
-}, 10 * 60 * 1000);
+}, 10 * 60 * 1000).unref();
 
 /**
  * Gets the server-side signing secret derived from the configured password or environment.

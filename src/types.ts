@@ -211,3 +211,7 @@ export interface ContinueInfo {
   targetRoute: string;
 }
 
+export type LoginResult =
+  | { ok: true; message?: string; error?: string }
+  | { ok: false; message: string; error: string };
+
