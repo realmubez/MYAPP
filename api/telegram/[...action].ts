@@ -10,7 +10,7 @@ import {
   handleTelegramWebhook,
 } from '../../server/telegram.ts';
 import { updateProgress, liveTelegramProgress } from '../../server/telegramData.ts';
-import { isAuthenticatedRequest } from '../auth/_authCore.ts';
+import { isAuthenticatedRequest } from '../../server/auth.ts';
 
 /**
  * Vercel Serverless Function scoped strictly to /api/telegram/*
