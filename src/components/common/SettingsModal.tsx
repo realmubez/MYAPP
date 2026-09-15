@@ -64,9 +64,12 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     try {
       setTelegramLoading(true);
       const res = await fetch('/api/telegram/status');
-      if (res.ok) {
-        const data = await res.json() as TelegramStatus;
-        setTelegramStatus(data);
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
+        const data = (await res.json().catch(() => null)) as TelegramStatus | null;
+        if (data) {
+          setTelegramStatus(data);
+        }
       }
     } catch {
       // Offline or error
@@ -87,7 +90,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           : '/api/telegram/send-sample-somali';
 
       const res = await fetch(endpoint, { method: 'POST' });
-      const data = await res.json() as { ok: boolean; message?: string; error?: string; description?: string };
+      const contentType = res.headers.get('content-type') || '';
+      const data = contentType.includes('application/json')
+        ? ((await res.json().catch(() => ({}))) as { ok?: boolean; message?: string; error?: string; description?: string })
+        : {};
 
       if (res.ok && data.ok) {
         setActionFeedback({

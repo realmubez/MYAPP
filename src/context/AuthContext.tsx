@@ -30,8 +30,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return false;
       }
 
-      const data = await response.json();
-      const authenticated = Boolean(data.authenticated);
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        setIsAuthenticated(false);
+        setIsLoading(false);
+        return false;
+      }
+
+      const data = await response.json().catch(() => null);
+      const authenticated = Boolean(data?.authenticated);
       setIsAuthenticated(authenticated);
       setIsLoading(false);
       return authenticated;
