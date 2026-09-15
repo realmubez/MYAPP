@@ -1,5 +1,6 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
 import fs from 'fs';
 import path from 'path';
 import {defineConfig, Plugin} from 'vite';
@@ -66,7 +67,106 @@ function aistudioMediaPlugin(): Plugin {
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss(), aistudioMediaPlugin()],
+    plugins: [
+      react(),
+      tailwindcss(),
+      aistudioMediaPlugin(),
+      VitePWA({
+        registerType: 'prompt',
+        includeAssets: [
+          'favicon-32x32.png',
+          'apple-touch-icon.png',
+          'pwa-icon.svg',
+          'pwa-maskable.svg',
+        ],
+        manifest: {
+          id: '/',
+          name: 'MY LEARNING',
+          short_name: 'MY LEARNING',
+          description: 'I learn by typing.',
+          start_url: '/',
+          scope: '/',
+          display: 'standalone',
+          orientation: 'any',
+          theme_color: '#0a0908',
+          background_color: '#0a0908',
+          icons: [
+            {
+              src: '/pwa-192x192.png',
+              sizes: '192x192',
+              type: 'image/png',
+              purpose: 'any',
+            },
+            {
+              src: '/pwa-512x512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'any',
+            },
+            {
+              src: '/pwa-maskable-512x512.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'maskable',
+            },
+          ],
+        },
+        workbox: {
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+          // Explicitly never intercept or cache server API endpoints or login redirects
+          navigateFallback: '/index.html',
+          navigateFallbackDenylist: [/^\/api\//, /^\/login/],
+          runtimeCaching: [
+            // Google Fonts stylesheets
+            {
+              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+              handler: 'StaleWhileRevalidate',
+              options: {
+                cacheName: 'google-fonts-stylesheets',
+                expiration: {
+                  maxEntries: 10,
+                  maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+                },
+                cacheableResponse: {
+                  statuses: [0, 200],
+                },
+              },
+            },
+            // Google Fonts webfont files
+            {
+              urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'google-fonts-webfonts',
+                expiration: {
+                  maxEntries: 20,
+                  maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+                },
+                cacheableResponse: {
+                  statuses: [0, 200],
+                },
+              },
+            },
+            // Static images from the app
+            {
+              urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico)$/i,
+              handler: 'StaleWhileRevalidate',
+              options: {
+                cacheName: 'app-static-images',
+                expiration: {
+                  maxEntries: 50,
+                  maxAgeSeconds: 60 * 60 * 24 * 30,
+                },
+              },
+            },
+          ],
+        },
+        devOptions: {
+          enabled: true,
+          type: 'module',
+        },
+      }),
+    ],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

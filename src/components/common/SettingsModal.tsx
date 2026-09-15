@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Volume2, VolumeX, Type, Eye, Languages, Send, Bot, CheckCircle, AlertCircle, Loader2, ExternalLink, LogOut } from 'lucide-react';
+import { X, Volume2, VolumeX, Type, Eye, Languages, Send, Bot, CheckCircle, AlertCircle, Loader2, ExternalLink, LogOut, Download, Smartphone, Check } from 'lucide-react';
 import { AppSettings } from '../../types';
 import { storageService } from '../../services/storage';
 import { typingSoundService } from '../../services/typingSoundService';
 import { translationService, TranslationLang } from '../../services/translationPreference';
 import { useAuth } from '../../context/AuthContext';
+import { usePwaInstall } from '../../hooks/usePwaInstall';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -30,6 +31,8 @@ interface TelegramStatus {
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [settings, setSettings] = useState<AppSettings>(storageService.getSettings());
+  const { isInstallable, isInstalled, isStandalone, isIOS, installApp } = usePwaInstall();
+  const [isInstalling, setIsInstalling] = useState(false);
   const [translationLang, setTranslationLang] = useState<'so' | 'sv' | 'off'>(() => {
     const lang = translationService.getLanguage('en');
     if (lang === 'sv' || lang === 'off') return lang;
@@ -579,6 +582,65 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     Only your numerical user ID is allowed. All other accounts are strictly blocked.
                   </p>
                 </div>
+              )}
+            </div>
+          </div>
+
+          {/* Application / PWA Install */}
+          <div className="space-y-3 rounded-2xl border border-neutral-800/80 bg-[#181614] p-3.5 sm:p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-400 shrink-0">
+                  <Smartphone className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs sm:text-sm font-semibold text-white">
+                      MY LEARNING App
+                    </p>
+                    {isStandalone ? (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                        Installed
+                      </span>
+                    ) : isInstallable ? (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                        Installable
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="text-[11px] sm:text-xs text-neutral-400">
+                    {isStandalone ? 'Installed as standalone application' : 'Install on desktop or Android device'}
+                  </p>
+                </div>
+              </div>
+
+              {isStandalone ? (
+                <div className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-neutral-900 border border-neutral-800 text-xs text-neutral-300">
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Installed</span>
+                </div>
+              ) : isInstallable ? (
+                <button
+                  type="button"
+                  id="modal-install-pwa-btn"
+                  disabled={isInstalling}
+                  onClick={async () => {
+                    setIsInstalling(true);
+                    try {
+                      await installApp();
+                    } finally {
+                      setIsInstalling(false);
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-98 text-neutral-950 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>{isInstalling ? 'Installing...' : 'Install'}</span>
+                </button>
+              ) : isIOS ? (
+                <span className="text-[10px] text-neutral-400">Share → Add to Home</span>
+              ) : (
+                <span className="text-[10px] text-neutral-500 font-mono">Web Ready</span>
               )}
             </div>
           </div>

@@ -12,6 +12,8 @@ import { TouchTypingPage } from './pages/TouchTypingPage';
 import { ProgressPage } from './pages/ProgressPage';
 import { ReviewPage } from './pages/ReviewPage';
 import { FocusLessonPage } from './pages/FocusLessonPage';
+import { SettingsPage } from './pages/SettingsPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 export default function App() {
@@ -35,6 +37,8 @@ export default function App() {
                 <Route path="/typing/day/:dayNumber" element={<TouchTypingPage />} />
                 <Route path="/progress" element={<ProgressPage />} />
                 <Route path="/review" element={<ReviewPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/focus/:subject/:lessonId" element={<FocusLessonPage />} />
                 <Route path="/focus/:subject" element={<FocusLessonPage />} />
                 <Route path="/lesson/:id" element={<FocusLessonPage />} />

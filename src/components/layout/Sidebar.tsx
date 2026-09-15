@@ -148,42 +148,48 @@ export function Sidebar({
           })}
 
           {/* Profile link */}
-          <button
-            type="button"
+          <NavLink
+            to="/profile"
             id="sidebar-nav-profile"
-            onClick={onOpenSettings}
             title={isCollapsed ? 'Profile' : undefined}
             aria-label="Profile"
-            className={`flex items-center rounded-xl text-xs font-semibold text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900/80 border border-transparent transition-all cursor-pointer ${
+            className={`flex items-center rounded-xl text-xs font-semibold transition-all ${
+              location.pathname === '/profile'
+                ? 'bg-amber-400/15 text-amber-400 border border-amber-400/30 shadow-sm shadow-amber-500/10'
+                : 'text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900/80 border border-transparent'
+            } ${
               isCollapsed
                 ? 'h-11 w-11 mx-auto justify-center'
                 : 'w-full gap-3.5 px-3.5 py-2.5 text-left'
             }`}
           >
-            <User className="w-4 h-4 shrink-0 text-neutral-400" />
+            <User className="w-4 h-4 shrink-0" />
             {!isCollapsed && <span>Profile</span>}
-          </button>
+          </NavLink>
         </nav>
       </div>
 
       {/* Bottom Area: Settings, Help & Collapse Toggle */}
       <div className="space-y-3 pt-3 border-t border-neutral-900">
         <div className="space-y-1">
-          <button
-            type="button"
+          <NavLink
+            to="/settings"
             id="sidebar-nav-settings"
-            onClick={onOpenSettings}
             title={isCollapsed ? 'Settings' : undefined}
             aria-label="Settings"
-            className={`flex items-center rounded-xl text-xs font-medium text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900/80 transition-all cursor-pointer ${
+            className={`flex items-center rounded-xl text-xs font-medium transition-all ${
+              location.pathname === '/settings'
+                ? 'bg-amber-400/15 text-amber-400 border border-amber-400/30 shadow-sm shadow-amber-500/10'
+                : 'text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900/80'
+            } ${
               isCollapsed
                 ? 'h-10 w-10 mx-auto justify-center'
                 : 'w-full gap-3.5 px-3.5 py-2 text-left'
             }`}
           >
-            <Settings className="w-4 h-4 shrink-0 text-neutral-400" />
+            <Settings className="w-4 h-4 shrink-0" />
             {!isCollapsed && <span>Settings</span>}
-          </button>
+          </NavLink>
 
           <button
             type="button"

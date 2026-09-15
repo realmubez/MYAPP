@@ -1,5 +1,32 @@
 export type SubjectId = 'swedish' | 'english' | 'python' | 'typing';
 
+/* =======================================================
+   PROFILE & MULTI-USER ARCHITECTURE (PHASE 1)
+======================================================= */
+export type UserRole = 'admin' | 'member';
+
+export interface UserProfile {
+  id: string;
+  displayName: string;
+  avatar: string; // Built-in avatar identifier/icon (e.g. 'avatar-keyboard', 'avatar-student', etc.)
+  role: UserRole;
+  assignedSubjects: SubjectId[];
+  joinedAt: string; // ISO 8601 string
+}
+
+export type SubjectType = 'language' | 'programming' | 'typing' | 'academic';
+
+export interface SubjectDefinition {
+  id: SubjectId;
+  name: string;
+  nativeName?: string;
+  icon: string;
+  type: SubjectType;
+  route: string;
+  description: string;
+  enabled: boolean;
+}
+
 export interface SubjectInfo {
   id: SubjectId;
   name: string;

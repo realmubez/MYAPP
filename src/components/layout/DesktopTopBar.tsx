@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect, FormEvent } from 'react';
-import { Search, Bell, Sun, ChevronDown, Settings, LogOut, Shield } from 'lucide-react';
+import { Search, Bell, Sun, ChevronDown, Settings, LogOut, Shield, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useProfile } from '../../hooks/useProfile';
+import { BUILT_IN_AVATARS } from '../../services/profileService';
 
 interface DesktopTopBarProps {
   onOpenSettings: () => void;
@@ -13,6 +15,9 @@ export function DesktopTopBar({ onOpenSettings }: DesktopTopBarProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const { profile, isAdmin } = useProfile();
+
+  const avatarOption = BUILT_IN_AVATARS.find((a) => a.id === profile.avatar) || BUILT_IN_AVATARS[0];
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -90,7 +95,7 @@ export function DesktopTopBar({ onOpenSettings }: DesktopTopBarProps) {
         <button
           type="button"
           id="desktop-theme-toggle-btn"
-          onClick={onOpenSettings}
+          onClick={() => navigate('/settings')}
           aria-label="Theme Settings"
           title="Theme Settings"
           className="flex h-10 w-10 items-center justify-center rounded-2xl border border-neutral-800 bg-[#141210] text-neutral-400 hover:text-white hover:border-neutral-700 transition-colors cursor-pointer"
@@ -102,7 +107,7 @@ export function DesktopTopBar({ onOpenSettings }: DesktopTopBarProps) {
         <button
           type="button"
           id="desktop-notifications-btn"
-          onClick={onOpenSettings}
+          onClick={() => navigate('/settings')}
           aria-label="Notifications"
           title="Notifications"
           className="relative flex h-10 w-10 items-center justify-center rounded-2xl border border-neutral-800 bg-[#141210] text-neutral-400 hover:text-white hover:border-neutral-700 transition-colors cursor-pointer"
@@ -122,15 +127,15 @@ export function DesktopTopBar({ onOpenSettings }: DesktopTopBarProps) {
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             className="flex items-center gap-3 pl-2 pr-3 py-1.5 rounded-2xl border border-neutral-800 bg-[#141210] hover:border-neutral-700 transition-all cursor-pointer text-left"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-700 text-white font-bold text-xs">
-              M
+            <div className={`flex h-8 w-8 items-center justify-center rounded-xl border text-sm font-bold ${avatarOption.bgColor}`}>
+              {avatarOption.emoji}
             </div>
             <div className="flex flex-col">
-              <span className="text-xs font-semibold text-white leading-tight">
-                Welcome back
+              <span className="text-xs font-semibold text-white leading-tight truncate max-w-[120px]">
+                {profile.displayName}
               </span>
-              <span className="text-[11px] text-neutral-400 font-normal">
-                Keep learning!
+              <span className="text-[10px] text-amber-400 font-mono tracking-wider">
+                {isAdmin ? 'ADMIN' : 'MEMBER'}
               </span>
             </div>
             <ChevronDown className={`w-3.5 h-3.5 text-neutral-500 ml-1 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
@@ -142,7 +147,7 @@ export function DesktopTopBar({ onOpenSettings }: DesktopTopBarProps) {
               <div className="px-3 py-2 border-b border-neutral-800/80 mb-1">
                 <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-400">
                   <Shield className="w-3 h-3" />
-                  <span>Private Session</span>
+                  <span>{profile.displayName} · {isAdmin ? 'Admin' : 'Member'}</span>
                 </div>
                 <p className="text-[10px] text-neutral-400 font-mono mt-0.5">
                   “I learn by typing.”
@@ -151,10 +156,23 @@ export function DesktopTopBar({ onOpenSettings }: DesktopTopBarProps) {
 
               <button
                 type="button"
+                id="profile-dropdown-profile-btn"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  navigate('/profile');
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-neutral-300 hover:text-white hover:bg-neutral-900/90 transition-colors text-left cursor-pointer"
+              >
+                <User className="w-3.5 h-3.5 text-neutral-400" />
+                <span>Profile</span>
+              </button>
+
+              <button
+                type="button"
                 id="profile-dropdown-settings-btn"
                 onClick={() => {
                   setIsMenuOpen(false);
-                  onOpenSettings();
+                  navigate('/settings');
                 }}
                 className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-neutral-300 hover:text-white hover:bg-neutral-900/90 transition-colors text-left cursor-pointer"
               >

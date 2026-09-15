@@ -43,17 +43,22 @@ export function BottomNav({ onOpenSettings }: BottomNavProps) {
           );
         })}
 
-        {/* Profile / Settings Tab */}
-        <button
-          type="button"
+        {/* Profile Tab */}
+        <NavLink
+          to="/profile"
           id="bottom-nav-profile"
-          onClick={onOpenSettings}
-          className="flex flex-col items-center justify-center py-1 px-3 text-neutral-400 hover:text-neutral-200 transition-colors"
-          aria-label="Open Profile & Settings"
+          className={({ isActive }) =>
+            `flex flex-col items-center justify-center py-1 px-3 transition-colors ${
+              isActive
+                ? 'text-amber-400 font-semibold'
+                : 'text-neutral-400 hover:text-neutral-200'
+            }`
+          }
+          aria-label="Open Profile"
         >
           <User className="w-5 h-5 mb-1" />
           <span className="text-[11px] font-medium tracking-tight">Profile</span>
-        </button>
+        </NavLink>
       </div>
     </nav>
   );

@@ -10,6 +10,7 @@ import { SettingsModal } from '../components/common/SettingsModal';
 import { DashboardHero } from '../components/dashboard/DashboardHero';
 import { RecentActivity } from '../components/dashboard/RecentActivity';
 import { KeepGoing } from '../components/dashboard/KeepGoing';
+import { OfflineBanner } from '../components/common/OfflineBanner';
 import { SUBJECTS } from '../data/mockData';
 import { useProgress } from '../hooks/useProgress';
 
@@ -149,11 +150,25 @@ export function Dashboard() {
             </span>
             <ChevronRight className="w-3.5 h-3.5 text-neutral-500" />
           </Link>
+          <Link
+            to="/profile"
+            onClick={() => setIsMenuOpen(false)}
+            className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-neutral-300 hover:text-white hover:bg-neutral-800/60"
+          >
+            <span className="flex items-center gap-2">
+              <span>👤</span>
+              <span>Profile & Account</span>
+            </span>
+            <ChevronRight className="w-3.5 h-3.5 text-neutral-500" />
+          </Link>
         </div>
       )}
 
       {/* 2. Hero Banner (Responsive for both Mobile & Desktop) */}
       <DashboardHero />
+
+      {/* Offline Alert (Displays only when device is disconnected) */}
+      <OfflineBanner />
 
       {/* 3. Today's Overview / Stats Row */}
       <section className="space-y-2.5 sm:space-y-3">

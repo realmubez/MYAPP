@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#181614"/>
+      <stop offset="100%" stop-color="#100e0d"/>
+    </linearGradient>
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d97706" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#b45309" stop-opacity="0.4"/>
+    </linearGradient>
+    <linearGradient id="amberText" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Dark Background Canvas (Matching #0a0908) -->
+  <rect width="512" height="512" fill="#0a0908" />
+
+  <!-- Subtle Ambient Glow -->
+  <circle cx="256" cy="256" r="230" fill="url(#glow)" />
+
+  <!-- Brand Inner Container / Squircle Badge -->
+  <rect x="56" y="56" width="400" height="400" rx="88" fill="url(#cardGrad)" stroke="url(#borderGrad)" stroke-width="8" />
+
+  <!-- Inner Soft Inset Border -->
+  <rect x="68" y="68" width="376" height="376" rx="76" fill="none" stroke="#f59e0b" stroke-opacity="0.15" stroke-width="2" />
+
+  <!-- Iconic Monospace Typing Terminal Prompt >_ -->
+  <g id="brand-symbol">
+    <!-- Angle Bracket > -->
+    <path d="M 156 186 L 244 256 L 156 326" fill="none" stroke="url(#amberText)" stroke-width="36" stroke-linecap="round" stroke-linejoin="round" />
+    <!-- Underscore Cursor _ -->
+    <line x1="276" y1="326" x2="356" y2="326" stroke="url(#amberText)" stroke-width="36" stroke-linecap="round" />
+  </g>
+</svg>

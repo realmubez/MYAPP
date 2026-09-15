@@ -5,6 +5,7 @@ import { BottomNav } from './BottomNav';
 import { Sidebar } from './Sidebar';
 import { DesktopTopBar } from './DesktopTopBar';
 import { SettingsModal } from '../common/SettingsModal';
+import { PwaUpdatePrompt } from '../common/PwaUpdatePrompt';
 import { storageService } from '../../services/storage';
 
 export function Layout() {
@@ -56,6 +57,10 @@ export function Layout() {
         return 'Learning Progress';
       case '/review':
         return 'Mistake Review';
+      case '/settings':
+        return 'Settings';
+      case '/profile':
+        return 'Profile';
       default:
         return 'My Learning';
     }
@@ -67,7 +72,7 @@ export function Layout() {
       <Sidebar
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={handleToggleSidebar}
-        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenSettings={() => navigate('/settings')}
       />
 
       {/* Main Content Area */}
@@ -94,21 +99,24 @@ export function Layout() {
 
         {/* Responsive Content Container */}
         <main className="flex-1 w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 pt-3 lg:pt-6 pb-24 lg:pb-12 transition-all duration-200">
-          <DesktopTopBar onOpenSettings={() => setIsSettingsOpen(true)} />
+          <DesktopTopBar onOpenSettings={() => navigate('/settings')} />
           <Outlet />
         </main>
       </div>
 
       {/* Fixed Bottom Navigation (Mobile & Tablet < 1024px only) */}
       <div className="lg:hidden">
-        <BottomNav onOpenSettings={() => setIsSettingsOpen(true)} />
+        <BottomNav onOpenSettings={() => navigate('/settings')} />
       </div>
 
-      {/* Global Settings Modal */}
+      {/* Global Settings Modal fallback if opened */}
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
       />
+
+      {/* Non-intrusive PWA Update Notice */}
+      <PwaUpdatePrompt />
     </div>
   );
 }
