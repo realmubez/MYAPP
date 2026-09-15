@@ -3,7 +3,6 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import { telegramRouter } from './server/router.ts';
-import { startPollingLoop } from './server/telegram.ts';
 import { authRouter } from './server/authRouter.ts';
 import { isAuthenticatedRequest } from './server/auth.ts';
 
@@ -66,7 +65,6 @@ async function startServer() {
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`[MY LEARNING Server] running on http://localhost:${PORT}`);
-    startPollingLoop();
   });
 }
 

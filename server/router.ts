@@ -3,7 +3,9 @@ import {
   getTelegramConfig,
   getBotInfo,
   isChatEstablished,
-  pollTelegramUpdates,
+  getTelegramWebhookInfo,
+  setTelegramWebhook,
+  resolveAppBaseUrl,
   sendTelegramTest,
   sendTelegramVocabSample,
   sendTelegramSomaliSample,
@@ -18,9 +20,8 @@ export const telegramRouter = Router();
 telegramRouter.get('/status', async (req: Request, res: Response) => {
   const { botToken, allowedUserId, isConfigured } = getTelegramConfig();
   
-  // Check for any recent /start messages
-  await pollTelegramUpdates();
   const botInfo = await getBotInfo();
+  const webhookInfo = await getTelegramWebhookInfo();
 
   res.json({
     configured: isConfigured,
@@ -32,7 +33,40 @@ telegramRouter.get('/status', async (req: Request, res: Response) => {
     botFirstName: botInfo.firstName || null,
     chatLink: botInfo.username ? `https://t.me/${botInfo.username}` : null,
     chatEstablished: isChatEstablished(),
+    webhook: {
+      url: webhookInfo.url || '',
+      pendingUpdateCount: webhookInfo.pendingUpdateCount || 0,
+      lastErrorMessage: webhookInfo.lastErrorMessage || null,
+    },
   });
+});
+
+// 1b. Action: Setup Telegram Webhook
+telegramRouter.post('/setup-webhook', async (req: Request, res: Response) => {
+  try {
+    const { url } = req.body || {};
+    const appBase = resolveAppBaseUrl(url || (req.headers.origin || req.headers.referer || '').toString());
+    if (!appBase) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Missing application URL. Configure APP_URL environment variable or supply url in body.',
+      });
+    }
+
+    const webhookUrl = `${appBase}/api/telegram/webhook`;
+    const result = await setTelegramWebhook(webhookUrl);
+    const webhookInfo = await getTelegramWebhookInfo();
+
+    return res.json({
+      ok: result.ok,
+      description: result.description,
+      webhookUrl,
+      webhook: webhookInfo,
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return res.status(500).json({ ok: false, error: msg });
+  }
 });
 
 // 2. Action: Send Telegram Test

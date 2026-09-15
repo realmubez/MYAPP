@@ -45,10 +45,22 @@ export interface ReviewItem {
   practicePath?: string;
 }
 
-const TTS_ENDPOINT =
+function normalizeTTSBaseUrl(raw?: string | null): string {
+  const defaultUrl = 'https://muberes-my-piper-tts.hf.space/tts';
+  if (!raw || typeof raw !== 'string') return defaultUrl;
+  const trimmed = raw.trim().replace(/\/+$/, '');
+  if (!trimmed) return defaultUrl;
+  if (trimmed.endsWith('/tts')) {
+    return trimmed;
+  }
+  return `${trimmed}/tts`;
+}
+
+const TTS_ENDPOINT = normalizeTTSBaseUrl(
   process.env.VITE_TTS_BASE_URL ||
   process.env.TTS_BASE_URL ||
-  'https://muberes-my-piper-tts.hf.space/tts';
+  'https://muberes-my-piper-tts.hf.space/tts'
+);
 
 // Known working voices aligned with MY LEARNING client config
 export const SERVER_TTS_VOICES = {
@@ -1272,54 +1284,73 @@ export async function handleTelegramWebhook(
   return { ok: true };
 }
 
-let lastUpdateOffset = 0;
-let isPollingActive = false;
-let pollingBackoffUntil = 0;
+/**
+ * Resolves the application URL defensively from environment variables or request headers.
+ */
+export function resolveAppBaseUrl(providedUrl?: string | null): string | null {
+  const raw = providedUrl || process.env.APP_URL;
+  if (!raw || typeof raw !== 'string') return null;
+  let trimmed = raw.trim().replace(/\/+$/, '');
+  if (!trimmed) return null;
+  if (!/^https?:\/\//i.test(trimmed)) {
+    trimmed = `https://${trimmed}`;
+  }
+  return trimmed;
+}
 
 /**
- * Polls for updates when webhook is not active (useful in development, container preview, or before webhook setup)
+ * Registers the Telegram Webhook for this bot.
  */
-export async function pollTelegramUpdates(): Promise<void> {
-  const { botToken, isConfigured } = getTelegramConfig();
-  if (!botToken || !isConfigured) return;
-
-  if (Date.now() < pollingBackoffUntil) return;
+export async function setTelegramWebhook(webhookUrl: string): Promise<{ ok: boolean; description?: string }> {
+  const { botToken } = getTelegramConfig();
+  if (!botToken) return { ok: false, description: 'TELEGRAM_BOT_TOKEN not configured' };
 
   try {
-    const url = `https://api.telegram.org/bot${botToken}/getUpdates?offset=${lastUpdateOffset}&timeout=0&limit=10`;
-    const res = await fetch(url);
-    if (res.status === 409) {
-      // 409 Conflict: webhook is registered; pause polling
-      pollingBackoffUntil = Date.now() + 5 * 60 * 1000;
-      return;
-    }
-    if (!res.ok) return;
-
-    const data = (await res.json()) as any;
-    if (data.ok && Array.isArray(data.result)) {
-      for (const update of data.result) {
-        if (update.update_id) {
-          lastUpdateOffset = Math.max(lastUpdateOffset, update.update_id + 1);
-        }
-        await handleTelegramWebhook(update);
-      }
-    }
-  } catch {
-    // Non-blocking
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url: webhookUrl,
+        allowed_updates: ['message', 'callback_query'],
+        drop_pending_updates: false,
+      }),
+    });
+    const data = (await res.json()) as { ok: boolean; description?: string };
+    return { ok: Boolean(data.ok), description: data.description };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { ok: false, description: msg };
   }
 }
 
 /**
- * Starts background polling loop (every 3.5 seconds) to catch incoming /start messages from the user
+ * Gets the current Telegram Webhook information from Telegram Bot API.
  */
-export function startPollingLoop(): void {
-  if (isPollingActive) return;
-  isPollingActive = true;
+export async function getTelegramWebhookInfo(): Promise<{
+  url?: string;
+  hasCustomCertificate?: boolean;
+  pendingUpdateCount?: number;
+  lastErrorDate?: number;
+  lastErrorMessage?: string;
+}> {
+  const { botToken } = getTelegramConfig();
+  if (!botToken) return {};
 
-  pollTelegramUpdates().catch(() => {});
-
-  setInterval(() => {
-    pollTelegramUpdates().catch(() => {});
-  }, 3500);
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/getWebhookInfo`);
+    const data = (await res.json()) as any;
+    if (res.ok && data.ok && data.result) {
+      return {
+        url: data.result.url || '',
+        hasCustomCertificate: Boolean(data.result.has_custom_certificate),
+        pendingUpdateCount: data.result.pending_update_count,
+        lastErrorDate: data.result.last_error_date,
+        lastErrorMessage: data.result.last_error_message,
+      };
+    }
+  } catch (e) {
+    console.error('[Telegram API] getWebhookInfo error:', e);
+  }
+  return {};
 }
 

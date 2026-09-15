@@ -6,9 +6,32 @@
 
 import { Language } from '../types/lessons';
 
-export const TTS_BASE_URL =
-  (typeof import.meta !== 'undefined' && (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_TTS_BASE_URL) ||
+/**
+ * Resolves and normalizes the Piper/Edge TTS endpoint defensively.
+ * Handles:
+ *   - host only: https://muberes-my-piper-tts.hf.space -> https://muberes-my-piper-tts.hf.space/tts
+ *   - host with trailing slashes: https://muberes-my-piper-tts.hf.space/ -> https://muberes-my-piper-tts.hf.space/tts
+ *   - host/tts: https://muberes-my-piper-tts.hf.space/tts -> https://muberes-my-piper-tts.hf.space/tts
+ *   - host/tts/: https://muberes-my-piper-tts.hf.space/tts/ -> https://muberes-my-piper-tts.hf.space/tts
+ *   - never produces /tts/tts
+ */
+export function normalizeTTSBaseUrl(raw?: string | null): string {
+  const defaultUrl = 'https://muberes-my-piper-tts.hf.space/tts';
+  if (!raw || typeof raw !== 'string') return defaultUrl;
+  const trimmed = raw.trim().replace(/\/+$/, '');
+  if (!trimmed) return defaultUrl;
+  if (trimmed.endsWith('/tts')) {
+    return trimmed;
+  }
+  return `${trimmed}/tts`;
+}
+
+const rawEnvTTSUrl =
+  (typeof import.meta !== 'undefined' &&
+    (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_TTS_BASE_URL) ||
   'https://muberes-my-piper-tts.hf.space/tts';
+
+export const TTS_BASE_URL = normalizeTTSBaseUrl(rawEnvTTSUrl);
 
 export interface TTSRequestOptions {
   text: string;
@@ -168,6 +191,14 @@ export async function fetchTTSAudioBlobUrl(url: string, signal?: AbortSignal): P
   }
 
   const response = await fetch(url, signal ? { signal } : undefined);
+  
+  // Safe diagnostic: response status and content-type
+  console.info('[TTS_RESPONSE]', {
+    status: response.status,
+    contentType: response.headers.get('content-type'),
+    ok: response.ok,
+  });
+
   if (!response.ok) {
     throw new Error(`TTS server responded with ${response.status}: ${response.statusText}`);
   }
@@ -279,6 +310,13 @@ class LessonSpeechManager {
     const effectiveRate = rate ?? getStoredRate(language);
     const targetUrl = getTTSUrl({ text: cleanedText, voice, rate: effectiveRate });
 
+    // Safe diagnostic: voice, text length, resolved endpoint (never logging full private text)
+    console.info('[TTS_REQUEST]', {
+      voice,
+      textLength: cleanedText.length,
+      resolvedEndpoint: targetUrl.split('?')[0],
+    });
+
     this.state = {
       playingKey: null,
       loadingKey: key,
@@ -296,7 +334,10 @@ class LessonSpeechManager {
         resolvedSrc = await fetchTTSAudioBlobUrl(targetUrl, abortController.signal);
       } catch (fetchErr) {
         if (abortController.signal.aborted) return;
-        console.warn('TTS blob fetch fallback to direct URL:', fetchErr);
+        console.warn('[TTS_ERROR] blob fetch fallback to direct URL:', {
+          name: fetchErr instanceof Error ? fetchErr.name : 'FetchError',
+          message: fetchErr instanceof Error ? fetchErr.message : String(fetchErr),
+        });
       }
 
       if (abortController.signal.aborted) return;
@@ -337,6 +378,11 @@ class LessonSpeechManager {
         if (this.activeAudio !== audio) return;
         if (audio.error && audio.error.code === MediaError.MEDIA_ERR_ABORTED) return;
 
+        console.error('[TTS_ERROR]', {
+          name: 'AudioElementPlaybackError',
+          message: audio.error ? `Code ${audio.error.code}: ${audio.error.message || 'Media playback error'}` : 'Audio element error',
+        });
+
         this.activeAudio = null;
         this.state = {
           playingKey: null,
@@ -353,8 +399,13 @@ class LessonSpeechManager {
       }
     } catch (err: unknown) {
       if (abortController.signal.aborted) return;
-      const playErr = err as { name?: string };
+      const playErr = err as { name?: string; message?: string };
       if (playErr?.name === 'AbortError') return;
+
+      console.error('[TTS_ERROR]', {
+        name: playErr?.name || 'PlaySpeechException',
+        message: playErr?.message || String(err),
+      });
 
       this.activeAudio = null;
       this.state = {

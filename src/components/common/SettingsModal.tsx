@@ -21,6 +21,11 @@ interface TelegramStatus {
   botFirstName?: string | null;
   chatLink?: string | null;
   chatEstablished?: boolean;
+  webhook?: {
+    url?: string;
+    pendingUpdateCount?: number;
+    lastErrorMessage?: string | null;
+  };
 }
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
@@ -111,6 +116,39 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       setActionFeedback({
         type: 'error',
         text: `Network error: ${msg}`,
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const setupTelegramWebhook = async () => {
+    setActionLoading('webhook');
+    setActionFeedback(null);
+    try {
+      const res = await fetch('/api/telegram/setup-webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: window.location.origin }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; description?: string; webhookUrl?: string };
+      if (res.ok && data.ok) {
+        setActionFeedback({
+          type: 'success',
+          text: `Webhook registered! URL: ${data.webhookUrl || 'active'}`,
+        });
+        await fetchTelegramStatus();
+      } else {
+        setActionFeedback({
+          type: 'error',
+          text: data.error || data.description || 'Failed to register webhook.',
+        });
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setActionFeedback({
+        type: 'error',
+        text: `Network error registering webhook: ${msg}`,
       });
     } finally {
       setActionLoading(null);
@@ -460,6 +498,32 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   <span>Somali TTS</span>
                 </button>
               </div>
+
+              {/* Webhook Status & Setup Button */}
+              {telegramStatus?.configured && (
+                <div className="pt-1.5 flex items-center justify-between text-[11px] text-neutral-400 border-t border-neutral-800/60 mt-2">
+                  <div className="flex items-center gap-1.5 truncate max-w-[260px]">
+                    <span className="text-neutral-500">Webhook:</span>
+                    {telegramStatus.webhook?.url ? (
+                      <span className="text-emerald-400 font-mono truncate text-[10px]">
+                        Active
+                      </span>
+                    ) : (
+                      <span className="text-amber-400 text-[10px]">Unregistered</span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    id="setup-telegram-webhook-btn"
+                    onClick={setupTelegramWebhook}
+                    disabled={actionLoading !== null}
+                    className="px-2 py-1 rounded-lg text-[10px] font-medium border border-sky-800/60 bg-sky-950/30 text-sky-300 hover:text-white hover:bg-sky-900/40 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1"
+                  >
+                    {actionLoading === 'webhook' && <Loader2 className="w-2.5 h-2.5 animate-spin text-sky-400" />}
+                    <span>{telegramStatus.webhook?.url ? 'Re-sync Webhook' : 'Register Webhook'}</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Action Feedback Banner */}
