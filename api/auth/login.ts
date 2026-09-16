@@ -1,8 +1,16 @@
 import crypto from 'node:crypto';
+import { createClient } from '@supabase/supabase-js';
 
 const SESSION_COOKIE_NAME = 'my_learning_session';
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
+
+export interface AppIdentity {
+  appUserId: string;
+  email: string;
+  displayName: string;
+  role: 'admin' | 'student';
+}
 
 // In-memory rate limiting map for brute-force protection
 const rateLimitMap = new Map<string, { count: number; lockUntil: number; lastAttempt: number }>();
@@ -128,6 +136,126 @@ function verifyPassword(inputPassword: unknown, clientIp: string) {
   };
 }
 
+/**
+ * Resolves application identity based on login credentials.
+ * Defaults to Admin ('mubez') for the primary MY_LEARNING_PASSWORD.
+ */
+function resolveAppIdentity(username?: string): AppIdentity {
+  const normalizedUser = (username || 'mubez').toLowerCase().trim();
+  if (normalizedUser === 'mubez' || normalizedUser === 'admin') {
+    return {
+      appUserId: 'mubez',
+      email: 'mubez@mylearning.internal',
+      displayName: 'Mubez',
+      role: 'admin',
+    };
+  }
+  // Prepared for future Friend 1 and Friend 2 expansion
+  return {
+    appUserId: normalizedUser,
+    email: `${normalizedUser}@mylearning.internal`,
+    displayName: normalizedUser.charAt(0).toUpperCase() + normalizedUser.slice(1),
+    role: 'student',
+  };
+}
+
+/**
+ * Bridges application identity with Supabase Auth to obtain a real Supabase session.
+ * Operates purely on the server using SUPABASE_SERVICE_ROLE_KEY.
+ * Never exposes the service-role key or internal passwords to the client.
+ */
+async function getSupabaseAuthSession(identity: AppIdentity) {
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  const anonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || serviceRoleKey;
+
+  if (!supabaseUrl || !serviceRoleKey || !supabaseUrl.startsWith('http')) {
+    // Supabase not configured in environment yet; return null session for graceful offline/local-first mode
+    return null;
+  }
+
+  try {
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    // Generate a deterministic internal password derived from the server-only service role secret
+    const deterministicUserPassword = crypto
+      .createHmac('sha256', serviceRoleKey)
+      .update(`mylearning-supabase-internal-user-auth:${identity.appUserId}`)
+      .digest('hex');
+
+    // 1. Try to find or create the user in Supabase Auth
+    let targetUid: string | null = null;
+    const { data: createData, error: createError } = await supabaseAdmin.auth.admin.createUser({
+      email: identity.email,
+      password: deterministicUserPassword,
+      email_confirm: true,
+      user_metadata: {
+        display_name: identity.displayName,
+        role: identity.role,
+        is_admin: identity.role === 'admin',
+      },
+    });
+
+    if (createData?.user) {
+      targetUid = createData.user.id;
+    } else if (createError) {
+      // User might already exist in auth.users
+      const { data: listData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 100 });
+      const existingUser = (listData?.users as any[])?.find((u: any) => u.email === identity.email);
+      if (existingUser) {
+        targetUid = existingUser.id;
+        // Update user metadata and ensure password is synced
+        await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
+          password: deterministicUserPassword,
+          email_confirm: true,
+          user_metadata: {
+            display_name: identity.displayName,
+            role: identity.role,
+            is_admin: identity.role === 'admin',
+          },
+        });
+      }
+    }
+
+    // 2. Sign in to obtain a genuine Supabase Auth JWT and refresh token
+    const authClient = createClient(supabaseUrl, anonKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    const { data: signInData, error: signInError } = await authClient.auth.signInWithPassword({
+      email: identity.email,
+      password: deterministicUserPassword,
+    });
+
+    if (signInData?.session) {
+      return {
+        session: {
+          access_token: signInData.session.access_token,
+          refresh_token: signInData.session.refresh_token,
+          expires_at: signInData.session.expires_at,
+          expires_in: signInData.session.expires_in,
+          token_type: signInData.session.token_type,
+          user: {
+            id: signInData.session.user.id,
+            email: signInData.session.user.email,
+          },
+        },
+        supabaseUserId: signInData.session.user.id,
+      };
+    }
+
+    if (signInError) {
+      console.warn('[SUPABASE_SIGNIN_WARN] Unable to sign in bridged user:', signInError.message);
+    }
+  } catch (err) {
+    console.warn('[SUPABASE_AUTH_BRIDGE_ERROR]', err instanceof Error ? err.message : String(err));
+  }
+
+  return null;
+}
+
 function getClientIp(req: any): string {
   try {
     const forwarded = req?.headers?.['x-forwarded-for'];
@@ -220,6 +348,7 @@ export default async function handler(req: any, res: any) {
 
     const body = await parseRequestBody(req);
     const password = body?.password;
+    const username = body?.username;
     const clientIp = getClientIp(req);
 
     const verification = verifyPassword(password, clientIp);
@@ -233,6 +362,9 @@ export default async function handler(req: any, res: any) {
       });
     }
 
+    const identity = resolveAppIdentity(username);
+    const authBridgeResult = await getSupabaseAuthSession(identity);
+
     const isProduction =
       process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL);
     const cookieHeader = createSessionCookie(isProduction);
@@ -240,7 +372,16 @@ export default async function handler(req: any, res: any) {
     return sendJsonResponse(
       res,
       200,
-      { ok: true },
+      {
+        ok: true,
+        session: authBridgeResult?.session || null,
+        user: {
+          id: authBridgeResult?.supabaseUserId || identity.appUserId,
+          role: identity.role,
+          displayName: identity.displayName,
+          email: identity.email,
+        },
+      },
       { 'Set-Cookie': cookieHeader }
     );
   } catch (err) {

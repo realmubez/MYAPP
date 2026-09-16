@@ -12,7 +12,9 @@ import {
 } from '../types';
 import { CURATED_TOTAL_LESSONS, CURATED_LESSONS } from '../data/curriculumConfig';
 
-export const PROGRESS_STORAGE_KEY = 'mylearning_progress_v1';
+import { storageNamespace } from '../repositories/storageNamespace';
+
+export const PROGRESS_STORAGE_KEY = 'progress';
 export const PROGRESS_UPDATED_EVENT = 'mylearning_progress_changed';
 
 // Curriculum totals based on approved curated visible lessons
@@ -170,13 +172,17 @@ export function createInitialProgress(): LearningProgress {
 class ProgressService {
   private memoryCache: LearningProgress | null = null;
 
+  public clearCache(): void {
+    this.memoryCache = null;
+  }
+
   public getProgress(): LearningProgress {
     if (this.memoryCache) {
       return this.memoryCache;
     }
 
     try {
-      const raw = localStorage.getItem(PROGRESS_STORAGE_KEY);
+      const raw = storageNamespace.getItem(PROGRESS_STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed === 'object') {
@@ -197,7 +203,7 @@ class ProgressService {
   public saveProgress(progress: LearningProgress): void {
     this.memoryCache = progress;
     try {
-      localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(progress));
+      storageNamespace.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(progress));
     } catch (e) {
       console.warn('Failed to save learning progress to localStorage:', e);
     }

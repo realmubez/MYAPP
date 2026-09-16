@@ -1,5 +1,13 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { LoginResult } from '../types';
+import { getSupabase } from '../lib/supabaseClient';
+
+export interface AuthUser {
+  id: string;
+  role: 'admin' | 'student' | 'member';
+  displayName: string;
+  email?: string;
+}
 
 /**
  * Safely extracts a user-facing string error message from any API response, error object, or status.
@@ -51,8 +59,11 @@ export function normalizeAuthError(value: unknown, defaultMessage = 'Unable to s
 
 interface AuthContextType {
   isAuthenticated: boolean;
+  isCloudAuthenticated: boolean;
   isLoading: boolean;
-  login: (password: string) => Promise<LoginResult>;
+  user: AuthUser | null;
+  role: 'admin' | 'student' | 'member';
+  login: (password: string, username?: string) => Promise<LoginResult>;
   logout: () => Promise<void>;
   checkSession: () => Promise<boolean>;
 }
@@ -61,6 +72,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isCloudAuthenticated, setIsCloudAuthenticated] = useState<boolean>(false);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const checkSession = useCallback(async (): Promise<boolean> => {
@@ -75,6 +88,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (!response.ok) {
         setIsAuthenticated(false);
+        setIsCloudAuthenticated(false);
+        setUser(null);
         setIsLoading(false);
         return false;
       }
@@ -82,6 +97,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const contentType = response.headers.get('content-type') || '';
       if (!contentType.includes('application/json')) {
         setIsAuthenticated(false);
+        setIsCloudAuthenticated(false);
+        setUser(null);
         setIsLoading(false);
         return false;
       }
@@ -89,10 +106,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await response.json().catch(() => null);
       const authenticated = Boolean(data?.authenticated);
       setIsAuthenticated(authenticated);
+
+      if (authenticated) {
+        if (data.user) {
+          setUser(data.user);
+        }
+        // Verify if Supabase client also has an active session
+        const supabase = getSupabase();
+        if (supabase) {
+          const { data: sessionData } = await supabase.auth.getSession();
+          setIsCloudAuthenticated(Boolean(sessionData?.session));
+        } else {
+          setIsCloudAuthenticated(false);
+        }
+      } else {
+        setIsCloudAuthenticated(false);
+        setUser(null);
+      }
+
       setIsLoading(false);
       return authenticated;
     } catch {
       setIsAuthenticated(false);
+      setIsCloudAuthenticated(false);
+      setUser(null);
       setIsLoading(false);
       return false;
     }
@@ -102,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkSession();
   }, [checkSession]);
 
-  const login = async (password: string): Promise<LoginResult> => {
+  const login = async (password: string, username?: string): Promise<LoginResult> => {
     try {
       const trimmedPassword = (password || '').trim();
       if (!trimmedPassword) {
@@ -119,7 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: JSON.stringify({ password: trimmedPassword }),
+        body: JSON.stringify({ password: trimmedPassword, username }),
         credentials: 'same-origin',
       });
 
@@ -148,6 +185,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (response.ok && data?.ok) {
         setIsAuthenticated(true);
+        if (data.user) {
+          setUser(data.user);
+        }
+
+        // Initialize Supabase client session if server provided tokens
+        if (data.session?.access_token && data.session?.refresh_token) {
+          try {
+            const supabase = getSupabase();
+            if (supabase) {
+              await supabase.auth.setSession({
+                access_token: data.session.access_token,
+                refresh_token: data.session.refresh_token,
+              });
+              setIsCloudAuthenticated(true);
+            }
+          } catch (sessionErr) {
+            console.warn('[AUTH_SESSION_INIT_WARN]', sessionErr);
+            setIsCloudAuthenticated(false);
+          }
+        } else {
+          setIsCloudAuthenticated(false);
+        }
+
         return { ok: true };
       }
 
@@ -189,16 +249,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     } catch {
       // Proceed with client logout even if network request fails
-    } finally {
-      setIsAuthenticated(false);
     }
+
+    try {
+      const supabase = getSupabase();
+      if (supabase) {
+        await supabase.auth.signOut();
+      }
+    } catch {
+      // Graceful signout
+    }
+
+    setIsAuthenticated(false);
+    setIsCloudAuthenticated(false);
+    setUser(null);
   };
 
   return (
     <AuthContext.Provider
       value={{
         isAuthenticated,
+        isCloudAuthenticated,
         isLoading,
+        user,
+        role: user?.role || 'admin',
         login,
         logout,
         checkSession,
@@ -216,3 +290,4 @@ export function useAuth(): AuthContextType {
   }
   return context;
 }
+

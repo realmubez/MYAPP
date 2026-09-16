@@ -4,6 +4,7 @@ import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import { telegramRouter } from './server/router.ts';
 import { authRouter } from './server/authRouter.ts';
+import { adminRouter } from './server/adminRouter.ts';
 import { isAuthenticatedRequest } from './server/auth.ts';
 
 // Load local environment variables if available
@@ -23,6 +24,9 @@ async function startServer() {
 
   // Mount Authentication routes
   app.use('/api/auth', authRouter);
+
+  // Mount Admin Control Center routes
+  app.use('/api/admin', adminRouter);
 
   // Mount Telegram API routes (protected, except webhook)
   app.use(

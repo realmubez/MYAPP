@@ -167,6 +167,21 @@ export function DesktopTopBar({ onOpenSettings }: DesktopTopBarProps) {
                 <span>Profile</span>
               </button>
 
+              {isAdmin && (
+                <button
+                  type="button"
+                  id="profile-dropdown-admin-btn"
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    navigate('/admin');
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-amber-400 hover:text-amber-300 hover:bg-amber-950/30 transition-colors text-left cursor-pointer"
+                >
+                  <Shield className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Admin Center</span>
+                </button>
+              )}
+
               <button
                 type="button"
                 id="profile-dropdown-settings-btn"

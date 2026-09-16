@@ -13,11 +13,32 @@ import { KeepGoing } from '../components/dashboard/KeepGoing';
 import { OfflineBanner } from '../components/common/OfflineBanner';
 import { SUBJECTS } from '../data/mockData';
 import { useProgress } from '../hooks/useProgress';
+import { useProfile } from '../hooks/useProfile';
 
 export function Dashboard() {
   const { progress, stats } = useProgress();
+  const { profile, isAdmin } = useProfile();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const assignedSubjects = profile.assignedSubjects || ['swedish', 'english', 'python', 'typing'];
+  const activeSubjectCards = [
+    assignedSubjects.includes('swedish') && {
+      key: 'swedish',
+      subject: SUBJECTS.swedish,
+      progressData: progress?.subjects?.swedish,
+    },
+    assignedSubjects.includes('english') && {
+      key: 'english',
+      subject: SUBJECTS.english,
+      progressData: progress?.subjects?.english,
+    },
+    assignedSubjects.includes('python') && {
+      key: 'python',
+      subject: SUBJECTS.python,
+      progressData: progress?.subjects?.python,
+    },
+  ].filter(Boolean) as { key: string; subject: any; progressData: any }[];
 
   return (
     <div id="dashboard-view" className="w-full space-y-5 sm:space-y-6 lg:space-y-8 text-neutral-100">
@@ -228,14 +249,14 @@ export function Dashboard() {
         </section>
       </div>
 
-      {/* 5. Your Subjects Section (3 Columns on Desktop) */}
+      {/* 5. Your Subjects Section (Filtered by User Assignments) */}
       <section className="space-y-2.5 sm:space-y-3.5">
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-amber-400" />
               <h2 className="text-sm sm:text-base font-bold text-white">Your Subjects</h2>
-              <span className="text-xs text-neutral-400 font-mono ml-1">· 3 active</span>
+              <span className="text-xs text-neutral-400 font-mono ml-1">· {activeSubjectCards.length} active</span>
             </div>
             <p className="text-xs text-neutral-400 mt-0.5">
               Pick a subject to continue learning.
@@ -243,7 +264,7 @@ export function Dashboard() {
           </div>
 
           <Link
-            to="/swedish"
+            to={activeSubjectCards[0] ? `/${activeSubjectCards[0].key}` : '/swedish'}
             className="text-xs font-medium text-neutral-400 hover:text-amber-400 transition-colors hidden sm:flex items-center gap-1"
           >
             <span>View all courses</span>
@@ -251,20 +272,15 @@ export function Dashboard() {
           </Link>
         </div>
 
-        {/* Responsive Grid: 1 col on mobile, 3 cols on tablet/desktop */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4 lg:gap-5">
-          <SubjectCard
-            subject={SUBJECTS.swedish}
-            progressData={progress?.subjects?.swedish}
-          />
-          <SubjectCard
-            subject={SUBJECTS.english}
-            progressData={progress?.subjects?.english}
-          />
-          <SubjectCard
-            subject={SUBJECTS.python}
-            progressData={progress?.subjects?.python}
-          />
+        {/* Responsive Grid: 1 col on mobile, 2 or 3 cols on tablet/desktop */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4 lg:gap-5">
+          {activeSubjectCards.map((card) => (
+            <SubjectCard
+              key={card.key}
+              subject={card.subject}
+              progressData={card.progressData}
+            />
+          ))}
         </div>
       </section>
 

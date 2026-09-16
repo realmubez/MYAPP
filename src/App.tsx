@@ -14,6 +14,9 @@ import { ReviewPage } from './pages/ReviewPage';
 import { FocusLessonPage } from './pages/FocusLessonPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { AdminPage } from './pages/AdminPage';
+import { AdminUserDetailPage } from './pages/AdminUserDetailPage';
+import { AdminProtectedRoute } from './components/auth/AdminProtectedRoute';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 export default function App() {
@@ -43,6 +46,13 @@ export default function App() {
                 <Route path="/focus/:subject" element={<FocusLessonPage />} />
                 <Route path="/lesson/:id" element={<FocusLessonPage />} />
                 <Route path="/lesson/preview" element={<FocusLessonPage />} />
+
+                {/* Admin Control Center Protected Routes */}
+                <Route element={<AdminProtectedRoute />}>
+                  <Route path="/admin" element={<AdminPage />} />
+                  <Route path="/admin/users/:userId" element={<AdminUserDetailPage />} />
+                </Route>
+
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
             </Route>

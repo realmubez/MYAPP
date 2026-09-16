@@ -4,18 +4,19 @@ import { DbLessonProgress, DbDailyActivity } from './types';
 import { syncQueue } from './syncQueue';
 import { syncManager } from './syncManager';
 import { profileRepository } from './profileRepository';
+import { storageNamespace } from './storageNamespace';
 
-export const PROGRESS_STORAGE_KEY = 'mylearning_progress_v1';
+export const PROGRESS_STORAGE_KEY = 'progress';
 export const PROGRESS_UPDATED_EVENT = 'mylearning_progress_changed';
 
 class ProgressRepository {
   /**
-   * Reads learning progress from localStorage.
+   * Reads learning progress from namespaced localStorage.
    */
   public getLocalProgress(): LearningProgress | null {
     if (typeof window === 'undefined') return null;
     try {
-      const raw = localStorage.getItem(PROGRESS_STORAGE_KEY);
+      const raw = storageNamespace.getItem(PROGRESS_STORAGE_KEY);
       if (raw) {
         return JSON.parse(raw);
       }
@@ -26,12 +27,12 @@ class ProgressRepository {
   }
 
   /**
-   * Saves learning progress to localStorage and queues granular cloud updates.
+   * Saves learning progress to namespaced localStorage and queues granular cloud updates.
    */
   public saveLocalProgress(progress: LearningProgress): void {
     if (typeof window === 'undefined') return;
     try {
-      localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(progress));
+      storageNamespace.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(progress));
       window.dispatchEvent(new CustomEvent(PROGRESS_UPDATED_EVENT, { detail: progress }));
     } catch (e) {
       console.warn('Failed to save progress locally:', e);

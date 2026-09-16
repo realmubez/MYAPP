@@ -116,6 +116,13 @@ export default async function handler(req: any, res: any) {
     return sendJsonResponse(res, 200, {
       authenticated: isAuthenticated,
       ok: isAuthenticated,
+      user: isAuthenticated
+        ? {
+            id: 'mubez',
+            role: 'admin',
+            displayName: 'Mubez',
+          }
+        : null,
     });
   } catch (err) {
     console.error('[AUTH_SESSION_RUNTIME_ERROR]', {

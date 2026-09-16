@@ -13,7 +13,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- 1. ENUMS
 -- ------------------------------------------------------------------------------
 DO $$ BEGIN
-  CREATE TYPE user_role AS ENUM ('admin', 'member');
+  CREATE TYPE user_role AS ENUM ('admin', 'student', 'member');
 EXCEPTION
   WHEN duplicate_object THEN null;
 END $$;
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   display_name TEXT NOT NULL,
   avatar TEXT NOT NULL DEFAULT 'avatar-keyboard',
-  role user_role NOT NULL DEFAULT 'member',
+  role user_role NOT NULL DEFAULT 'student',
   account_status account_status NOT NULL DEFAULT 'active',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -261,10 +261,10 @@ RETURNS BOOLEAN AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.profiles
     WHERE id = auth.uid()
-      AND role = 'admin'
-      AND account_status = 'active'
+      AND role = 'admin'::public.user_role
+      AND account_status = 'active'::public.account_status
   );
-$$ LANGUAGE sql SECURITY DEFINER STABLE;
+$$ LANGUAGE sql SECURITY DEFINER SET search_path = public, auth, pg_temp STABLE;
 
 -- ------------------------------------------------------------------------------
 -- POLICIES: profiles
@@ -304,6 +304,12 @@ CREATE POLICY "Users can view own subjects or admin views all"
 DROP POLICY IF EXISTS "Only admin can insert profile subjects" ON public.profile_subjects;
 CREATE POLICY "Only admin can insert profile subjects"
   ON public.profile_subjects FOR INSERT
+  WITH CHECK (public.is_admin());
+
+DROP POLICY IF EXISTS "Only admin can update profile subjects" ON public.profile_subjects;
+CREATE POLICY "Only admin can update profile subjects"
+  ON public.profile_subjects FOR UPDATE
+  USING (public.is_admin())
   WITH CHECK (public.is_admin());
 
 DROP POLICY IF EXISTS "Only admin can delete profile subjects" ON public.profile_subjects;
@@ -432,48 +438,63 @@ CREATE POLICY "Users own user_settings update"
   WITH CHECK (auth.uid() = profile_id);
 
 -- ------------------------------------------------------------------------------
--- 12. INITIAL ADMIN BOOTSTRAP TRIGGER (OPTIONAL HELPER)
--- Automatically creates public.profiles row when a new user signs up in auth.users
--- The very first user created in the system or a designated admin email automatically
--- receives the 'admin' role and all subjects assigned.
+-- 12. INITIAL ADMIN BOOTSTRAP & PROFILE CREATION TRIGGER
+-- Automatically creates public.profiles row when a new user signs up in auth.users.
+-- Explicitly designates 'admin' role if metadata or email indicates admin identity;
+-- otherwise safely assigns 'student' role.
 -- ------------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 DECLARE
-  profile_count INTEGER;
-  user_initial_role user_role;
+  user_initial_role public.user_role;
+  user_display_name TEXT;
 BEGIN
-  SELECT COUNT(*) INTO profile_count FROM public.profiles;
-
-  -- The very first user to register becomes the Admin; subsequent users are members
-  IF profile_count = 0 THEN
-    user_initial_role := 'admin';
+  -- Deterministic role evaluation:
+  -- 1. Explicit metadata role 'admin' or flag 'is_admin'
+  -- 2. Dedicated admin email 'mubez@mylearning.internal'
+  IF NEW.email = 'mubez@mylearning.internal'
+     OR NEW.raw_user_meta_data->>'role' = 'admin'
+     OR NEW.raw_user_meta_data->>'is_admin' = 'true' THEN
+    user_initial_role := 'admin'::public.user_role;
   ELSE
-    user_initial_role := 'member';
+    user_initial_role := 'student'::public.user_role;
   END IF;
+
+  user_display_name := COALESCE(
+    NEW.raw_user_meta_data->>'display_name',
+    CASE WHEN user_initial_role = 'admin'::public.user_role THEN 'Mubez' ELSE 'Student' END
+  );
 
   INSERT INTO public.profiles (id, display_name, avatar, role, account_status)
   VALUES (
     NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'display_name', 'Mubez'),
+    user_display_name,
     COALESCE(NEW.raw_user_meta_data->>'avatar', 'avatar-keyboard'),
     user_initial_role,
-    'active'
-  );
+    'active'::public.account_status
+  )
+  ON CONFLICT (id) DO UPDATE
+  SET display_name = EXCLUDED.display_name,
+      role = EXCLUDED.role,
+      updated_at = NOW();
 
-  -- Assign default subjects for the Admin
-  IF user_initial_role = 'admin' THEN
-    INSERT INTO public.profile_subjects (profile_id, subject_id)
-    VALUES
-      (NEW.id, 'swedish'),
-      (NEW.id, 'english'),
-      (NEW.id, 'python'),
-      (NEW.id, 'typing');
-  END IF;
+  -- Assign default subjects for all new users
+  INSERT INTO public.profile_subjects (profile_id, subject_id)
+  VALUES
+    (NEW.id, 'swedish'),
+    (NEW.id, 'english'),
+    (NEW.id, 'python'),
+    (NEW.id, 'typing')
+  ON CONFLICT (profile_id, subject_id) DO NOTHING;
+
+  -- Initialize default user settings row
+  INSERT INTO public.user_settings (profile_id)
+  VALUES (NEW.id)
+  ON CONFLICT (profile_id) DO NOTHING;
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, auth, pg_temp;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created

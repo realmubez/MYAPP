@@ -1,6 +1,6 @@
 import { useState, FormEvent, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Lock, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
+import { Lock, ArrowRight, AlertCircle, Loader2, User, Shield } from 'lucide-react';
 import { useAuth, normalizeAuthError } from '../context/AuthContext';
 
 /**
@@ -11,9 +11,7 @@ function getSafeRedirectUrl(searchParams: URLSearchParams): string {
   const redirect = searchParams.get('redirect');
   if (!redirect) return '/';
 
-  // Must begin with a single slash and not double slashes or backslashes
   if (redirect.startsWith('/') && !redirect.startsWith('//') && !redirect.startsWith('/\\')) {
-    // Must not contain protocols like http:, https:, javascript:, data:
     if (!/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(redirect)) {
       return redirect;
     }
@@ -23,10 +21,13 @@ function getSafeRedirectUrl(searchParams: URLSearchParams): string {
 }
 
 export function LoginPage() {
+  const [loginMode, setLoginMode] = useState<'admin' | 'student'>('admin');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const passwordInputRef = useRef<HTMLInputElement>(null);
+  const usernameInputRef = useRef<HTMLInputElement>(null);
 
   const { isAuthenticated, isLoading, login } = useAuth();
   const [searchParams] = useSearchParams();
@@ -41,14 +42,25 @@ export function LoginPage() {
     }
   }, [isAuthenticated, isLoading, navigate, safeRedirect]);
 
-  // Focus input automatically on mount
+  // Focus input automatically on mode change or mount
   useEffect(() => {
-    passwordInputRef.current?.focus();
-  }, []);
+    if (loginMode === 'student') {
+      usernameInputRef.current?.focus();
+    } else {
+      passwordInputRef.current?.focus();
+    }
+  }, [loginMode]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const cleanPassword = password.trim();
+    const cleanUsername = username.trim().toLowerCase();
+
+    if (loginMode === 'student' && !cleanUsername) {
+      setError('Enter your student username');
+      usernameInputRef.current?.focus();
+      return;
+    }
 
     if (!cleanPassword) {
       setError('Enter your password');
@@ -62,7 +74,10 @@ export function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      const result = await login(cleanPassword);
+      const result = await login(
+        cleanPassword,
+        loginMode === 'student' ? cleanUsername : undefined
+      );
 
       if (result.ok) {
         navigate(safeRedirect, { replace: true });
@@ -99,9 +114,73 @@ export function LoginPage() {
           </p>
         </div>
 
+        {/* Role Segmented Switcher */}
+        <div className="mt-6 p-1 rounded-2xl bg-[#090807] border border-neutral-800/80 grid grid-cols-2 gap-1">
+          <button
+            type="button"
+            onClick={() => {
+              setLoginMode('admin');
+              setError(null);
+            }}
+            className={`py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              loginMode === 'admin'
+                ? 'bg-neutral-800 text-amber-400 shadow-sm border border-neutral-700/60'
+                : 'text-neutral-400 hover:text-neutral-200'
+            }`}
+          >
+            <Shield className="w-3.5 h-3.5" />
+            <span>Mubez (Admin)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setLoginMode('student');
+              setError(null);
+            }}
+            className={`py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              loginMode === 'student'
+                ? 'bg-neutral-800 text-amber-400 shadow-sm border border-neutral-700/60'
+                : 'text-neutral-400 hover:text-neutral-200'
+            }`}
+          >
+            <User className="w-3.5 h-3.5" />
+            <span>Student</span>
+          </button>
+        </div>
+
         {/* Login Form */}
-        <form onSubmit={handleSubmit} className="mt-7 space-y-5">
-          <div className="space-y-2">
+        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+          {/* Student Username input */}
+          {loginMode === 'student' && (
+            <div className="space-y-1.5 animate-in fade-in duration-150">
+              <label
+                htmlFor="student-username-input"
+                className="text-xs font-semibold text-neutral-300 flex items-center gap-1.5"
+              >
+                <User className="w-3.5 h-3.5 text-amber-400/80" />
+                <span>Username / ID</span>
+              </label>
+              <input
+                ref={usernameInputRef}
+                id="student-username-input"
+                name="username"
+                type="text"
+                required
+                autoComplete="username"
+                value={username}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  if (error) setError(null);
+                }}
+                placeholder="e.g. friend1"
+                className="w-full h-11 px-4 rounded-xl bg-[#090807] border border-neutral-800 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none focus:border-amber-500/80 focus:ring-1 focus:ring-amber-500/60 transition-all font-mono"
+              />
+            </div>
+          )}
+
+          {/* Password Input */}
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label
                 htmlFor="private-access-password"
@@ -119,7 +198,6 @@ export function LoginPage() {
                 name="password"
                 type="password"
                 required
-                autoFocus
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => {
@@ -127,7 +205,7 @@ export function LoginPage() {
                   if (error) setError(null);
                 }}
                 placeholder="••••••••••••"
-                className="w-full h-12 px-4 rounded-xl bg-[#090807] border border-neutral-800 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none focus:border-amber-500/80 focus:ring-1 focus:ring-amber-500/60 transition-all font-mono"
+                className="w-full h-11 px-4 rounded-xl bg-[#090807] border border-neutral-800 text-sm text-neutral-100 placeholder:text-neutral-600 focus:outline-none focus:border-amber-500/80 focus:ring-1 focus:ring-amber-500/60 transition-all font-mono"
               />
             </div>
           </div>
@@ -148,7 +226,7 @@ export function LoginPage() {
             type="submit"
             id="private-login-submit-btn"
             disabled={isSubmitting || !password.trim()}
-            className="w-full h-12 flex items-center justify-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-neutral-950 font-bold text-xs tracking-wider uppercase transition-all shadow-md shadow-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            className="w-full h-11 flex items-center justify-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-neutral-950 font-bold text-xs tracking-wider uppercase transition-all shadow-md shadow-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer mt-2"
           >
             {isSubmitting ? (
               <>
@@ -165,7 +243,7 @@ export function LoginPage() {
         </form>
 
         {/* Bottom Tagline */}
-        <div className="mt-8 pt-5 border-t border-neutral-900 text-center">
+        <div className="mt-6 pt-4 border-t border-neutral-900 text-center">
           <p className="text-xs font-mono text-neutral-500 italic">
             “I learn by typing.”
           </p>

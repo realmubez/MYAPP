@@ -10,7 +10,9 @@ import {
   HelpCircle,
   ChevronLeft,
   ChevronRight,
+  Shield,
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -26,6 +28,8 @@ export function Sidebar({
   onOpenHelp,
 }: SidebarProps) {
   const location = useLocation();
+  const { role, user } = useAuth();
+  const isAdmin = role === 'admin' || user?.role === 'admin';
 
   const mainNavItems = [
     {
@@ -166,6 +170,35 @@ export function Sidebar({
             <User className="w-4 h-4 shrink-0" />
             {!isCollapsed && <span>Profile</span>}
           </NavLink>
+
+          {/* Admin link for Admin Users */}
+          {isAdmin && (
+            <NavLink
+              to="/admin"
+              id="sidebar-nav-admin"
+              title={isCollapsed ? 'Admin Center' : undefined}
+              aria-label="Admin Center"
+              className={`flex items-center rounded-xl text-xs font-semibold transition-all ${
+                location.pathname.startsWith('/admin')
+                  ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40 shadow-sm shadow-amber-500/20'
+                  : 'text-amber-400/80 hover:text-amber-300 hover:bg-amber-950/20 border border-transparent'
+              } ${
+                isCollapsed
+                  ? 'h-11 w-11 mx-auto justify-center'
+                  : 'w-full gap-3.5 px-3.5 py-2.5 text-left'
+              }`}
+            >
+              <Shield className="w-4 h-4 shrink-0 text-amber-400" />
+              {!isCollapsed && (
+                <div className="flex items-center justify-between w-full">
+                  <span>Admin</span>
+                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400">
+                    CONTROL
+                  </span>
+                </div>
+              )}
+            </NavLink>
+          )}
         </nav>
       </div>
 

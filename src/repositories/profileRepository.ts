@@ -1,17 +1,19 @@
 import { getSupabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { UserProfile, SubjectId } from '../types';
-import { DbProfile, DbProfileSubject } from './types';
+import { DbProfile } from './types';
 import { syncQueue } from './syncQueue';
 import { syncManager } from './syncManager';
+import { storageNamespace } from './storageNamespace';
 
-export const PROFILE_STORAGE_KEY = 'mylearning_user_profile_v1';
+export const PROFILE_STORAGE_KEY = 'profile';
 export const PROFILE_UPDATED_EVENT = 'mylearning_profile_changed';
 
 export const DEFAULT_ADMIN_PROFILE: UserProfile = {
-  id: 'usr-admin-primary',
+  id: '25993506-b5e2-4432-8e4d-c97ddd818e09',
   displayName: 'Mubez',
   avatar: 'avatar-keyboard',
   role: 'admin',
+  accountStatus: 'active',
   assignedSubjects: ['swedish', 'english', 'python', 'typing'] as SubjectId[],
   joinedAt: '2026-01-01T00:00:00.000Z',
 };
@@ -19,8 +21,42 @@ export const DEFAULT_ADMIN_PROFILE: UserProfile = {
 class ProfileRepository {
   private cachedProfile: UserProfile | null = null;
 
+  public clearCache(): void {
+    this.cachedProfile = null;
+  }
+
   /**
-   * Reads the profile from memory, localStorage, or initializes defaults.
+   * Switches the active user session, sets storage namespace, and clears caches.
+   */
+  public switchUserSession(user: {
+    id: string;
+    displayName: string;
+    role?: 'admin' | 'student';
+    accountStatus?: 'active' | 'disabled';
+    assignedSubjects?: SubjectId[];
+    avatar?: string;
+  }): UserProfile {
+    this.clearCache();
+    storageNamespace.setActiveProfileId(user.id);
+
+    const profile: UserProfile = {
+      id: user.id,
+      displayName: user.displayName,
+      avatar: user.avatar || (user.role === 'admin' ? 'avatar-keyboard' : 'avatar-student'),
+      role: user.role || 'student',
+      accountStatus: user.accountStatus || 'active',
+      assignedSubjects: Array.isArray(user.assignedSubjects) && user.assignedSubjects.length > 0
+        ? user.assignedSubjects
+        : (user.role === 'admin' ? ['swedish', 'english', 'python', 'typing'] : ['swedish', 'english']),
+      joinedAt: new Date().toISOString(),
+    };
+
+    this.saveLocalProfile(profile);
+    return profile;
+  }
+
+  /**
+   * Reads the profile from memory, namespaced localStorage, or initializes defaults.
    */
   public getLocalProfile(): UserProfile {
     if (this.cachedProfile) {
@@ -32,7 +68,7 @@ class ProfileRepository {
     }
 
     try {
-      const raw = localStorage.getItem(PROFILE_STORAGE_KEY);
+      const raw = storageNamespace.getItem(PROFILE_STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed === 'object' && parsed.id && parsed.displayName) {
@@ -40,10 +76,11 @@ class ProfileRepository {
             id: String(parsed.id),
             displayName: String(parsed.displayName),
             avatar: String(parsed.avatar || DEFAULT_ADMIN_PROFILE.avatar),
-            role: parsed.role === 'member' ? 'member' : 'admin',
+            role: parsed.role === 'student' || parsed.role === 'member' ? (parsed.role as any) : 'admin',
+            accountStatus: parsed.accountStatus || 'active',
             assignedSubjects: Array.isArray(parsed.assignedSubjects) && parsed.assignedSubjects.length > 0
               ? parsed.assignedSubjects
-              : DEFAULT_ADMIN_PROFILE.assignedSubjects,
+              : (['swedish', 'english', 'python', 'typing'] as SubjectId[]),
             joinedAt: parsed.joinedAt || DEFAULT_ADMIN_PROFILE.joinedAt,
           };
           this.cachedProfile = profile;
@@ -54,16 +91,31 @@ class ProfileRepository {
       console.warn('Error reading profile from local storage:', err);
     }
 
-    this.cachedProfile = DEFAULT_ADMIN_PROFILE;
-    this.saveLocalProfile(DEFAULT_ADMIN_PROFILE);
-    return DEFAULT_ADMIN_PROFILE;
+    // Default for current active user
+    const activeUid = storageNamespace.getActiveProfileId();
+    const defaultProfile: UserProfile = activeUid === DEFAULT_ADMIN_PROFILE.id || activeUid === 'mubez'
+      ? DEFAULT_ADMIN_PROFILE
+      : {
+          id: activeUid,
+          displayName: 'Student',
+          avatar: 'avatar-student',
+          role: 'student',
+          accountStatus: 'active',
+          assignedSubjects: ['swedish', 'english'],
+          joinedAt: new Date().toISOString(),
+        };
+
+    this.cachedProfile = defaultProfile;
+    this.saveLocalProfile(defaultProfile);
+    return defaultProfile;
   }
 
   public saveLocalProfile(profile: UserProfile): void {
     this.cachedProfile = profile;
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile));
+        storageNamespace.setActiveProfileId(profile.id);
+        storageNamespace.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile));
         window.dispatchEvent(new CustomEvent(PROFILE_UPDATED_EVENT, { detail: profile }));
       } catch (err) {
         console.warn('Error saving profile to localStorage:', err);
@@ -105,7 +157,8 @@ class ProfileRepository {
         id: (profileRow as DbProfile).id,
         displayName: (profileRow as DbProfile).display_name,
         avatar: (profileRow as DbProfile).avatar || 'avatar-keyboard',
-        role: (profileRow as DbProfile).role || 'member',
+        role: (profileRow as DbProfile).role || 'student',
+        accountStatus: (profileRow as DbProfile).account_status || 'active',
         assignedSubjects,
         joinedAt: (profileRow as DbProfile).created_at,
       };
@@ -151,3 +204,4 @@ class ProfileRepository {
 }
 
 export const profileRepository = new ProfileRepository();
+

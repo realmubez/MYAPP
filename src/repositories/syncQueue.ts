@@ -1,3 +1,5 @@
+import { storageNamespace } from './storageNamespace';
+
 export interface QueuedMutation {
   id: string; // unique UUID or timestamp-random
   table: string; // e.g. 'lesson_progress', 'mistakes', 'daily_activity', etc.
@@ -8,13 +10,13 @@ export interface QueuedMutation {
   retryCount: number;
 }
 
-const SYNC_QUEUE_KEY = 'mylearning_sync_queue_v1';
+const SYNC_QUEUE_KEY = 'sync_queue';
 
 export const syncQueue = {
   getQueue(): QueuedMutation[] {
     if (typeof window === 'undefined') return [];
     try {
-      const raw = localStorage.getItem(SYNC_QUEUE_KEY);
+      const raw = storageNamespace.getItem(SYNC_QUEUE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) return parsed;
@@ -57,7 +59,7 @@ export const syncQueue = {
         });
       }
 
-      localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue.slice(-150))); // Cap queue at 150 items
+      storageNamespace.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue.slice(-150))); // Cap queue at 150 items
     } catch (e) {
       console.warn('Failed to enqueue sync mutation:', e);
     }
@@ -67,7 +69,7 @@ export const syncQueue = {
     if (typeof window === 'undefined') return;
     try {
       const queue = this.getQueue().filter((item) => item.id !== mutationId);
-      localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
+      storageNamespace.setItem(SYNC_QUEUE_KEY, JSON.stringify(queue));
     } catch (e) {
       console.warn('Failed to remove mutation from queue:', e);
     }
@@ -76,7 +78,8 @@ export const syncQueue = {
   clear(): void {
     if (typeof window === 'undefined') return;
     try {
-      localStorage.removeItem(SYNC_QUEUE_KEY);
+      storageNamespace.removeItem(SYNC_QUEUE_KEY);
     } catch {}
   },
 };
+

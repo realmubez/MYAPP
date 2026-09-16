@@ -4,9 +4,10 @@ import { DbUserSettings } from './types';
 import { syncQueue } from './syncQueue';
 import { syncManager } from './syncManager';
 import { profileRepository } from './profileRepository';
+import { storageNamespace } from './storageNamespace';
 
-const SETTINGS_KEY = 'mylearning_settings';
-const SIDEBAR_COLLAPSED_KEY = 'mylearning_sidebar_collapsed';
+const SETTINGS_KEY = 'settings';
+const SIDEBAR_COLLAPSED_KEY = 'sidebar_collapsed';
 
 const DEFAULT_SETTINGS: AppSettings = {
   soundEnabled: true,
@@ -20,7 +21,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 class SettingsRepository {
   public getSettings(): AppSettings {
     try {
-      const data = localStorage.getItem(SETTINGS_KEY);
+      const data = storageNamespace.getItem(SETTINGS_KEY);
       if (data) {
         const parsed = JSON.parse(data);
         if (parsed && typeof parsed === 'object') {
@@ -35,7 +36,7 @@ class SettingsRepository {
 
   public saveSettings(settings: AppSettings): void {
     try {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+      storageNamespace.setItem(SETTINGS_KEY, JSON.stringify(settings));
     } catch (e) {
       console.warn('Could not save settings to localStorage:', e);
     }
@@ -62,7 +63,7 @@ class SettingsRepository {
 
   public getSidebarCollapsed(): boolean {
     try {
-      const val = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+      const val = storageNamespace.getItem(SIDEBAR_COLLAPSED_KEY);
       return val === 'true';
     } catch (e) {
       return false;
@@ -71,7 +72,7 @@ class SettingsRepository {
 
   public setSidebarCollapsed(collapsed: boolean): void {
     try {
-      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
+      storageNamespace.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
     } catch (e) {
       console.warn('Could not save sidebar state:', e);
     }
@@ -100,7 +101,7 @@ class SettingsRepository {
           ttsVoice: data.tts_voice || current.ttsVoice,
           ttsRate: Number(data.tts_rate) || current.ttsRate,
         };
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
+        storageNamespace.setItem(SETTINGS_KEY, JSON.stringify(merged));
       }
     } catch (e) {
       console.warn('Failed to pull remote settings:', e);
@@ -109,3 +110,4 @@ class SettingsRepository {
 }
 
 export const settingsRepository = new SettingsRepository();
+

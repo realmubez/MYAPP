@@ -3,13 +3,15 @@ export type SubjectId = 'swedish' | 'english' | 'python' | 'typing';
 /* =======================================================
    PROFILE & MULTI-USER ARCHITECTURE (PHASE 1)
 ======================================================= */
-export type UserRole = 'admin' | 'member';
+export type UserRole = 'admin' | 'student' | 'member';
+export type AccountStatus = 'active' | 'disabled';
 
 export interface UserProfile {
   id: string;
   displayName: string;
   avatar: string; // Built-in avatar identifier/icon (e.g. 'avatar-keyboard', 'avatar-student', etc.)
   role: UserRole;
+  accountStatus?: AccountStatus;
   assignedSubjects: SubjectId[];
   joinedAt: string; // ISO 8601 string
 }

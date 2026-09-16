@@ -44,54 +44,139 @@ function getSigningSecret(): string {
   return crypto.createHash('sha256').update(`mylearning-salt:${secretSource}`).digest('hex');
 }
 
+export interface SessionUser {
+  id: string;
+  displayName: string;
+  role: 'admin' | 'student';
+  accountStatus: 'active' | 'disabled';
+  email?: string;
+  username?: string;
+}
+
+export const DEFAULT_ADMIN_USER: SessionUser = {
+  id: '25993506-b5e2-4432-8e4d-c97ddd818e09',
+  displayName: 'Mubez',
+  role: 'admin',
+  accountStatus: 'active',
+  email: 'mubez@mylearning.internal',
+  username: 'mubez',
+};
+
 /**
- * Generates a signed, stateless session token with expiration.
- * Format: v1.<expTimestamp>.<randomHex>.<hmacSignature>
+ * Generates a signed, stateless session token with expiration and user payload.
+ * Format: v2.<expTimestamp>.<randomHex>.<base64Payload>.<hmacSignature>
  */
-export function generateSessionToken(): string {
+export function generateSessionToken(user: SessionUser = DEFAULT_ADMIN_USER): string {
   const exp = Date.now() + SESSION_DURATION_MS;
   const randomHex = crypto.randomBytes(16).toString('hex');
-  const payload = `v1.${exp}.${randomHex}`;
+  const payloadJson = JSON.stringify({
+    id: user.id,
+    displayName: user.displayName,
+    role: user.role,
+    accountStatus: user.accountStatus,
+    email: user.email,
+    username: user.username,
+  });
+  const base64Payload = Buffer.from(payloadJson).toString('base64url');
+  const signedPortion = `v2.${exp}.${randomHex}.${base64Payload}`;
   const signature = crypto
     .createHmac('sha256', getSigningSecret())
-    .update(payload)
+    .update(signedPortion)
     .digest('hex');
 
-  return `${payload}.${signature}`;
+  return `${signedPortion}.${signature}`;
+}
+
+/**
+ * Verifies the integrity and freshness of a session token and returns the parsed user if valid.
+ */
+export function getAuthenticatedUserFromToken(token: string | undefined): SessionUser | null {
+  if (!token || typeof token !== 'string') return null;
+
+  const parts = token.split('.');
+  
+  // Format v2: v2.<exp>.<randomHex>.<base64Payload>.<signature>
+  if (parts.length === 5 && parts[0] === 'v2') {
+    const [version, expStr, randomHex, base64Payload, signature] = parts;
+    const exp = parseInt(expStr, 10);
+    if (isNaN(exp) || exp < Date.now()) return null;
+
+    const signedPortion = `v2.${expStr}.${randomHex}.${base64Payload}`;
+    const expectedSignature = crypto
+      .createHmac('sha256', getSigningSecret())
+      .update(signedPortion)
+      .digest('hex');
+
+    const sigBuffer = Buffer.from(signature, 'hex');
+    const expectedBuffer = Buffer.from(expectedSignature, 'hex');
+
+    if (sigBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(sigBuffer, expectedBuffer)) {
+      return null;
+    }
+
+    try {
+      const decoded = JSON.parse(Buffer.from(base64Payload, 'base64url').toString('utf8'));
+      if (decoded && decoded.id && decoded.role) {
+        return {
+          id: String(decoded.id),
+          displayName: String(decoded.displayName || 'User'),
+          role: decoded.role === 'admin' ? 'admin' : 'student',
+          accountStatus: decoded.accountStatus === 'disabled' ? 'disabled' : 'active',
+          email: decoded.email,
+          username: decoded.username,
+        };
+      }
+    } catch {
+      return null;
+    }
+  }
+
+  // Format v1 legacy fallback: v1.<exp>.<randomHex>.<signature>
+  if (parts.length === 4 && parts[0] === 'v1') {
+    const [version, expStr, randomHex, signature] = parts;
+    const exp = parseInt(expStr, 10);
+    if (isNaN(exp) || exp < Date.now()) return null;
+
+    const payload = `v1.${expStr}.${randomHex}`;
+    const expectedSignature = crypto
+      .createHmac('sha256', getSigningSecret())
+      .update(payload)
+      .digest('hex');
+
+    const sigBuffer = Buffer.from(signature, 'hex');
+    const expectedBuffer = Buffer.from(expectedSignature, 'hex');
+
+    if (sigBuffer.length === expectedBuffer.length && crypto.timingSafeEqual(sigBuffer, expectedBuffer)) {
+      return DEFAULT_ADMIN_USER;
+    }
+  }
+
+  return null;
 }
 
 /**
  * Verifies the integrity and freshness of a session token.
  */
 export function verifySessionToken(token: string | undefined): boolean {
-  if (!token || typeof token !== 'string') return false;
+  return getAuthenticatedUserFromToken(token) !== null;
+}
 
-  const parts = token.split('.');
-  if (parts.length !== 4) return false;
+/**
+ * Extracts the authenticated user from the request cookie.
+ */
+export function getAuthenticatedUser(req: any): SessionUser | null {
+  const cookieHeader = req?.headers?.cookie || req?.headers?.get?.('cookie');
+  const cookies = parseCookies(cookieHeader);
+  const sessionToken = cookies[SESSION_COOKIE_NAME];
+  return getAuthenticatedUserFromToken(sessionToken);
+}
 
-  const [version, expStr, randomHex, signature] = parts;
-  if (version !== 'v1') return false;
-
-  const exp = parseInt(expStr, 10);
-  if (isNaN(exp) || exp < Date.now()) {
-    // Expired session
-    return false;
-  }
-
-  const payload = `v1.${expStr}.${randomHex}`;
-  const expectedSignature = crypto
-    .createHmac('sha256', getSigningSecret())
-    .update(payload)
-    .digest('hex');
-
-  const sigBuffer = Buffer.from(signature, 'hex');
-  const expectedBuffer = Buffer.from(expectedSignature, 'hex');
-
-  if (sigBuffer.length !== expectedBuffer.length) {
-    return false;
-  }
-
-  return crypto.timingSafeEqual(sigBuffer, expectedBuffer);
+/**
+ * Verifies if the request is from an authenticated admin.
+ */
+export function isAdminRequest(req: any): boolean {
+  const user = getAuthenticatedUser(req);
+  return user !== null && user.role === 'admin' && user.accountStatus === 'active';
 }
 
 export interface VerifyPasswordResult {
@@ -200,8 +285,8 @@ export function verifyPassword(
 /**
  * Creates the Set-Cookie header string for an authenticated session.
  */
-export function createSessionCookie(isProduction: boolean): string {
-  const token = generateSessionToken();
+export function createSessionCookie(isProduction: boolean, user?: SessionUser): string {
+  const token = generateSessionToken(user);
   const maxAge = 30 * 24 * 60 * 60; // 30 days in seconds
   const secure = isProduction ? '; Secure' : '';
   return `${SESSION_COOKIE_NAME}=${encodeURIComponent(

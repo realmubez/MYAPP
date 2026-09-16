@@ -3,6 +3,7 @@ import { DbVocabulary } from './types';
 import { syncQueue } from './syncQueue';
 import { syncManager } from './syncManager';
 import { profileRepository } from './profileRepository';
+import { storageNamespace } from './storageNamespace';
 
 export interface VocabularyItem {
   id: string;
@@ -14,13 +15,13 @@ export interface VocabularyItem {
   mistakeCount: number;
 }
 
-const VOCAB_STORAGE_KEY = 'mylearning_vocabulary_v1';
+const VOCAB_STORAGE_KEY = 'vocabulary';
 
 class VocabularyRepository {
   public getLocalVocabulary(): VocabularyItem[] {
     if (typeof window === 'undefined') return [];
     try {
-      const raw = localStorage.getItem(VOCAB_STORAGE_KEY);
+      const raw = storageNamespace.getItem(VOCAB_STORAGE_KEY);
       if (raw) {
         return JSON.parse(raw);
       }
@@ -33,7 +34,7 @@ class VocabularyRepository {
   public saveLocalVocabulary(items: VocabularyItem[]): void {
     if (typeof window === 'undefined') return;
     try {
-      localStorage.setItem(VOCAB_STORAGE_KEY, JSON.stringify(items));
+      storageNamespace.setItem(VOCAB_STORAGE_KEY, JSON.stringify(items));
     } catch (e) {
       console.warn('Failed to save vocabulary locally:', e);
     }

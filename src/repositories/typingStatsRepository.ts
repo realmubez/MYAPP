@@ -1,11 +1,21 @@
 import { getSupabase, isSupabaseConfigured } from '../lib/supabaseClient';
-import { TouchTypingProgress } from '../types/typing';
 import { DbTypingStats } from './types';
 import { syncQueue } from './syncQueue';
 import { syncManager } from './syncManager';
 import { profileRepository } from './profileRepository';
+import { storageNamespace } from './storageNamespace';
 
-const STORAGE_PREFIX = 'my_learning_typing_day_';
+export interface TouchTypingProgress {
+  day: number;
+  completed: boolean;
+  bestWpm: number;
+  averageAccuracy: number;
+  totalCharactersTyped: number;
+  totalMistakes: number;
+  exerciseResults: any[];
+  lastActiveAt: string;
+  introSeen: boolean;
+}
 
 class TypingStatsRepository {
   public getTouchTypingProgress(day: number): TouchTypingProgress {
@@ -22,7 +32,7 @@ class TypingStatsRepository {
     };
 
     try {
-      const raw = localStorage.getItem(`${STORAGE_PREFIX}${day}`);
+      const raw = storageNamespace.getItem(`typing_day_${day}`);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed === 'object') {
@@ -42,8 +52,8 @@ class TypingStatsRepository {
 
   public saveTouchTypingProgress(progress: TouchTypingProgress): void {
     try {
-      localStorage.setItem(
-        `${STORAGE_PREFIX}${progress.day}`,
+      storageNamespace.setItem(
+        `typing_day_${progress.day}`,
         JSON.stringify({
           ...progress,
           lastActiveAt: new Date().toISOString(),
@@ -98,7 +108,7 @@ class TypingStatsRepository {
               exerciseResults: Array.isArray(row.exercise_results) ? row.exercise_results : current.exerciseResults,
               lastActiveAt: row.last_active_at || current.lastActiveAt,
             };
-            localStorage.setItem(`${STORAGE_PREFIX}${row.typing_day}`, JSON.stringify(merged));
+            storageNamespace.setItem(`typing_day_${row.typing_day}`, JSON.stringify(merged));
           }
         }
       }
@@ -109,3 +119,4 @@ class TypingStatsRepository {
 }
 
 export const typingStatsRepository = new TypingStatsRepository();
+

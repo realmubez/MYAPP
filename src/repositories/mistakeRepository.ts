@@ -4,15 +4,16 @@ import { DbMistake } from './types';
 import { syncQueue } from './syncQueue';
 import { syncManager } from './syncManager';
 import { profileRepository } from './profileRepository';
+import { storageNamespace } from './storageNamespace';
 
-export const REVIEW_STORAGE_KEY = 'mylearning_review_items_v1';
+export const REVIEW_STORAGE_KEY = 'mistakes';
 export const REVIEW_UPDATED_EVENT = 'mylearning_review_changed';
 
 class MistakeRepository {
   public getLocalItems(): ReviewItem[] {
     if (typeof window === 'undefined') return [];
     try {
-      const raw = localStorage.getItem(REVIEW_STORAGE_KEY);
+      const raw = storageNamespace.getItem(REVIEW_STORAGE_KEY);
       if (raw) {
         return JSON.parse(raw);
       }
@@ -25,7 +26,7 @@ class MistakeRepository {
   public saveLocalItems(items: ReviewItem[]): void {
     if (typeof window === 'undefined') return;
     try {
-      localStorage.setItem(REVIEW_STORAGE_KEY, JSON.stringify(items));
+      storageNamespace.setItem(REVIEW_STORAGE_KEY, JSON.stringify(items));
       window.dispatchEvent(new CustomEvent(REVIEW_UPDATED_EVENT, { detail: items }));
     } catch (e) {
       console.warn('Failed to save review items locally:', e);
