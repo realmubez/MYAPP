@@ -22,8 +22,14 @@ import {
   ListOrdered,
   BookOpen,
   FastForward,
+  Mic,
+  Loader2,
+  Play,
+  Square,
+  Radio,
 } from 'lucide-react';
 import { typingSoundService } from '../services/typingSoundService';
+import { getTTSUrl, fetchTTSAudioBlobUrl, cleanSpeechText, TTSRate } from '../services/tts';
 
 export interface TrainingStep {
   id: string;
@@ -176,6 +182,9 @@ export const PUBLIC_PASSAGES: PassageItem[] = [
 type PracticeMode = 'progressive' | 'sentence' | 'full';
 type TimerOption = 0 | 15 | 30 | 60 | 90; // 0 = untimed
 
+// Ryan (Neural) UK voice constant
+const RYAN_VOICE_ID = 'en-GB-RyanNeural';
+
 export function PublicTypingPage() {
   const [selectedPassageIndex, setSelectedPassageIndex] = useState<number>(0);
   const [practiceMode, setPracticeMode] = useState<PracticeMode>('progressive');
@@ -183,6 +192,8 @@ export function PublicTypingPage() {
   const [timerMode, setTimerMode] = useState<TimerOption>(0);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [autoAdvance, setAutoAdvance] = useState<boolean>(true);
+  const [autoplayVoice, setAutoplayVoice] = useState<boolean>(true);
+  const [speechRate, setSpeechRate] = useState<TTSRate>('0%');
 
   const [inputVal, setInputVal] = useState<string>('');
   const [startTime, setStartTime] = useState<number | null>(null);
@@ -192,7 +203,10 @@ export function PublicTypingPage() {
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
   const [isTimeUp, setIsTimeUp] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
-  const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
+
+  // Audio State
+  const [isAudioLoading, setIsAudioLoading] = useState<boolean>(false);
+  const [isAudioPlaying, setIsAudioPlaying] = useState<boolean>(false);
 
   // Completed steps tracking for current passage
   const [completedStepIds, setCompletedStepIds] = useState<Set<string>>(new Set());
@@ -201,6 +215,8 @@ export function PublicTypingPage() {
   const timerIntervalRef = useRef<number | null>(null);
   const mistakeSetRef = useRef<Set<number>>(new Set());
   const autoAdvanceTimeoutRef = useRef<number | null>(null);
+  const activeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const currentPassage = PUBLIC_PASSAGES[selectedPassageIndex];
 
@@ -223,12 +239,109 @@ export function PublicTypingPage() {
     currentStepsList[0];
   const targetText = currentStep.chunk;
 
+  // Stop any active audio
   const stopAudio = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    if (activeAudioRef.current) {
+      try {
+        activeAudioRef.current.pause();
+        activeAudioRef.current.currentTime = 0;
+        activeAudioRef.current.removeAttribute('src');
+      } catch {
+        // ignore
+      }
+      activeAudioRef.current = null;
+    }
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
-    setIsPlayingAudio(false);
+    setIsAudioLoading(false);
+    setIsAudioPlaying(false);
   }, []);
+
+  // Play text with Ryan (Neural) (United Kingdom)
+  const playRyanAudio = useCallback(
+    async (textToPlay: string) => {
+      const clean = cleanSpeechText(textToPlay);
+      if (!clean) return;
+
+      stopAudio();
+      setIsAudioLoading(true);
+
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+
+      const targetUrl = getTTSUrl({
+        text: clean,
+        voice: RYAN_VOICE_ID,
+        rate: speechRate,
+      });
+
+      try {
+        let resolvedSrc = targetUrl;
+        try {
+          resolvedSrc = await fetchTTSAudioBlobUrl(targetUrl, abortController.signal);
+        } catch {
+          // fallback to direct targetUrl if blob fetch fails
+        }
+
+        if (abortController.signal.aborted) return;
+
+        const audio = new Audio();
+        audio.preload = 'auto';
+        audio.src = resolvedSrc;
+        activeAudioRef.current = audio;
+
+        audio.onplaying = () => {
+          setIsAudioLoading(false);
+          setIsAudioPlaying(true);
+        };
+
+        audio.onended = () => {
+          setIsAudioLoading(false);
+          setIsAudioPlaying(false);
+          activeAudioRef.current = null;
+        };
+
+        audio.onerror = () => {
+          // Fallback to browser UK Web Speech synthesis
+          setIsAudioLoading(false);
+          if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+            const utterance = new SpeechSynthesisUtterance(clean);
+            utterance.lang = 'en-GB';
+            utterance.rate = speechRate === '-10%' ? 0.85 : 0.95;
+            utterance.onstart = () => setIsAudioPlaying(true);
+            utterance.onend = () => setIsAudioPlaying(false);
+            utterance.onerror = () => setIsAudioPlaying(false);
+            window.speechSynthesis.speak(utterance);
+          } else {
+            setIsAudioPlaying(false);
+          }
+        };
+
+        await audio.play();
+      } catch (err) {
+        if (abortController.signal.aborted) return;
+        setIsAudioLoading(false);
+        // Fallback to browser UK speech synthesis
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+          const utterance = new SpeechSynthesisUtterance(clean);
+          utterance.lang = 'en-GB';
+          utterance.rate = 0.95;
+          utterance.onstart = () => setIsAudioPlaying(true);
+          utterance.onend = () => setIsAudioPlaying(false);
+          utterance.onerror = () => setIsAudioPlaying(false);
+          window.speechSynthesis.speak(utterance);
+        } else {
+          setIsAudioPlaying(false);
+        }
+      }
+    },
+    [speechRate, stopAudio]
+  );
 
   // Reset session for typing
   const resetSession = useCallback(() => {
@@ -260,10 +373,16 @@ export function PublicTypingPage() {
     resetSession();
   }, [selectedPassageIndex, practiceMode]);
 
-  // When step changes, reset input
+  // When step changes, reset input and optionally autoplay Ryan's voice
   useEffect(() => {
     resetSession();
-  }, [currentStepIndex, resetSession]);
+    if (autoplayVoice && targetText) {
+      const timer = setTimeout(() => {
+        playRyanAudio(targetText);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [currentStepIndex, resetSession, autoplayVoice, targetText, playRyanAudio]);
 
   // Timer countdown / count-up effect
   useEffect(() => {
@@ -343,7 +462,7 @@ export function PublicTypingPage() {
       if (autoAdvance && currentStepIndex < currentStepsList.length - 1) {
         autoAdvanceTimeoutRef.current = window.setTimeout(() => {
           goToNextStep();
-        }, 800);
+        }, 900);
       }
     }
   };
@@ -413,26 +532,10 @@ export function PublicTypingPage() {
 
   const stats = calculateStats();
 
-  const handleListenText = () => {
-    if (isPlayingAudio) {
-      stopAudio();
-    } else {
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        stopAudio();
-        const utterance = new SpeechSynthesisUtterance(targetText);
-        utterance.lang = 'en-US';
-        utterance.rate = 0.92;
-        utterance.onend = () => setIsPlayingAudio(false);
-        utterance.onerror = () => setIsPlayingAudio(false);
-        setIsPlayingAudio(true);
-        window.speechSynthesis.speak(utterance);
-      }
-    }
-  };
-
   const handleShareResults = () => {
-    const textToCopy = `⌨️ My Learning Typing:
+    const textToCopy = `⌨️ My Learning Audio Typing Practice:
 ${currentPassage.title} — ${currentStep.title}
+Voice: Ryan (Neural) (UK)
 Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationSec}s`;
     navigator.clipboard.writeText(textToCopy);
     setCopied(true);
@@ -455,17 +558,17 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
                   MY LEARNING
                 </span>
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  Public Trainer
+                  Public Audio Trainer
                 </span>
               </div>
               <p className="text-[11px] text-neutral-400 hidden sm:block">
-                Step-by-step progressive learning • No login required
+                Powered by <strong className="text-amber-400 font-semibold">Ryan (Neural) • United Kingdom</strong>
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Sound Toggle */}
+            {/* Sound Effects Toggle */}
             <button
               onClick={() => {
                 const nextState = !soundEnabled;
@@ -535,7 +638,7 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
           })}
         </div>
 
-        {/* 2. Practice Mode Selector (One-by-One Progressive vs Sentence vs Full) */}
+        {/* 2. Practice Mode & Neural Audio Controls Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-[#14110e] border border-neutral-800/80">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-xs font-semibold text-neutral-400 flex items-center gap-1 mr-1">
@@ -579,18 +682,38 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
             </button>
           </div>
 
-          {/* Auto Advance Toggle */}
-          {practiceMode !== 'full' && (
-            <label className="flex items-center gap-2 text-xs text-neutral-400 cursor-pointer select-none">
+          {/* Voice & Auto-play options */}
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Ryan Neural Voice Pill */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-neutral-900 border border-neutral-800 text-[11px] text-amber-400">
+              <Radio className="w-3 h-3 text-amber-400 animate-pulse" />
+              <span className="font-semibold">Ryan (Neural) UK</span>
+            </div>
+
+            {/* Autoplay Voice toggle */}
+            <label className="flex items-center gap-1.5 text-xs text-neutral-300 cursor-pointer select-none">
               <input
                 type="checkbox"
-                checked={autoAdvance}
-                onChange={(e) => setAutoAdvance(e.target.checked)}
+                checked={autoplayVoice}
+                onChange={(e) => setAutoplayVoice(e.target.checked)}
                 className="w-3.5 h-3.5 rounded bg-neutral-900 border-neutral-700 text-amber-500 focus:ring-0 cursor-pointer"
               />
-              <span>Auto-advance next step</span>
+              <span>Auto-read on Step</span>
             </label>
-          )}
+
+            {/* Auto Advance Step Toggle */}
+            {practiceMode !== 'full' && (
+              <label className="flex items-center gap-1.5 text-xs text-neutral-400 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={autoAdvance}
+                  onChange={(e) => setAutoAdvance(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded bg-neutral-900 border-neutral-700 text-amber-500 focus:ring-0 cursor-pointer"
+                />
+                <span>Auto-advance</span>
+              </label>
+            )}
+          </div>
         </div>
 
         {/* 3. Progressive Steps Stepper Strip (When in progressive or sentence mode) */}
@@ -703,7 +826,7 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
           </div>
         </div>
 
-        {/* 5. Interactive Typing Canvas */}
+        {/* 5. Interactive Typing Canvas with Ryan Neural Audio Trigger */}
         <div
           onClick={() => inputRef.current?.focus()}
           className="relative rounded-3xl bg-[#110f0d] border border-neutral-800 p-6 sm:p-8 min-h-[220px] flex flex-col justify-between shadow-2xl cursor-text transition-all focus-within:border-amber-500/50 focus-within:ring-1 focus-within:ring-amber-500/30"
@@ -720,17 +843,42 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
               )}
             </div>
 
+            {/* Audio Button with Ryan (Neural) UK voice indicator */}
             <div className="flex items-center gap-2">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleListenText();
+                  if (isAudioPlaying) {
+                    stopAudio();
+                  } else {
+                    playRyanAudio(targetText);
+                  }
                 }}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-[11px] text-neutral-300 hover:text-amber-400 transition-all cursor-pointer"
-                title="Listen to native voice"
+                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+                  isAudioPlaying
+                    ? 'bg-amber-500/20 border-amber-500/60 text-amber-300 ring-1 ring-amber-500/40 animate-pulse'
+                    : isAudioLoading
+                    ? 'bg-neutral-900 border-neutral-800 text-neutral-400'
+                    : 'bg-neutral-900 hover:bg-neutral-800 border-neutral-800 text-neutral-300 hover:text-amber-400'
+                }`}
+                title="Listen with Ryan (Neural) (United Kingdom)"
               >
-                <Volume1 className={`w-3.5 h-3.5 ${isPlayingAudio ? 'text-amber-400 animate-pulse' : ''}`} />
-                <span>{isPlayingAudio ? 'Speaking...' : 'Listen'}</span>
+                {isAudioLoading ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                    <span>Loading...</span>
+                  </>
+                ) : isAudioPlaying ? (
+                  <>
+                    <Square className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                    <span>Stop Reading</span>
+                  </>
+                ) : (
+                  <>
+                    <Volume2 className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Listen (Ryan UK)</span>
+                  </>
+                )}
               </button>
 
               <button
