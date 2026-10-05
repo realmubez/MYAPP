@@ -8,6 +8,7 @@ import {
   Zap,
   CheckCircle2,
   ArrowRight,
+  ArrowLeft,
   Lock,
   Sparkles,
   Trophy,
@@ -18,8 +19,18 @@ import {
   Share2,
   Check,
   Flame,
+  ListOrdered,
+  BookOpen,
+  FastForward,
 } from 'lucide-react';
 import { typingSoundService } from '../services/typingSoundService';
+
+export interface TrainingStep {
+  id: string;
+  title: string;
+  chunk: string;
+  hint?: string;
+}
 
 export interface PassageItem {
   id: string;
@@ -27,7 +38,9 @@ export interface PassageItem {
   subtitle: string;
   tag: string;
   gender: 'man' | 'woman';
-  text: string;
+  fullText: string;
+  progressiveSteps: TrainingStep[];
+  sentenceSteps: TrainingStep[];
 }
 
 export const PUBLIC_PASSAGES: PassageItem[] = [
@@ -35,26 +48,142 @@ export const PUBLIC_PASSAGES: PassageItem[] = [
     id: 'man-profile',
     title: 'Passage 1 — The Man',
     subtitle: 'Description: Tall, slim, dark hair, beard & glasses',
-    tag: 'First Text',
+    tag: 'First Subject',
     gender: 'man',
-    text: 'The man is tall and slim, and he looks around 30 years old. He has short dark hair, a beard, and he wears glasses. He is wearing a dark T-shirt, pants, and black shoes.',
+    fullText:
+      'The man is tall and slim, and he looks around 30 years old. He has short dark hair, a beard, and he wears glasses. He is wearing a dark T-shirt, pants, and black shoes.',
+    progressiveSteps: [
+      { id: 'm-1', title: 'Start: Subject', chunk: 'The man', hint: 'Start with the subject' },
+      { id: 'm-2', title: 'Physical Build', chunk: 'The man is tall', hint: 'Describe height' },
+      { id: 'm-3', title: 'Complete Clause 1', chunk: 'The man is tall and slim,', hint: 'Height and build with comma' },
+      { id: 'm-4', title: 'Age Clause', chunk: 'and he looks around 30 years old.', hint: 'Estimated age' },
+      {
+        id: 'm-5',
+        title: 'Master Sentence 1',
+        chunk: 'The man is tall and slim, and he looks around 30 years old.',
+        hint: 'Full first sentence',
+      },
+      { id: 'm-6', title: 'Hair Description', chunk: 'He has short dark hair,', hint: 'Short dark hair with comma' },
+      { id: 'm-7', title: 'Beard & Glasses', chunk: 'a beard, and he wears glasses.', hint: 'Facial details' },
+      {
+        id: 'm-8',
+        title: 'Master Sentence 2',
+        chunk: 'He has short dark hair, a beard, and he wears glasses.',
+        hint: 'Full second sentence',
+      },
+      { id: 'm-9', title: 'Clothing: Top', chunk: 'He is wearing a dark T-shirt,', hint: 'Shirt details (capital T)' },
+      { id: 'm-10', title: 'Pants & Shoes', chunk: 'pants, and black shoes.', hint: 'Bottom and footwear' },
+      {
+        id: 'm-11',
+        title: 'Master Sentence 3',
+        chunk: 'He is wearing a dark T-shirt, pants, and black shoes.',
+        hint: 'Full third sentence',
+      },
+      {
+        id: 'm-12',
+        title: 'Complete Passage Mastery',
+        chunk:
+          'The man is tall and slim, and he looks around 30 years old. He has short dark hair, a beard, and he wears glasses. He is wearing a dark T-shirt, pants, and black shoes.',
+        hint: 'Type the entire paragraph fluidly',
+      },
+    ],
+    sentenceSteps: [
+      {
+        id: 'm-s1',
+        title: 'Sentence 1: Appearance & Age',
+        chunk: 'The man is tall and slim, and he looks around 30 years old.',
+      },
+      {
+        id: 'm-s2',
+        title: 'Sentence 2: Facial Features',
+        chunk: 'He has short dark hair, a beard, and he wears glasses.',
+      },
+      {
+        id: 'm-s3',
+        title: 'Sentence 3: Outfit & Shoes',
+        chunk: 'He is wearing a dark T-shirt, pants, and black shoes.',
+      },
+    ],
   },
   {
     id: 'woman-profile',
     title: 'Passage 2 — The Woman',
     subtitle: 'Description: Short, heavy, brown hair & happy smile',
-    tag: 'Second Text',
+    tag: 'Second Subject',
     gender: 'woman',
-    text: 'The woman is short and a little heavy, and she is around 40 years old. She has brown hair and a happy smile. She is wearing a light tunic shirt, pants, and flat shoes.',
+    fullText:
+      'The woman is short and a little heavy, and she is around 40 years old. She has brown hair and a happy smile. She is wearing a light tunic shirt, pants, and flat shoes.',
+    progressiveSteps: [
+      { id: 'w-1', title: 'Start: Subject', chunk: 'The woman', hint: 'Start with the subject' },
+      { id: 'w-2', title: 'Physical Build', chunk: 'The woman is short', hint: 'Describe height' },
+      {
+        id: 'w-3',
+        title: 'Complete Clause 1',
+        chunk: 'The woman is short and a little heavy,',
+        hint: 'Height and weight with comma',
+      },
+      { id: 'w-4', title: 'Age Clause', chunk: 'and she is around 40 years old.', hint: 'Estimated age' },
+      {
+        id: 'w-5',
+        title: 'Master Sentence 1',
+        chunk: 'The woman is short and a little heavy, and she is around 40 years old.',
+        hint: 'Full first sentence',
+      },
+      { id: 'w-6', title: 'Hair Description', chunk: 'She has brown hair', hint: 'Hair color' },
+      { id: 'w-7', title: 'Smile Expression', chunk: 'and a happy smile.', hint: 'Facial expression' },
+      {
+        id: 'w-8',
+        title: 'Master Sentence 2',
+        chunk: 'She has brown hair and a happy smile.',
+        hint: 'Full second sentence',
+      },
+      { id: 'w-9', title: 'Clothing: Top', chunk: 'She is wearing a light tunic shirt,', hint: 'Tunic shirt with comma' },
+      { id: 'w-10', title: 'Pants & Shoes', chunk: 'pants, and flat shoes.', hint: 'Bottom and flat shoes' },
+      {
+        id: 'w-11',
+        title: 'Master Sentence 3',
+        chunk: 'She is wearing a light tunic shirt, pants, and flat shoes.',
+        hint: 'Full third sentence',
+      },
+      {
+        id: 'w-12',
+        title: 'Complete Passage Mastery',
+        chunk:
+          'The woman is short and a little heavy, and she is around 40 years old. She has brown hair and a happy smile. She is wearing a light tunic shirt, pants, and flat shoes.',
+        hint: 'Type the entire paragraph fluidly',
+      },
+    ],
+    sentenceSteps: [
+      {
+        id: 'w-s1',
+        title: 'Sentence 1: Appearance & Age',
+        chunk: 'The woman is short and a little heavy, and she is around 40 years old.',
+      },
+      {
+        id: 'w-s2',
+        title: 'Sentence 2: Hair & Smile',
+        chunk: 'She has brown hair and a happy smile.',
+      },
+      {
+        id: 'w-s3',
+        title: 'Sentence 3: Outfit & Footwear',
+        chunk: 'She is wearing a light tunic shirt, pants, and flat shoes.',
+      },
+    ],
   },
 ];
 
-type TimerOption = 0 | 15 | 30 | 60 | 90 | 120; // 0 means untimed / free flow
+type PracticeMode = 'progressive' | 'sentence' | 'full';
+type TimerOption = 0 | 15 | 30 | 60 | 90; // 0 = untimed
 
 export function PublicTypingPage() {
   const [selectedPassageIndex, setSelectedPassageIndex] = useState<number>(0);
-  const [timerMode, setTimerMode] = useState<TimerOption>(0); // 0 = untimed
+  const [practiceMode, setPracticeMode] = useState<PracticeMode>('progressive');
+  const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
+  const [timerMode, setTimerMode] = useState<TimerOption>(0);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [autoAdvance, setAutoAdvance] = useState<boolean>(true);
+
   const [inputVal, setInputVal] = useState<string>('');
   const [startTime, setStartTime] = useState<number | null>(null);
   const [endTime, setEndTime] = useState<number | null>(null);
@@ -65,12 +194,34 @@ export function PublicTypingPage() {
   const [copied, setCopied] = useState<boolean>(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
 
+  // Completed steps tracking for current passage
+  const [completedStepIds, setCompletedStepIds] = useState<Set<string>>(new Set());
+
   const inputRef = useRef<HTMLInputElement>(null);
   const timerIntervalRef = useRef<number | null>(null);
   const mistakeSetRef = useRef<Set<number>>(new Set());
+  const autoAdvanceTimeoutRef = useRef<number | null>(null);
 
   const currentPassage = PUBLIC_PASSAGES[selectedPassageIndex];
-  const targetText = currentPassage.text;
+
+  // Determine current active steps array based on practice mode
+  const currentStepsList: TrainingStep[] =
+    practiceMode === 'progressive'
+      ? currentPassage.progressiveSteps
+      : practiceMode === 'sentence'
+      ? currentPassage.sentenceSteps
+      : [
+          {
+            id: `${currentPassage.id}-full`,
+            title: 'Full Passage',
+            chunk: currentPassage.fullText,
+          },
+        ];
+
+  const currentStep =
+    currentStepsList[Math.min(currentStepIndex, currentStepsList.length - 1)] ||
+    currentStepsList[0];
+  const targetText = currentStep.chunk;
 
   const stopAudio = useCallback(() => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -79,8 +230,12 @@ export function PublicTypingPage() {
     setIsPlayingAudio(false);
   }, []);
 
-  // Reset session when changing passage or timer mode
+  // Reset session for typing
   const resetSession = useCallback(() => {
+    if (autoAdvanceTimeoutRef.current) {
+      clearTimeout(autoAdvanceTimeoutRef.current);
+      autoAdvanceTimeoutRef.current = null;
+    }
     setInputVal('');
     setStartTime(null);
     setEndTime(null);
@@ -96,12 +251,19 @@ export function PublicTypingPage() {
     stopAudio();
     setTimeout(() => {
       inputRef.current?.focus();
-    }, 50);
+    }, 40);
   }, [timerMode, stopAudio]);
 
+  // When changing passage or practice mode, reset step index and clear state
+  useEffect(() => {
+    setCurrentStepIndex(0);
+    resetSession();
+  }, [selectedPassageIndex, practiceMode]);
+
+  // When step changes, reset input
   useEffect(() => {
     resetSession();
-  }, [selectedPassageIndex, timerMode, resetSession]);
+  }, [currentStepIndex, resetSession]);
 
   // Timer countdown / count-up effect
   useEffect(() => {
@@ -135,7 +297,7 @@ export function PublicTypingPage() {
     const value = e.target.value;
     const now = Date.now();
 
-    // Start timer on first character
+    // Start timer on first keystroke
     if (!startTime) {
       setStartTime(now);
       if (timerMode > 0) {
@@ -171,9 +333,30 @@ export function PublicTypingPage() {
     if (value.length >= targetText.length) {
       setEndTime(now);
       setIsCompleted(true);
+      setCompletedStepIds((prev) => new Set([...prev, currentStep.id]));
+
       if (soundEnabled) {
         typingSoundService.playCompletion();
       }
+
+      // Auto advance to next step if enabled and not at the last step
+      if (autoAdvance && currentStepIndex < currentStepsList.length - 1) {
+        autoAdvanceTimeoutRef.current = window.setTimeout(() => {
+          goToNextStep();
+        }, 800);
+      }
+    }
+  };
+
+  const goToNextStep = () => {
+    if (currentStepIndex < currentStepsList.length - 1) {
+      setCurrentStepIndex((prev) => prev + 1);
+    }
+  };
+
+  const goToPrevStep = () => {
+    if (currentStepIndex > 0) {
+      setCurrentStepIndex((prev) => prev - 1);
     }
   };
 
@@ -182,16 +365,23 @@ export function PublicTypingPage() {
     inputRef.current?.focus();
   }, []);
 
-  // Global hotkeys (Escape to restart)
+  // Global hotkeys (Escape to restart, Enter to advance when completed)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         resetSession();
+      } else if (e.key === 'Enter' && isCompleted) {
+        if (currentStepIndex < currentStepsList.length - 1) {
+          goToNextStep();
+        } else {
+          // Switch to other passage or restart
+          setSelectedPassageIndex((prev) => (prev + 1) % PUBLIC_PASSAGES.length);
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [resetSession]);
+  }, [resetSession, isCompleted, currentStepIndex, currentStepsList.length]);
 
   // Compute live / final stats
   const calculateStats = () => {
@@ -231,7 +421,7 @@ export function PublicTypingPage() {
         stopAudio();
         const utterance = new SpeechSynthesisUtterance(targetText);
         utterance.lang = 'en-US';
-        utterance.rate = 0.95;
+        utterance.rate = 0.92;
         utterance.onend = () => setIsPlayingAudio(false);
         utterance.onerror = () => setIsPlayingAudio(false);
         setIsPlayingAudio(true);
@@ -241,17 +431,16 @@ export function PublicTypingPage() {
   };
 
   const handleShareResults = () => {
-    const textToCopy = `⌨️ My Learning Typing Practice:
-Passage: ${currentPassage.title}
+    const textToCopy = `⌨️ My Learning Typing:
+${currentPassage.title} — ${currentStep.title}
 Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationSec}s`;
     navigator.clipboard.writeText(textToCopy);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const nextPassage = () => {
-    setSelectedPassageIndex((prev) => (prev + 1) % PUBLIC_PASSAGES.length);
-  };
+  const completedCount = currentStepsList.filter((s) => completedStepIds.has(s.id)).length;
+  const progressPercent = Math.round((completedCount / currentStepsList.length) * 100);
 
   return (
     <div className="min-h-screen w-full bg-[#0a0908] text-neutral-100 flex flex-col justify-between selection:bg-amber-500/30 selection:text-amber-200">
@@ -266,11 +455,11 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
                   MY LEARNING
                 </span>
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  Public Practice
+                  Public Trainer
                 </span>
               </div>
               <p className="text-[11px] text-neutral-400 hidden sm:block">
-                Zero login required • Instant typing training
+                Step-by-step progressive learning • No login required
               </p>
             </div>
           </div>
@@ -303,8 +492,8 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col justify-center gap-6">
-        {/* Passage Selection Tabs */}
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col justify-center gap-5">
+        {/* 1. Passage Selector Tabs (Man vs Woman) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {PUBLIC_PASSAGES.map((passage, idx) => {
             const isSelected = selectedPassageIndex === idx;
@@ -346,58 +535,116 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
           })}
         </div>
 
-        {/* Time Limit Selector & Controls Bar */}
+        {/* 2. Practice Mode Selector (One-by-One Progressive vs Sentence vs Full) */}
         <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-[#14110e] border border-neutral-800/80">
-          {/* Time options */}
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-xs font-semibold text-neutral-400 flex items-center gap-1 mr-1">
-              <Clock className="w-3.5 h-3.5 text-amber-400" />
-              <span>Time:</span>
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>Training Mode:</span>
             </span>
-            {[
-              { val: 0, label: 'Untimed / Free' },
-              { val: 15, label: '15s' },
-              { val: 30, label: '30s' },
-              { val: 60, label: '60s' },
-              { val: 90, label: '90s' },
-            ].map((opt) => (
-              <button
-                key={opt.val}
-                onClick={() => setTimerMode(opt.val as TimerOption)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                  timerMode === opt.val
-                    ? 'bg-amber-500 text-neutral-950 font-bold shadow-sm shadow-amber-500/30'
-                    : 'bg-neutral-900/80 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Audio Listen & Restart Buttons */}
-          <div className="flex items-center gap-2">
             <button
-              onClick={handleListenText}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-xs font-medium text-neutral-300 hover:text-amber-400 transition-all cursor-pointer"
-              title="Listen to native pronunciation"
+              onClick={() => setPracticeMode('progressive')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
+                practiceMode === 'progressive'
+                  ? 'bg-amber-500 text-neutral-950 font-bold shadow-md shadow-amber-500/20'
+                  : 'bg-neutral-900/90 text-neutral-400 hover:text-neutral-200'
+              }`}
             >
-              <Volume1 className={`w-3.5 h-3.5 ${isPlayingAudio ? 'text-amber-400 animate-pulse' : ''}`} />
-              <span>{isPlayingAudio ? 'Speaking...' : 'Listen'}</span>
+              <ListOrdered className="w-3.5 h-3.5" />
+              <span>🎯 Step-by-Step (One-by-One)</span>
             </button>
 
             <button
-              onClick={resetSession}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-xs font-medium text-neutral-300 hover:text-white transition-all cursor-pointer"
-              title="Restart session (Esc)"
+              onClick={() => setPracticeMode('sentence')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
+                practiceMode === 'sentence'
+                  ? 'bg-amber-500 text-neutral-950 font-bold shadow-md shadow-amber-500/20'
+                  : 'bg-neutral-900/90 text-neutral-400 hover:text-neutral-200'
+              }`}
             >
-              <RotateCcw className="w-3.5 h-3.5 text-neutral-400" />
-              <span>Restart</span>
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Sentence by Sentence</span>
+            </button>
+
+            <button
+              onClick={() => setPracticeMode('full')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
+                practiceMode === 'full'
+                  ? 'bg-amber-500 text-neutral-950 font-bold shadow-md shadow-amber-500/20'
+                  : 'bg-neutral-900/90 text-neutral-400 hover:text-neutral-200'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Full Passage</span>
             </button>
           </div>
+
+          {/* Auto Advance Toggle */}
+          {practiceMode !== 'full' && (
+            <label className="flex items-center gap-2 text-xs text-neutral-400 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={autoAdvance}
+                onChange={(e) => setAutoAdvance(e.target.checked)}
+                className="w-3.5 h-3.5 rounded bg-neutral-900 border-neutral-700 text-amber-500 focus:ring-0 cursor-pointer"
+              />
+              <span>Auto-advance next step</span>
+            </label>
+          )}
         </div>
 
-        {/* Live HUD Metrics Bar */}
+        {/* 3. Progressive Steps Stepper Strip (When in progressive or sentence mode) */}
+        {practiceMode !== 'full' && (
+          <div className="space-y-2 p-3.5 rounded-2xl bg-[#120f0d] border border-neutral-800">
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2 font-medium text-neutral-300">
+                <span className="text-amber-400 font-bold">
+                  Step {currentStepIndex + 1} of {currentStepsList.length}
+                </span>
+                <span className="text-neutral-500">•</span>
+                <span className="text-neutral-400 truncate">{currentStep.title}</span>
+              </div>
+              <div className="text-neutral-400 font-mono text-[11px]">
+                {completedCount}/{currentStepsList.length} Mastered ({progressPercent}%)
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="w-full h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-amber-500 to-emerald-400 transition-all duration-300 rounded-full"
+                style={{ width: `${Math.max(5, progressPercent)}%` }}
+              />
+            </div>
+
+            {/* Step Pills Navigation */}
+            <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
+              {currentStepsList.map((step, idx) => {
+                const isCurrent = currentStepIndex === idx;
+                const isDone = completedStepIds.has(step.id);
+                return (
+                  <button
+                    key={step.id}
+                    onClick={() => setCurrentStepIndex(idx)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-mono shrink-0 transition-all flex items-center gap-1 cursor-pointer ${
+                      isCurrent
+                        ? 'bg-amber-500 text-neutral-950 font-bold shadow-sm shadow-amber-500/20'
+                        : isDone
+                        ? 'bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 hover:bg-emerald-900/80'
+                        : 'bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-neutral-200'
+                    }`}
+                  >
+                    {isDone && !isCurrent && <Check className="w-3 h-3 text-emerald-400" />}
+                    <span>{idx + 1}</span>
+                    <span className="hidden md:inline max-w-[90px] truncate">{step.title}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* 4. Live HUD Metrics & Timer Bar */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="p-3.5 rounded-2xl bg-[#14110e] border border-neutral-800/80 flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
@@ -456,13 +703,51 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
           </div>
         </div>
 
-        {/* Interactive Typing Canvas */}
+        {/* 5. Interactive Typing Canvas */}
         <div
           onClick={() => inputRef.current?.focus()}
           className="relative rounded-3xl bg-[#110f0d] border border-neutral-800 p-6 sm:p-8 min-h-[220px] flex flex-col justify-between shadow-2xl cursor-text transition-all focus-within:border-amber-500/50 focus-within:ring-1 focus-within:ring-amber-500/30"
         >
-          {/* Passage Content with Interactive Character Highlighting */}
-          <div className="text-lg sm:text-2xl leading-relaxed sm:leading-loose font-mono tracking-normal select-none">
+          {/* Current Step Prompt Header */}
+          <div className="flex items-center justify-between pb-3 border-b border-neutral-900 mb-4 text-xs text-neutral-400">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+              <span className="font-semibold text-neutral-200">{currentStep.title}</span>
+              {currentStep.hint && (
+                <span className="text-neutral-500 italic hidden sm:inline">
+                  — {currentStep.hint}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleListenText();
+                }}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-[11px] text-neutral-300 hover:text-amber-400 transition-all cursor-pointer"
+                title="Listen to native voice"
+              >
+                <Volume1 className={`w-3.5 h-3.5 ${isPlayingAudio ? 'text-amber-400 animate-pulse' : ''}`} />
+                <span>{isPlayingAudio ? 'Speaking...' : 'Listen'}</span>
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  resetSession();
+                }}
+                className="p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-400 hover:text-white transition-all cursor-pointer"
+                title="Restart this step"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Character-by-character live interactive coloring */}
+          <div className="text-xl sm:text-3xl leading-relaxed sm:leading-loose font-mono tracking-normal select-none my-auto">
             {targetText.split('').map((char, index) => {
               const isTyped = index < inputVal.length;
               const isCurrent = index === inputVal.length;
@@ -489,7 +774,7 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
             })}
           </div>
 
-          {/* Hidden native input for captures */}
+          {/* Hidden native input for typing captures */}
           <input
             ref={inputRef}
             type="text"
@@ -508,7 +793,7 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
           <div className="mt-6 pt-4 border-t border-neutral-900 flex flex-wrap items-center justify-between gap-3 text-xs text-neutral-500">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Click anywhere or type to start</span>
+              <span>Type the highlighted text • Exact spelling & punctuation</span>
             </div>
             <div className="flex items-center gap-3 font-mono text-[11px]">
               <span>[Esc] to Reset</span>
@@ -518,7 +803,48 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
           </div>
         </div>
 
-        {/* Completion Modal / Scorecard Card */}
+        {/* 6. Step Navigation Controls & Completion Card */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {practiceMode !== 'full' && (
+              <>
+                <button
+                  onClick={goToPrevStep}
+                  disabled={currentStepIndex === 0}
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#14110e] border border-neutral-800 text-xs font-semibold text-neutral-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Previous Step</span>
+                </button>
+
+                <button
+                  onClick={goToNextStep}
+                  disabled={currentStepIndex >= currentStepsList.length - 1}
+                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#14110e] border border-neutral-800 text-xs font-semibold text-neutral-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                >
+                  <span>Next Step</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <button
+              onClick={() => {
+                setSelectedPassageIndex((prev) => (prev + 1) % PUBLIC_PASSAGES.length);
+              }}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-bold transition-all cursor-pointer"
+            >
+              <span>
+                Switch to {selectedPassageIndex === 0 ? 'Passage 2 (The Woman)' : 'Passage 1 (The Man)'}
+              </span>
+              <FastForward className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* 7. Completion Scorecard Card */}
         {(isCompleted || isTimeUp) && (
           <div className="p-6 rounded-3xl bg-[#16120e] border border-amber-500/50 shadow-2xl shadow-amber-500/10 animate-in fade-in zoom-in-95 duration-200">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-4 border-b border-neutral-800">
@@ -528,10 +854,10 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-white">
-                    {isCompleted ? '🎉 Passage Completed!' : '⏱️ Time’s Up!'}
+                    {isCompleted ? '🎉 Step Mastered!' : '⏱️ Time’s Up!'}
                   </h3>
                   <p className="text-xs text-neutral-400">
-                    {currentPassage.title} — {stats.wpm} Words Per Minute
+                    {currentStep.title} — {stats.wpm} WPM • {stats.accuracy}% Accuracy
                   </p>
                 </div>
               </div>
@@ -593,20 +919,30 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
               >
                 <RotateCcw className="w-4 h-4" />
-                <span>Try Again</span>
+                <span>Repeat Step</span>
               </button>
 
-              <button
-                onClick={nextPassage}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
-              >
-                <span>
-                  {selectedPassageIndex === 0
-                    ? 'Practice Second Text (The Woman)'
-                    : 'Practice First Text (The Man)'}
-                </span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
+              {currentStepIndex < currentStepsList.length - 1 ? (
+                <button
+                  onClick={goToNextStep}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
+                >
+                  <span>Next Step: {currentStepsList[currentStepIndex + 1]?.title}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setSelectedPassageIndex((prev) => (prev + 1) % PUBLIC_PASSAGES.length);
+                  }}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-emerald-500/20 cursor-pointer"
+                >
+                  <span>
+                    🎉 Mastered! Go to {selectedPassageIndex === 0 ? 'Passage 2' : 'Passage 1'}
+                  </span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
         )}
