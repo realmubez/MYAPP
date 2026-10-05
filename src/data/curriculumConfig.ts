@@ -2,6 +2,8 @@ import { SubjectId } from '../types';
 import { PHONE_PLANS_LESSON, PHONE_PLANS_STEPS } from './courses/english/phonePlansLesson';
 import { PA_CAFE_LESSON, PA_CAFE_STEPS } from './courses/swedish/paCafeLesson';
 import { PYTHON_VARIABLES_STEPS } from './courses/python/variablesLesson';
+import { GERMAN_BEGRUSSUNGEN_LESSON } from './courses/german/begrussungenLesson';
+import { MATHEMATICS_ARITHMETIC_LESSON } from './courses/mathematics/arithmeticLesson';
 
 export interface CuratedLessonInfo {
   subjectId: SubjectId;
@@ -53,6 +55,38 @@ export const CURATED_LESSONS: Record<SubjectId, CuratedLessonInfo> = {
     modeSequence: 'Listen → Type → Speak',
     tags: ['Café Vocabulary', 'Polite Requests', 'Audio Recall', 'Dialogue'],
   },
+  german: {
+    subjectId: 'german',
+    lessonId: 'de-begrussungen',
+    courseTitle: 'German Beginner 1',
+    courseLevel: 'Beginner 1',
+    lessonTitle: 'Begrüßungen',
+    lessonSubtitle: 'Greetings, Polite Introductions & Essential Phrases',
+    description: 'Master everyday German greetings, polite responses, and essential conversational phrases through structured typing.',
+    badge: 'Interactive Session',
+    stepCount: GERMAN_BEGRUSSUNGEN_LESSON.sentences.length,
+    totalStepsLabel: `${GERMAN_BEGRUSSUNGEN_LESSON.sentences.length} phrases`,
+    route: '/german',
+    focusRoute: '/lesson/german/begrussungen',
+    modeSequence: 'Listen → Type → Speak',
+    tags: ['Greetings', 'Polite Responses', 'Introductions', 'Dialogue'],
+  },
+  mathematics: {
+    subjectId: 'mathematics',
+    lessonId: 'math-arithmetic-01',
+    courseTitle: 'Mathematics Foundation 1',
+    courseLevel: 'Foundation 1',
+    lessonTitle: 'Arithmetic Essentials',
+    lessonSubtitle: 'Addition, Subtraction, Signs & Mental Math',
+    description: 'Master core arithmetic operations, signs, and mental math through interactive step-by-step problem solving.',
+    badge: 'Problem Solving',
+    stepCount: MATHEMATICS_ARITHMETIC_LESSON.steps.length,
+    totalStepsLabel: `${MATHEMATICS_ARITHMETIC_LESSON.steps.length} problems`,
+    route: '/mathematics',
+    focusRoute: '/lesson/mathematics/arithmetic',
+    modeSequence: 'Prompt → Solve → Type Answer → Verify',
+    tags: ['Arithmetic', 'Mental Math', 'Integers', 'Sign Rules'],
+  },
   python: {
     subjectId: 'python',
     lessonId: 'py-variables',
@@ -90,6 +124,8 @@ export const CURATED_LESSONS: Record<SubjectId, CuratedLessonInfo> = {
 export const CURATED_TOTAL_LESSONS: Record<SubjectId, number> = {
   swedish: 2,
   english: 1,
+  german: 1,
+  mathematics: 1,
   python: 1,
   typing: 10,
 };

@@ -94,6 +94,33 @@ export const ENGLISH_VOICES: VoiceOption[] = [
   },
 ];
 
+export const GERMAN_VOICES: VoiceOption[] = [
+  {
+    id: 'de-DE-KillianNeural',
+    name: 'Killian (Neural)',
+    language: 'de',
+    gender: 'male',
+    region: 'Germany',
+    description: 'Clear, natural German voice (default)',
+  },
+  {
+    id: 'de-DE-KatjaNeural',
+    name: 'Katja (Neural)',
+    language: 'de',
+    gender: 'female',
+    region: 'Germany',
+    description: 'Warm and articulate German voice',
+  },
+  {
+    id: 'de-DE-ConradNeural',
+    name: 'Conrad (Neural)',
+    language: 'de',
+    gender: 'male',
+    region: 'Germany',
+    description: 'Crisp and expressive German voice',
+  },
+];
+
 export const SOMALI_VOICES: VoiceOption[] = [
   {
     id: 'so-SO-MuuseNeural',
@@ -116,6 +143,7 @@ export const SOMALI_VOICES: VoiceOption[] = [
 export const TTS_DEFAULT_VOICES: Record<string, string> = {
   en: 'en-US-GuyNeural',
   sv: 'sv-SE-MattiasNeural',
+  de: 'de-DE-KillianNeural',
   so: 'so-SO-MuuseNeural',
 };
 
@@ -126,9 +154,11 @@ export type TTSRate = typeof AVAILABLE_RATES[number];
 export const STORAGE_KEYS = {
   SWEDISH_VOICE: 'my-learning-swedish-voice',
   ENGLISH_VOICE: 'my-learning-english-voice',
+  GERMAN_VOICE: 'my-learning-german-voice',
   SOMALI_VOICE: 'my-learning-somali-voice',
   SWEDISH_RATE: 'my-learning-swedish-rate',
   ENGLISH_RATE: 'my-learning-english-rate',
+  GERMAN_RATE: 'my-learning-german-rate',
   SOMALI_RATE: 'my-learning-somali-rate',
   AUTOPLAY_AUDIO: 'my-learning-autoplay-audio',
   DIFFICULT_WORDS: 'my-learning-difficult-words',
@@ -152,16 +182,20 @@ export function getTTSUrl({ text, voice, rate }: TTSRequestOptions): string {
 }
 
 export function getDefaultVoice(language: string): string {
-  if (language === 'sv') return TTS_DEFAULT_VOICES.sv;
-  if (language === 'so') return TTS_DEFAULT_VOICES.so;
+  if (language === 'sv' || language === 'swedish') return TTS_DEFAULT_VOICES.sv;
+  if (language === 'de' || language === 'german') return TTS_DEFAULT_VOICES.de;
+  if (language === 'so' || language === 'somali') return TTS_DEFAULT_VOICES.so;
   return TTS_DEFAULT_VOICES.en;
 }
 
-export function getVoiceForLanguage(language: 'en' | 'sv' | 'so' | Language | string): string {
-  if (language === 'sv') {
+export function getVoiceForLanguage(language: 'en' | 'sv' | 'de' | 'so' | Language | string): string {
+  if (language === 'sv' || language === 'swedish') {
     return getStoredVoice('sv');
   }
-  if (language === 'so') {
+  if (language === 'de' || language === 'german') {
+    return getStoredVoice('de');
+  }
+  if (language === 'so' || language === 'somali') {
     return getStoredVoice('so');
   }
   return getStoredVoice('en');
@@ -421,23 +455,29 @@ class LessonSpeechManager {
 
 export const lessonSpeechManager = new LessonSpeechManager();
 
-export function getStoredVoice(language: 'en' | 'sv' | 'so' | Language | string): string {
+export function getStoredVoice(language: 'en' | 'sv' | 'de' | 'so' | Language | string): string {
   try {
-    const key =
-      language === 'sv'
-        ? STORAGE_KEYS.SWEDISH_VOICE
-        : language === 'so'
-        ? STORAGE_KEYS.SOMALI_VOICE
-        : STORAGE_KEYS.ENGLISH_VOICE;
+    const isSv = language === 'sv' || language === 'swedish';
+    const isDe = language === 'de' || language === 'german';
+    const isSo = language === 'so' || language === 'somali';
+
+    const key = isSv
+      ? STORAGE_KEYS.SWEDISH_VOICE
+      : isDe
+      ? STORAGE_KEYS.GERMAN_VOICE
+      : isSo
+      ? STORAGE_KEYS.SOMALI_VOICE
+      : STORAGE_KEYS.ENGLISH_VOICE;
 
     const stored = localStorage.getItem(key);
     if (stored) {
-      const valid =
-        language === 'sv'
-          ? SWEDISH_VOICES.some((v) => v.id === stored)
-          : language === 'so'
-          ? SOMALI_VOICES.some((v) => v.id === stored)
-          : ENGLISH_VOICES.some((v) => v.id === stored);
+      const valid = isSv
+        ? SWEDISH_VOICES.some((v) => v.id === stored)
+        : isDe
+        ? GERMAN_VOICES.some((v) => v.id === stored)
+        : isSo
+        ? SOMALI_VOICES.some((v) => v.id === stored)
+        : ENGLISH_VOICES.some((v) => v.id === stored);
       if (valid) return stored;
     }
   } catch (e) {
@@ -447,14 +487,16 @@ export function getStoredVoice(language: 'en' | 'sv' | 'so' | Language | string)
 }
 
 export function setStoredVoice(
-  language: 'en' | 'sv' | 'so' | Language | string,
+  language: 'en' | 'sv' | 'de' | 'so' | Language | string,
   voice: string
 ): void {
   try {
     const key =
-      language === 'sv'
+      language === 'sv' || language === 'swedish'
         ? STORAGE_KEYS.SWEDISH_VOICE
-        : language === 'so'
+        : language === 'de' || language === 'german'
+        ? STORAGE_KEYS.GERMAN_VOICE
+        : language === 'so' || language === 'somali'
         ? STORAGE_KEYS.SOMALI_VOICE
         : STORAGE_KEYS.ENGLISH_VOICE;
     localStorage.setItem(key, voice);
@@ -463,12 +505,14 @@ export function setStoredVoice(
   }
 }
 
-export function getStoredRate(language: 'en' | 'sv' | 'so' | Language | string): TTSRate {
+export function getStoredRate(language: 'en' | 'sv' | 'de' | 'so' | Language | string): TTSRate {
   try {
     const key =
-      language === 'sv'
+      language === 'sv' || language === 'swedish'
         ? STORAGE_KEYS.SWEDISH_RATE
-        : language === 'so'
+        : language === 'de' || language === 'german'
+        ? STORAGE_KEYS.GERMAN_RATE
+        : language === 'so' || language === 'somali'
         ? STORAGE_KEYS.SOMALI_RATE
         : STORAGE_KEYS.ENGLISH_RATE;
     const stored = localStorage.getItem(key);
@@ -478,18 +522,20 @@ export function getStoredRate(language: 'en' | 'sv' | 'so' | Language | string):
   } catch (e) {
     console.warn('Failed to read rate setting from localStorage', e);
   }
-  return language === 'so' ? '-10%' : '0%';
+  return language === 'so' || language === 'somali' ? '-10%' : '0%';
 }
 
 export function setStoredRate(
-  language: 'en' | 'sv' | 'so' | Language | string,
+  language: 'en' | 'sv' | 'de' | 'so' | Language | string,
   rate: TTSRate
 ): void {
   try {
     const key =
-      language === 'sv'
+      language === 'sv' || language === 'swedish'
         ? STORAGE_KEYS.SWEDISH_RATE
-        : language === 'so'
+        : language === 'de' || language === 'german'
+        ? STORAGE_KEYS.GERMAN_RATE
+        : language === 'so' || language === 'somali'
         ? STORAGE_KEYS.SOMALI_RATE
         : STORAGE_KEYS.ENGLISH_RATE;
     localStorage.setItem(key, rate);

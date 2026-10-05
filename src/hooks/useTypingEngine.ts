@@ -181,8 +181,8 @@ export function useTypingEngine(options: UseTypingEngineOptions) {
             mistakeIndicesRef.current.add(i);
             setMistakeCount((prev) => prev + 1);
 
-            // Record difficult word & language mistake only for Swedish / English language lessons
-            if (!isCodeRef.current && (languageRef.current === 'sv' || languageRef.current === 'en')) {
+            // Record difficult word & language mistake for Swedish / English / German language lessons
+            if (!isCodeRef.current && (languageRef.current === 'sv' || languageRef.current === 'en' || languageRef.current === 'de')) {
               const failedWord = findWordAtIndex(i);
               if (failedWord) {
                 saveDifficultWord(failedWord, languageRef.current as Language);

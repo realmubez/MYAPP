@@ -11,7 +11,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { ReviewItem, SubjectId } from '../../types';
-import { SwedishFlagIcon, BritishFlagIcon, PythonLogoIcon } from '../common/FlagIcons';
+import { SwedishFlagIcon, BritishFlagIcon, PythonLogoIcon, GermanFlagIcon, MathSymbolIcon } from '../common/FlagIcons';
 import { useTypingEngine } from '../../hooks/useTypingEngine';
 import { TypingText } from '../focus/TypingText';
 import { useLessonAudio } from '../../hooks/useLessonAudio';
@@ -19,6 +19,7 @@ import { reviewService, getMasteryLevel } from '../../services/reviewService';
 import { progressService } from '../../services/progress';
 import { typingSoundService } from '../../services/typingSoundService';
 import { getStoredVoice, getStoredRate } from '../../services/tts';
+import { Language } from '../../types/lessons';
 
 interface ReviewSessionProps {
   items: ReviewItem[];
@@ -51,29 +52,40 @@ export function ReviewSession({ items, onExit, onComplete }: ReviewSessionProps)
   const targetText = currentItem
     ? currentItem.subjectId === 'python'
       ? currentItem.codeSnippet || currentItem.text
+      : currentItem.subjectId === 'mathematics'
+      ? currentItem.text
       : currentItem.exampleSentence?.text || currentItem.text
     : '';
 
-  const languageCode: 'sv' | 'en' =
-    currentItem?.subjectId === 'swedish' ? 'sv' : 'en';
+  const languageCode: Language =
+    currentItem?.subjectId === 'german'
+      ? 'de'
+      : currentItem?.subjectId === 'swedish'
+      ? 'sv'
+      : 'en';
 
   const storedVoice = getStoredVoice(languageCode);
   const storedRate = getStoredRate(languageCode);
 
+  const isLanguageItem =
+    currentItem?.subjectId === 'swedish' ||
+    currentItem?.subjectId === 'english' ||
+    currentItem?.subjectId === 'german';
+
   // TTS audio for language items
   const { play: playAudio, isPlaying: isAudioPlaying } = useLessonAudio({
-    text: currentItem?.subjectId !== 'python' ? targetText : '',
+    text: isLanguageItem ? targetText : '',
     language: languageCode,
     voice: storedVoice,
     rate: storedRate,
-    autoPlay: currentItem?.subjectId !== 'python',
+    autoPlay: isLanguageItem,
   });
 
   const handleManualPlayAudio = useCallback(() => {
-    if (currentItem?.subjectId !== 'python') {
+    if (isLanguageItem) {
       playAudio();
     }
-  }, [currentItem, playAudio]);
+  }, [isLanguageItem, playAudio]);
 
   // Handle completion of typing the current review item
   const handleItemComplete = useCallback(
@@ -305,6 +317,10 @@ export function ReviewSession({ items, onExit, onComplete }: ReviewSessionProps)
         return <SwedishFlagIcon size={24} />;
       case 'english':
         return <BritishFlagIcon size={24} />;
+      case 'german':
+        return <GermanFlagIcon size={24} />;
+      case 'mathematics':
+        return <MathSymbolIcon size={24} />;
       case 'python':
         return <PythonLogoIcon size={24} />;
       default:
@@ -398,7 +414,11 @@ export function ReviewSession({ items, onExit, onComplete }: ReviewSessionProps)
         <div className="w-full bg-neutral-900/80 border border-neutral-800/80 rounded-2xl p-4 sm:p-6 mb-8 text-center space-y-2">
           <div className="flex items-center justify-center gap-2">
             <span className="text-[10px] font-bold tracking-widest uppercase text-amber-400">
-              {currentItem.subjectId === 'python' ? 'PYTHON RECALL & CODE' : 'LISTEN & TYPE'}
+              {currentItem.subjectId === 'python'
+                ? 'PYTHON RECALL & CODE'
+                : currentItem.subjectId === 'mathematics'
+                ? 'MATH RECALL & SOLVE'
+                : 'LISTEN & TYPE'}
             </span>
             <span className="text-neutral-600">·</span>
             <span className="text-xs text-neutral-400">
@@ -416,6 +436,15 @@ export function ReviewSession({ items, onExit, onComplete }: ReviewSessionProps)
                   Topic: {currentItem.concept}
                 </p>
               )}
+            </div>
+          ) : currentItem.subjectId === 'mathematics' ? (
+            <div className="space-y-1.5">
+              <h3 className="text-sm sm:text-base font-semibold text-white">
+                {currentItem.prompt || 'Solve the equation and type the answer:'}
+              </h3>
+              <p className="text-sm text-amber-300 font-mono font-bold">
+                {currentItem.displayTitle}
+              </p>
             </div>
           ) : (
             <div className="space-y-1">

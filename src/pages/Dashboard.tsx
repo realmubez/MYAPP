@@ -12,6 +12,7 @@ import { RecentActivity } from '../components/dashboard/RecentActivity';
 import { KeepGoing } from '../components/dashboard/KeepGoing';
 import { OfflineBanner } from '../components/common/OfflineBanner';
 import { SUBJECTS } from '../data/mockData';
+import { SubjectId } from '../types';
 import { useProgress } from '../hooks/useProgress';
 import { useProfile } from '../hooks/useProfile';
 
@@ -21,24 +22,21 @@ export function Dashboard() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const assignedSubjects = profile.assignedSubjects || ['swedish', 'english', 'python', 'typing'];
-  const activeSubjectCards = [
-    assignedSubjects.includes('swedish') && {
-      key: 'swedish',
-      subject: SUBJECTS.swedish,
-      progressData: progress?.subjects?.swedish,
-    },
-    assignedSubjects.includes('english') && {
-      key: 'english',
-      subject: SUBJECTS.english,
-      progressData: progress?.subjects?.english,
-    },
-    assignedSubjects.includes('python') && {
-      key: 'python',
-      subject: SUBJECTS.python,
-      progressData: progress?.subjects?.python,
-    },
-  ].filter(Boolean) as { key: string; subject: any; progressData: any }[];
+  const assignedSubjects = (profile.assignedSubjects && profile.assignedSubjects.length > 0)
+    ? profile.assignedSubjects
+    : (['swedish', 'english', 'german', 'mathematics', 'python', 'typing'] as SubjectId[]);
+
+  const activeSubjectCards = assignedSubjects
+    .map((subId) => {
+      const subject = (SUBJECTS as any)[subId];
+      if (!subject) return null;
+      return {
+        key: subId,
+        subject,
+        progressData: progress?.subjects?.[subId],
+      };
+    })
+    .filter(Boolean) as { key: string; subject: any; progressData: any }[];
 
   return (
     <div id="dashboard-view" className="w-full space-y-5 sm:space-y-6 lg:space-y-8 text-neutral-100">
@@ -113,6 +111,28 @@ export function Dashboard() {
             <span className="flex items-center gap-2">
               <span>🇬🇧</span>
               <span>English Course</span>
+            </span>
+            <ChevronRight className="w-3.5 h-3.5 text-neutral-500" />
+          </Link>
+          <Link
+            to="/german"
+            onClick={() => setIsMenuOpen(false)}
+            className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-neutral-300 hover:text-white hover:bg-neutral-800/60"
+          >
+            <span className="flex items-center gap-2">
+              <span>🇩🇪</span>
+              <span>German Course</span>
+            </span>
+            <ChevronRight className="w-3.5 h-3.5 text-neutral-500" />
+          </Link>
+          <Link
+            to="/mathematics"
+            onClick={() => setIsMenuOpen(false)}
+            className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-neutral-300 hover:text-white hover:bg-neutral-800/60"
+          >
+            <span className="flex items-center gap-2">
+              <span className="font-serif font-bold text-amber-400">∑</span>
+              <span>Mathematics</span>
             </span>
             <ChevronRight className="w-3.5 h-3.5 text-neutral-500" />
           </Link>

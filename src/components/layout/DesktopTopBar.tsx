@@ -40,8 +40,20 @@ export function DesktopTopBar({ onOpenSettings }: DesktopTopBarProps) {
     e.preventDefault();
     if (!searchQuery.trim()) return;
     const q = searchQuery.toLowerCase().trim();
-    if (q.includes('swed') || q.includes('svens')) {
+    if (q.includes('learn') || q.includes('subject') || q.includes('curriculum')) {
+      navigate('/learn');
+    } else if (q.includes('lib') || q.includes('pdf') || q.includes('file') || q.includes('doc')) {
+      navigate('/library');
+    } else if (q.includes('note') || q.includes('scratch')) {
+      navigate('/notes');
+    } else if (q.includes('proj') || q.includes('sis') || q.includes('space')) {
+      navigate('/projects');
+    } else if (q.includes('swed') || q.includes('svens')) {
       navigate('/swedish');
+    } else if (q.includes('ger') || q.includes('deut')) {
+      navigate('/german');
+    } else if (q.includes('math') || q.includes('zahl') || q.includes('arith')) {
+      navigate('/mathematics');
     } else if (q.includes('eng') || q.includes('brit')) {
       navigate('/english');
     } else if (q.includes('pyth') || q.includes('code')) {
@@ -53,7 +65,7 @@ export function DesktopTopBar({ onOpenSettings }: DesktopTopBarProps) {
     } else if (q.includes('typ') || q.includes('speed')) {
       navigate('/typing');
     } else {
-      navigate('/swedish');
+      navigate('/learn');
     }
   };
 
@@ -62,7 +74,7 @@ export function DesktopTopBar({ onOpenSettings }: DesktopTopBarProps) {
       id="desktop-top-bar"
       className="hidden lg:flex items-center justify-between w-full pb-6 pt-1 gap-6"
     >
-      {/* Search Bar matching reference */}
+      {/* Search Bar */}
       <form
         onSubmit={handleSearchSubmit}
         className="flex-1 max-w-xl relative"
@@ -75,8 +87,8 @@ export function DesktopTopBar({ onOpenSettings }: DesktopTopBarProps) {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search lessons, topics, or skills..."
-            className="w-full h-11 pl-11 pr-16 rounded-2xl bg-[#141210] border border-neutral-800 text-xs text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/40 transition-all"
+            placeholder="Search subjects, library PDFs, notes, or projects..."
+            className="w-full h-11 pl-11 pr-16 rounded-2xl bg-[#14110e] border border-[#261f18] text-xs text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/40 transition-all"
           />
           <div className="absolute right-3 flex items-center gap-1 pointer-events-none">
             <kbd className="px-1.5 py-0.5 rounded-md bg-neutral-900 border border-neutral-800 text-[10px] font-mono text-neutral-400">
@@ -98,7 +110,7 @@ export function DesktopTopBar({ onOpenSettings }: DesktopTopBarProps) {
           onClick={() => navigate('/settings')}
           aria-label="Theme Settings"
           title="Theme Settings"
-          className="flex h-10 w-10 items-center justify-center rounded-2xl border border-neutral-800 bg-[#141210] text-neutral-400 hover:text-white hover:border-neutral-700 transition-colors cursor-pointer"
+          className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#261f18] bg-[#14110e] text-neutral-400 hover:text-white hover:border-neutral-700 transition-colors cursor-pointer"
         >
           <Sun className="w-4 h-4 text-neutral-300" />
         </button>
@@ -110,7 +122,7 @@ export function DesktopTopBar({ onOpenSettings }: DesktopTopBarProps) {
           onClick={() => navigate('/settings')}
           aria-label="Notifications"
           title="Notifications"
-          className="relative flex h-10 w-10 items-center justify-center rounded-2xl border border-neutral-800 bg-[#141210] text-neutral-400 hover:text-white hover:border-neutral-700 transition-colors cursor-pointer"
+          className="relative flex h-10 w-10 items-center justify-center rounded-2xl border border-[#261f18] bg-[#14110e] text-neutral-400 hover:text-white hover:border-neutral-700 transition-colors cursor-pointer"
         >
           <Bell className="w-4 h-4 text-neutral-300" />
           <span className="absolute 1.5 top-2 right-2 flex h-2 w-2">
@@ -125,7 +137,7 @@ export function DesktopTopBar({ onOpenSettings }: DesktopTopBarProps) {
             type="button"
             id="desktop-user-profile-pill"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="flex items-center gap-3 pl-2 pr-3 py-1.5 rounded-2xl border border-neutral-800 bg-[#141210] hover:border-neutral-700 transition-all cursor-pointer text-left"
+            className="flex items-center gap-3 pl-2 pr-3 py-1.5 rounded-2xl border border-[#261f18] bg-[#14110e] hover:border-neutral-700 transition-all cursor-pointer text-left"
           >
             <div className={`flex h-8 w-8 items-center justify-center rounded-xl border text-sm font-bold ${avatarOption.bgColor}`}>
               {avatarOption.emoji}
@@ -135,7 +147,7 @@ export function DesktopTopBar({ onOpenSettings }: DesktopTopBarProps) {
                 {profile.displayName}
               </span>
               <span className="text-[10px] text-amber-400 font-mono tracking-wider">
-                {isAdmin ? 'ADMIN' : 'MEMBER'}
+                {isAdmin ? 'ADMIN' : 'STUDENT'}
               </span>
             </div>
             <ChevronDown className={`w-3.5 h-3.5 text-neutral-500 ml-1 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
@@ -143,14 +155,14 @@ export function DesktopTopBar({ onOpenSettings }: DesktopTopBarProps) {
 
           {/* Profile Dropdown Menu */}
           {isMenuOpen && (
-            <div className="absolute right-0 mt-2 w-52 rounded-2xl border border-neutral-800 bg-[#141210] shadow-2xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+            <div className="absolute right-0 mt-2 w-52 rounded-2xl border border-[#261f18] bg-[#14110e] shadow-2xl p-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
               <div className="px-3 py-2 border-b border-neutral-800/80 mb-1">
                 <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-400">
                   <Shield className="w-3 h-3" />
-                  <span>{profile.displayName} · {isAdmin ? 'Admin' : 'Member'}</span>
+                  <span>{profile.displayName} · {isAdmin ? 'Admin' : 'Student'}</span>
                 </div>
                 <p className="text-[10px] text-neutral-400 font-mono mt-0.5">
-                  “I learn by typing.”
+                  Personal Learning OS
                 </p>
               </div>
 

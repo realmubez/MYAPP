@@ -2,15 +2,21 @@ import { Course, CourseSubject, CourseUnit, ExerciseItem, PythonCourseUnit, Pyth
 import { SWEDISH_BEGINNER_1_COURSE, SWEDISH_BEGINNER_1_UNITS } from './swedish';
 import { ENGLISH_BEGINNER_1_COURSE, ENGLISH_BEGINNER_1_UNITS } from './english';
 import { PYTHON_BEGINNER_1_COURSE, PYTHON_BEGINNER_1_UNITS } from './python';
+import { GERMAN_BEGINNER_1_COURSE, GERMAN_BEGINNER_1_UNITS } from './german';
+import { MATHEMATICS_FOUNDATION_COURSE, MATHEMATICS_UNITS } from './mathematics';
 
 export * from './types';
 export * from './swedish';
 export * from './english';
 export * from './python';
+export * from './german';
+export * from './mathematics';
 
 export const ALL_COURSES: Record<CourseSubject, Course> = {
   swedish: SWEDISH_BEGINNER_1_COURSE,
   english: ENGLISH_BEGINNER_1_COURSE,
+  german: GERMAN_BEGINNER_1_COURSE,
+  mathematics: MATHEMATICS_FOUNDATION_COURSE,
   python: PYTHON_BEGINNER_1_COURSE,
 };
 

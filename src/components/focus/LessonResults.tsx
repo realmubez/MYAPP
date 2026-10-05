@@ -1,9 +1,9 @@
 import { RotateCcw, ArrowRight, CheckCircle2 } from 'lucide-react';
-import { DifficultWord } from '../../types/lessons';
+import { DifficultWord, Language } from '../../types/lessons';
 
 interface LessonResultsProps {
   lessonTitle: string;
-  language: 'sv' | 'en';
+  language?: Language;
   accuracy: number;
   wpm: number;
   mistakes: number;

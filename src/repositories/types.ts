@@ -109,3 +109,128 @@ export interface DbUserSettings {
 }
 
 export type SyncState = 'idle' | 'syncing' | 'synced' | 'offline' | 'error';
+
+/* =======================================================
+   LEARNING SPACES DATA MODELS (PHASE 2)
+======================================================= */
+export type SpaceType = 'managed' | 'personal' | 'cohort';
+export type SpaceStatus = 'active' | 'archived' | 'suspended';
+export type SpaceMemberRole = 'owner' | 'manager' | 'learner';
+export type SpaceMemberStatus = 'active' | 'invited' | 'suspended';
+export type CurriculumItemStatus = 'draft' | 'published' | 'archived';
+
+export interface DbLearningSpace {
+  id: string;
+  owner_profile_id: string;
+  title: string;
+  slug: string;
+  description?: string | null;
+  type: SpaceType;
+  primary_language: string;
+  support_languages: string[];
+  status: SpaceStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbLearningSpaceMember {
+  id: string;
+  space_id: string;
+  profile_id: string;
+  role: SpaceMemberRole;
+  status: SpaceMemberStatus;
+  joined_at: string;
+  last_active_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbLearningSpaceSubject {
+  id: string;
+  space_id: string;
+  subject_id: SubjectId | string;
+  created_at: string;
+}
+
+export interface DbLearningSpaceModule {
+  id: string;
+  space_id: string;
+  subject_id: SubjectId | string;
+  title: string;
+  description?: string | null;
+  sort_order: number;
+  status: CurriculumItemStatus;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbLearningSpaceLesson {
+  id: string;
+  space_id: string;
+  module_id?: string | null;
+  subject_id: SubjectId | string;
+  title: string;
+  description?: string | null;
+  content: Record<string, any>;
+  status: CurriculumItemStatus;
+  sort_order: number;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbLearningSpaceProgress {
+  id: string;
+  space_id: string;
+  lesson_id: string;
+  profile_id: string;
+  completed: boolean;
+  completion_percent: number;
+  score?: number | null;
+  time_spent_seconds: number;
+  activity_data: Record<string, any>;
+  last_studied_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/* =======================================================
+   SHARED LIBRARY & STORAGE DATA MODELS (PHASE 3)
+======================================================= */
+export type LibraryFileType = 'pdf' | 'image' | 'document' | 'other';
+export type LibrarySourceType = 'upload' | 'google_drive';
+
+export interface DbLibraryFolder {
+  id: string;
+  owner_profile_id: string;
+  space_id?: string | null;
+  parent_id?: string | null;
+  name: string;
+  icon?: string | null;
+  is_favorite: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbLibraryFile {
+  id: string;
+  owner_profile_id: string;
+  space_id?: string | null;
+  folder_id?: string | null;
+  subject_id?: string | null;
+  title: string;
+  file_name: string;
+  file_type: LibraryFileType;
+  mime_type: string;
+  file_size: number;
+  storage_path: string;
+  source_type: LibrarySourceType;
+  external_id?: string | null;
+  page_count?: number | null;
+  last_read_page?: number | null;
+  tags: string[];
+  is_favorite: boolean;
+  created_at: string;
+  updated_at: string;
+}

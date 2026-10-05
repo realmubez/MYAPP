@@ -1,4 +1,4 @@
-export type SubjectId = 'swedish' | 'english' | 'python' | 'typing';
+export type SubjectId = 'swedish' | 'english' | 'python' | 'typing' | 'german' | 'mathematics';
 
 /* =======================================================
    PROFILE & MULTI-USER ARCHITECTURE (PHASE 1)
@@ -55,7 +55,7 @@ export interface LessonExercise {
   audioText?: string; // Text to speak via TTS
   contentToType: string; // The primary text the learner types directly through
   explanation?: string;
-  language?: 'sv' | 'en' | 'python';
+  language?: 'sv' | 'en' | 'de' | 'python' | string;
 }
 
 export interface UserStats {
@@ -191,7 +191,7 @@ export interface ReviewItem {
   lastMistakeDate: string; // ISO date string
   lastReviewedDate?: string; // ISO date string
   masteryScore: number; // 0 to 100
-  language?: 'sv' | 'en' | 'python';
+  language?: 'sv' | 'en' | 'de' | 'python' | 'math' | string;
 }
 
 export interface ReviewSessionSummary {

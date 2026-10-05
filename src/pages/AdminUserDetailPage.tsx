@@ -20,6 +20,8 @@ import { SubjectId } from '../types';
 const ALL_SUBJECTS: { id: SubjectId; label: string }[] = [
   { id: 'swedish', label: 'Swedish (Svenska)' },
   { id: 'english', label: 'English Essentials' },
+  { id: 'german', label: 'German (Deutsch)' },
+  { id: 'mathematics', label: 'Mathematics (Arithmetic)' },
   { id: 'python', label: 'Python 3 Mastery' },
   { id: 'typing', label: 'Touch Typing 30-Day' },
 ];

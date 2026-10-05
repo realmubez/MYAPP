@@ -49,6 +49,8 @@ interface OverviewStats {
 const ALL_SUBJECTS: { id: SubjectId; label: string; tag: string }[] = [
   { id: 'swedish', label: 'Swedish (Svenska)', tag: 'Language' },
   { id: 'english', label: 'English Essentials', tag: 'Language' },
+  { id: 'german', label: 'German (Deutsch)', tag: 'Language' },
+  { id: 'mathematics', label: 'Mathematics (Arithmetic)', tag: 'Academic' },
   { id: 'python', label: 'Python 3 Mastery', tag: 'Programming' },
   { id: 'typing', label: 'Touch Typing 30-Day', tag: 'Speed & Accuracy' },
 ];

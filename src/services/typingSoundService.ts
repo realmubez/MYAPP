@@ -290,6 +290,17 @@ class TypingSoundService {
       console.warn('Error playing completion sound:', e);
     }
   }
+  public playKeyPress(): void {
+    this.playCorrectKey();
+  }
+
+  public playKeyError(): void {
+    this.playIncorrectKey();
+  }
+
+  public playLessonCompleted(): void {
+    this.playCompletion();
+  }
 }
 
 export const typingSoundService = new TypingSoundService();

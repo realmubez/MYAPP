@@ -11,16 +11,21 @@ export interface MultiLangTranslation {
 
 const STORAGE_KEY_EN = 'mylearning_english_translation_lang';
 const STORAGE_KEY_SV = 'mylearning_swedish_translation_lang';
+const STORAGE_KEY_DE = 'mylearning_german_translation_lang';
 const STORAGE_KEY_PYTHON = 'mylearning_python_translation_lang';
 
 export const translationService = {
-  getLanguage(courseLang: 'en' | 'sv' = 'en'): TranslationLang {
+  getLanguage(courseLang: 'en' | 'sv' | 'de' = 'en'): TranslationLang {
     if (typeof window === 'undefined') return 'so';
     try {
-      const key = courseLang === 'sv' ? STORAGE_KEY_SV : STORAGE_KEY_EN;
+      const key = courseLang === 'sv' ? STORAGE_KEY_SV : courseLang === 'de' ? STORAGE_KEY_DE : STORAGE_KEY_EN;
       const stored = localStorage.getItem(key) as TranslationLang | null;
       if (courseLang === 'sv') {
         if (stored === 'so' || stored === 'en' || stored === 'off') {
+          return stored;
+        }
+      } else if (courseLang === 'de') {
+        if (stored === 'so' || stored === 'en' || stored === 'sv' || stored === 'off') {
           return stored;
         }
       } else {
@@ -34,10 +39,10 @@ export const translationService = {
     return 'so'; // Default to Somali as helpful support
   },
 
-  setLanguage(lang: TranslationLang, courseLang: 'en' | 'sv' = 'en'): void {
+  setLanguage(lang: TranslationLang, courseLang: 'en' | 'sv' | 'de' = 'en'): void {
     if (typeof window === 'undefined') return;
     try {
-      const key = courseLang === 'sv' ? STORAGE_KEY_SV : STORAGE_KEY_EN;
+      const key = courseLang === 'sv' ? STORAGE_KEY_SV : courseLang === 'de' ? STORAGE_KEY_DE : STORAGE_KEY_EN;
       localStorage.setItem(key, lang);
     } catch {
       // ignore

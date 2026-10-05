@@ -11,7 +11,7 @@ import {
 import { SubjectId, ReviewItem } from '../types';
 import { useReview } from '../hooks/useReview';
 import { ReviewSession } from '../components/review/ReviewSession';
-import { SwedishFlagIcon, BritishFlagIcon, PythonLogoIcon } from '../components/common/FlagIcons';
+import { SwedishFlagIcon, BritishFlagIcon, PythonLogoIcon, GermanFlagIcon, MathSymbolIcon } from '../components/common/FlagIcons';
 import { formatTimeAgo } from '../services/progress';
 
 export function ReviewPage() {
@@ -25,6 +25,8 @@ export function ReviewPage() {
     { id: 'all', label: 'All Subjects', count: stats.totalCount },
     { id: 'swedish', label: 'Swedish', count: stats.swedishCount, icon: '🇸🇪' },
     { id: 'english', label: 'English', count: stats.englishCount, icon: '🇬🇧' },
+    { id: 'german', label: 'German', count: (stats as any).germanCount || 0, icon: '🇩🇪' },
+    { id: 'mathematics', label: 'Math', count: (stats as any).mathematicsCount || 0, icon: '∑' },
     { id: 'python', label: 'Python', count: stats.pythonCount, icon: '🐍' },
   ];
 
@@ -57,6 +59,10 @@ export function ReviewPage() {
         return <SwedishFlagIcon size={24} className="shrink-0" />;
       case 'english':
         return <BritishFlagIcon size={24} className="shrink-0" />;
+      case 'german':
+        return <GermanFlagIcon size={24} className="shrink-0" />;
+      case 'mathematics':
+        return <MathSymbolIcon size={24} className="shrink-0" />;
       case 'python':
         return <PythonLogoIcon size={24} className="shrink-0" />;
       default:
@@ -91,6 +97,10 @@ export function ReviewPage() {
               {item.subjectId === 'python' ? (
                 <p className="text-xs text-neutral-400 font-mono mt-1 truncate">
                   {item.codeSnippet || item.text}
+                </p>
+              ) : item.subjectId === 'mathematics' ? (
+                <p className="text-xs text-neutral-400 font-mono mt-1">
+                  {item.prompt ? `Problem: ${item.prompt}` : `Calculation: ${item.text}`}
                 </p>
               ) : item.exampleSentence ? (
                 <p className="text-xs text-neutral-400 mt-1 italic line-clamp-2">

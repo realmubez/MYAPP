@@ -101,3 +101,50 @@ export function PythonLogoIcon({ className = '', size = 44 }: FlagIconProps) {
     </div>
   );
 }
+
+export function GermanFlagIcon({ className = '', size = 44 }: FlagIconProps) {
+  return (
+    <div
+      className={`relative inline-flex items-center justify-center rounded-2xl overflow-hidden shadow-md flex-shrink-0 bg-neutral-900 border border-neutral-800 p-2 ${className}`}
+      style={{ width: size, height: size }}
+    >
+      <div className="w-full shrink-0 overflow-hidden rounded-[3px] shadow-sm border border-white/15">
+        <svg
+          viewBox="0 0 5 3"
+          className="w-full h-auto block"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          {/* Black band */}
+          <rect width="5" height="1" y="0" fill="#000000" />
+          {/* Red band */}
+          <rect width="5" height="1" y="1" fill="#DD0000" />
+          {/* Gold band */}
+          <rect width="5" height="1" y="2" fill="#FFCE00" />
+          {/* Subtle 3D shine overlay */}
+          <linearGradient id="de-flag-shine" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.2" />
+            <stop offset="50%" stopColor="#ffffff" stopOpacity="0" />
+            <stop offset="100%" stopColor="#000000" stopOpacity="0.1" />
+          </linearGradient>
+          <rect width="5" height="3" fill="url(#de-flag-shine)" />
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+export function MathSymbolIcon({ className = '', size = 44 }: FlagIconProps) {
+  return (
+    <div
+      className={`relative inline-flex items-center justify-center rounded-2xl overflow-hidden shadow-md flex-shrink-0 bg-neutral-900 border border-neutral-800 p-1.5 ${className}`}
+      style={{ width: size, height: size }}
+    >
+      <div className="w-full h-full flex items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20">
+        <span className="font-serif font-bold text-amber-400 text-xl leading-none select-none">
+          ∑
+        </span>
+      </div>
+    </div>
+  );
+}
+

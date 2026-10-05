@@ -48,6 +48,26 @@ export const SUBJECT_REGISTRY: Record<SubjectId, SubjectDefinition> = {
     description: 'Muscle memory, Nordic symbols, and high-accuracy typing drills',
     enabled: true,
   },
+  german: {
+    id: 'german',
+    name: 'German',
+    nativeName: 'Deutsch',
+    icon: '🇩🇪',
+    type: 'language',
+    route: '/german',
+    description: 'Master practical everyday German through active typing and listening drills',
+    enabled: true,
+  },
+  mathematics: {
+    id: 'mathematics',
+    name: 'Mathematics',
+    nativeName: 'Mathematics',
+    icon: '∑',
+    type: 'academic',
+    route: '/mathematics',
+    description: 'Core arithmetic and mathematical problem solving through step-by-step active typing',
+    enabled: true,
+  },
 };
 
 /**

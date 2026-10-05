@@ -1,6 +1,6 @@
 import { useState, FormEvent, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Lock, ArrowRight, AlertCircle, Loader2, User, Shield } from 'lucide-react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { Lock, ArrowRight, AlertCircle, Loader2, User, Shield, Keyboard } from 'lucide-react';
 import { useAuth, normalizeAuthError } from '../context/AuthContext';
 
 /**
@@ -240,6 +240,17 @@ export function LoginPage() {
               </>
             )}
           </button>
+
+          {/* Public Typing Practice Shortcut (No login required) */}
+          <div className="pt-2">
+            <Link
+              to="/practice"
+              className="w-full h-10 flex items-center justify-center gap-2 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 border border-neutral-800/80 hover:border-amber-500/40 text-neutral-300 hover:text-amber-300 text-xs font-semibold transition-all cursor-pointer"
+            >
+              <Keyboard className="w-3.5 h-3.5 text-amber-400" />
+              <span>⚡ Public Typing Practice (No Login Needed)</span>
+            </Link>
+          </div>
         </form>
 
         {/* Bottom Tagline */}

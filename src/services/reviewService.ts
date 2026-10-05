@@ -1,9 +1,11 @@
 import { SubjectId, ReviewItem, MasteryLevel, ReviewSessionSummary } from '../types';
+import { Language } from '../types/lessons';
 import { SWEDISH_UNITS } from '../data/swedishUnits';
 import { ENGLISH_UNITS } from '../data/englishUnits';
 import { SWEDISH_LESSONS } from '../data/swedishLessons';
 import { ENGLISH_LESSONS } from '../data/englishLessons';
 import { PYTHON_UNITS } from '../data/pythonUnits';
+import { GERMAN_BEGINNER_1_UNITS } from '../data/courses/german';
 
 export const REVIEW_STORAGE_KEY = 'mylearning_review_items_v1';
 export const REVIEW_UPDATED_EVENT = 'mylearning_review_changed';
@@ -45,7 +47,7 @@ function normalizeReviewItem(raw: any, fallbackKey: string): ReviewItem | null {
   if (!text) return null;
 
   const subjectId: SubjectId =
-    raw.subjectId === 'english' || raw.subjectId === 'python' || raw.subjectId === 'typing'
+    raw.subjectId === 'english' || raw.subjectId === 'python' || raw.subjectId === 'typing' || raw.subjectId === 'german' || raw.subjectId === 'mathematics'
       ? raw.subjectId
       : 'swedish';
 
@@ -89,7 +91,7 @@ function normalizeReviewItem(raw: any, fallbackKey: string): ReviewItem | null {
  */
 function findExampleSentenceForWord(
   word: string,
-  lang: 'sv' | 'en'
+  lang: Language
 ): { text: string; translation?: string; unitTitle?: string } | undefined {
   if (!word || typeof word !== 'string') return undefined;
   const clean = word.toLowerCase().trim();
@@ -133,7 +135,7 @@ function findExampleSentenceForWord(
           }
         }
       }
-    } else {
+    } else if (lang === 'en') {
       // Check English units
       if (Array.isArray(ENGLISH_UNITS)) {
         for (const unit of ENGLISH_UNITS) {
@@ -167,6 +169,27 @@ function findExampleSentenceForWord(
                 translation: s.translation,
                 unitTitle: lesson.title,
               };
+            }
+          }
+        }
+      }
+    } else if (lang === 'de') {
+      // Check German units
+      if (Array.isArray(GERMAN_BEGINNER_1_UNITS)) {
+        for (const unit of GERMAN_BEGINNER_1_UNITS) {
+          if (!unit || !Array.isArray(unit.exercises)) continue;
+          for (const ex of unit.exercises) {
+            if (!ex || !ex.lesson || !Array.isArray(ex.lesson.sentences)) continue;
+            for (const s of ex.lesson.sentences) {
+              if (!s || typeof s.text !== 'string') continue;
+              const words = s.text.toLowerCase().split(/\s+/);
+              if (words.some((w) => w.replace(/[^a-zåäöäüößA-ZÅÄÖÄÜÖẞ]/g, '') === clean) && s.text.length > clean.length) {
+                return {
+                  text: s.text,
+                  translation: s.translation,
+                  unitTitle: unit.title,
+                };
+              }
             }
           }
         }
@@ -382,21 +405,21 @@ class ReviewService {
   }
 
   /**
-   * Record a mistake in Swedish or English
+   * Record a mistake in Swedish, English, or German
    */
   public recordLanguageMistake(options: {
     word: string;
-    language: 'sv' | 'en';
+    language: Language;
     sentenceText?: string;
     sentenceTranslation?: string;
     unitId?: string;
     unitTitle?: string;
     lessonId?: string;
   }): void {
-    const cleanWord = options.word.toLowerCase().replace(/[^a-zåäöA-ZÅÄÖ]/g, '').trim();
+    const cleanWord = options.word.toLowerCase().replace(/[^a-zåäöäüößA-ZÅÄÖÄÜÖẞ]/g, '').trim();
     if (!cleanWord || cleanWord.length < 2) return;
 
-    const subjectId: SubjectId = options.language === 'en' ? 'english' : 'swedish';
+    const subjectId: SubjectId = options.language === 'de' ? 'german' : options.language === 'en' ? 'english' : 'swedish';
     const key = `${subjectId}:${cleanWord}`;
     const items = this.loadAndMigrate();
     const nowIso = new Date().toISOString();
@@ -434,6 +457,53 @@ class ReviewService {
         lastMistakeDate: nowIso,
         masteryScore: 25, // Initial mastery starts in Needs Practice
         language: options.language,
+      };
+    }
+
+    this.save(items);
+  }
+
+  /**
+   * Universal record mistake method for any subject (Math, German, etc.)
+   */
+  public recordMistake(options: {
+    subjectId: SubjectId;
+    itemId?: string;
+    text: string;
+    displayTitle?: string;
+    category?: string;
+    unitId?: string;
+    unitTitle?: string;
+    lessonId?: string;
+    prompt?: string;
+    mistakesCount?: number;
+  }): void {
+    const rawKey = options.itemId || options.text.trim();
+    const key = `${options.subjectId}:${rawKey}`;
+    const items = this.loadAndMigrate();
+    const nowIso = new Date().toISOString();
+    const mistakes = options.mistakesCount || 1;
+
+    const existing = items[key];
+    if (existing) {
+      existing.mistakeCount += mistakes;
+      existing.lastMistakeDate = nowIso;
+      existing.masteryScore = Math.max(0, existing.masteryScore - 15);
+    } else {
+      items[key] = {
+        id: key,
+        subjectId: options.subjectId,
+        text: options.text,
+        displayTitle: options.displayTitle || options.text,
+        category: options.category || 'Problem Solving',
+        unitId: options.unitId,
+        unitTitle: options.unitTitle,
+        lessonId: options.lessonId,
+        prompt: options.prompt,
+        mistakeCount: mistakes,
+        correctCount: 0,
+        lastMistakeDate: nowIso,
+        masteryScore: 25,
       };
     }
 
@@ -576,6 +646,8 @@ class ReviewService {
       const all = this.getReviewItems();
       let swedishCount = 0;
       let englishCount = 0;
+      let germanCount = 0;
+      let mathematicsCount = 0;
       let pythonCount = 0;
       let needsPracticeCount = 0;
       let improvingCount = 0;
@@ -585,6 +657,8 @@ class ReviewService {
         if (!item) return;
         if (item.subjectId === 'swedish') swedishCount++;
         else if (item.subjectId === 'english') englishCount++;
+        else if (item.subjectId === 'german') germanCount++;
+        else if (item.subjectId === 'mathematics') mathematicsCount++;
         else if (item.subjectId === 'python') pythonCount++;
 
         const lvl = getMasteryLevel(typeof item.masteryScore === 'number' ? item.masteryScore : 0);
@@ -597,6 +671,8 @@ class ReviewService {
         totalCount: all.length,
         swedishCount,
         englishCount,
+        germanCount,
+        mathematicsCount,
         pythonCount,
         needsPracticeCount,
         improvingCount,
@@ -608,6 +684,8 @@ class ReviewService {
         totalCount: 0,
         swedishCount: 0,
         englishCount: 0,
+        germanCount: 0,
+        mathematicsCount: 0,
         pythonCount: 0,
         needsPracticeCount: 0,
         improvingCount: 0,

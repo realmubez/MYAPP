@@ -2,15 +2,17 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   Home,
   BookOpen,
-  GraduationCap,
-  BarChart2,
+  Folder,
+  FileText,
+  FolderKanban,
   Sparkles,
+  BarChart2,
   User,
   Settings,
-  HelpCircle,
+  Shield,
   ChevronLeft,
   ChevronRight,
-  Shield,
+  HelpCircle,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -42,34 +44,58 @@ export function Sidebar({
     {
       id: 'sidebar-nav-learn',
       label: 'Learn',
-      path: '/swedish',
+      path: '/learn',
       icon: BookOpen,
-      matchPrefix: '/swedish',
+      matchPrefix: [
+        '/learn',
+        '/swedish',
+        '/english',
+        '/german',
+        '/mathematics',
+        '/python',
+        '/typing',
+      ],
     },
     {
-      id: 'sidebar-nav-courses',
-      label: 'Courses',
-      path: '/english',
-      icon: GraduationCap,
-      matchPrefix: ['/english', '/python', '/typing'],
+      id: 'sidebar-nav-library',
+      label: 'Library',
+      path: '/library',
+      icon: Folder,
+      matchPrefix: '/library',
     },
     {
-      id: 'sidebar-nav-progress',
-      label: 'Progress',
-      path: '/progress',
-      icon: BarChart2,
+      id: 'sidebar-nav-notes',
+      label: 'Notes',
+      path: '/notes',
+      icon: FileText,
+      matchPrefix: '/notes',
+    },
+    {
+      id: 'sidebar-nav-projects',
+      label: 'Projects',
+      path: '/projects',
+      icon: FolderKanban,
+      matchPrefix: ['/projects', '/spaces'],
     },
     {
       id: 'sidebar-nav-review',
       label: 'Review',
       path: '/review',
       icon: Sparkles,
+      matchPrefix: '/review',
+    },
+    {
+      id: 'sidebar-nav-progress',
+      label: 'Progress',
+      path: '/progress',
+      icon: BarChart2,
+      matchPrefix: '/progress',
     },
   ];
 
   const isItemActive = (item: (typeof mainNavItems)[0]) => {
     if (item.exact) {
-      return location.pathname === item.path;
+      return location.pathname === '/' || location.pathname === '/home';
     }
     if (item.matchPrefix) {
       if (Array.isArray(item.matchPrefix)) {
@@ -84,12 +110,12 @@ export function Sidebar({
     <aside
       id="desktop-sidebar"
       aria-label="Desktop Navigation Sidebar"
-      className={`hidden lg:flex flex-col justify-between h-screen sticky top-0 shrink-0 border-r border-neutral-800/80 bg-[#0d0c0a] select-none z-30 transition-[width,padding] duration-200 ease-in-out ${
+      className={`hidden lg:flex flex-col justify-between h-screen sticky top-0 shrink-0 border-r border-[#261f18] bg-[#0d0a08] select-none z-30 transition-[width,padding] duration-200 ease-in-out ${
         isCollapsed ? 'w-[72px] p-3' : 'w-60 xl:w-64 p-5'
       }`}
     >
       {/* Top Header & Brand */}
-      <div className="space-y-5">
+      <div className="space-y-4">
         <div
           className={`flex items-center ${
             isCollapsed ? 'justify-center' : 'justify-between gap-2'
@@ -98,8 +124,8 @@ export function Sidebar({
           <NavLink
             to="/"
             id="sidebar-brand-logo"
-            title="MY LEARNING Dashboard"
-            aria-label="MY LEARNING Dashboard"
+            title="MY LEARNING OS"
+            aria-label="MY LEARNING OS"
             className="group flex items-center gap-3 px-1 py-1 min-w-0"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-sm font-bold shadow-sm shadow-amber-500/10 group-hover:border-amber-400 transition-colors">
@@ -110,8 +136,8 @@ export function Sidebar({
                 <h1 className="text-sm font-bold tracking-wider text-white group-hover:text-amber-300 transition-colors leading-tight truncate">
                   MY LEARNING
                 </h1>
-                <p className="text-[11px] text-neutral-400 font-normal mt-0.5 truncate">
-                  “I learn by typing.”
+                <p className="text-[10px] text-amber-400/80 font-mono mt-0.5 truncate uppercase tracking-wider">
+                  Personal Learning OS
                 </p>
               </div>
             )}
@@ -119,7 +145,7 @@ export function Sidebar({
         </div>
 
         {/* Primary Navigation Links */}
-        <nav className="space-y-1.5" aria-label="Main Navigation">
+        <nav className="space-y-1" aria-label="Main Navigation">
           {mainNavItems.map((item) => {
             const active = isItemActive(item);
             const Icon = item.icon;
@@ -133,12 +159,12 @@ export function Sidebar({
                 aria-label={item.label}
                 className={`flex items-center rounded-xl text-xs font-semibold transition-all ${
                   isCollapsed
-                    ? 'h-11 w-11 mx-auto justify-center'
-                    : 'gap-3.5 px-3.5 py-2.5'
+                    ? 'h-10 w-10 mx-auto justify-center'
+                    : 'gap-3 px-3 py-2.5'
                 } ${
                   active
-                    ? 'bg-amber-400/15 text-amber-400 border border-amber-400/30 shadow-sm shadow-amber-500/10'
-                    : 'text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900/80 border border-transparent'
+                    ? 'bg-amber-400/15 text-amber-300 border border-amber-400/30 shadow-sm shadow-amber-500/10'
+                    : 'text-neutral-400 hover:text-neutral-100 hover:bg-[#18130f] border border-transparent'
                 }`}
               >
                 <Icon
@@ -150,7 +176,12 @@ export function Sidebar({
               </NavLink>
             );
           })}
+        </nav>
+      </div>
 
+      {/* Bottom Section: Profile, Settings, Admin, Collapse */}
+      <div className="space-y-2 pt-3 border-t border-[#261f18]">
+        <div className="space-y-1">
           {/* Profile link */}
           <NavLink
             to="/profile"
@@ -159,16 +190,36 @@ export function Sidebar({
             aria-label="Profile"
             className={`flex items-center rounded-xl text-xs font-semibold transition-all ${
               location.pathname === '/profile'
-                ? 'bg-amber-400/15 text-amber-400 border border-amber-400/30 shadow-sm shadow-amber-500/10'
-                : 'text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900/80 border border-transparent'
+                ? 'bg-amber-400/15 text-amber-300 border border-amber-400/30 shadow-sm shadow-amber-500/10'
+                : 'text-neutral-400 hover:text-neutral-100 hover:bg-[#18130f] border border-transparent'
             } ${
               isCollapsed
-                ? 'h-11 w-11 mx-auto justify-center'
-                : 'w-full gap-3.5 px-3.5 py-2.5 text-left'
+                ? 'h-10 w-10 mx-auto justify-center'
+                : 'w-full gap-3 px-3 py-2 text-left'
             }`}
           >
             <User className="w-4 h-4 shrink-0" />
             {!isCollapsed && <span>Profile</span>}
+          </NavLink>
+
+          {/* Settings link */}
+          <NavLink
+            to="/settings"
+            id="sidebar-nav-settings"
+            title={isCollapsed ? 'Settings' : undefined}
+            aria-label="Settings"
+            className={`flex items-center rounded-xl text-xs font-semibold transition-all ${
+              location.pathname === '/settings'
+                ? 'bg-amber-400/15 text-amber-300 border border-amber-400/30 shadow-sm shadow-amber-500/10'
+                : 'text-neutral-400 hover:text-neutral-100 hover:bg-[#18130f] border border-transparent'
+            } ${
+              isCollapsed
+                ? 'h-10 w-10 mx-auto justify-center'
+                : 'w-full gap-3 px-3 py-2 text-left'
+            }`}
+          >
+            <Settings className="w-4 h-4 shrink-0" />
+            {!isCollapsed && <span>Settings</span>}
           </NavLink>
 
           {/* Admin link for Admin Users */}
@@ -184,8 +235,8 @@ export function Sidebar({
                   : 'text-amber-400/80 hover:text-amber-300 hover:bg-amber-950/20 border border-transparent'
               } ${
                 isCollapsed
-                  ? 'h-11 w-11 mx-auto justify-center'
-                  : 'w-full gap-3.5 px-3.5 py-2.5 text-left'
+                  ? 'h-10 w-10 mx-auto justify-center'
+                  : 'w-full gap-3 px-3 py-2 text-left'
               }`}
             >
               <Shield className="w-4 h-4 shrink-0 text-amber-400" />
@@ -199,59 +250,7 @@ export function Sidebar({
               )}
             </NavLink>
           )}
-        </nav>
-      </div>
-
-      {/* Bottom Area: Settings, Help & Collapse Toggle */}
-      <div className="space-y-3 pt-3 border-t border-neutral-900">
-        <div className="space-y-1">
-          <NavLink
-            to="/settings"
-            id="sidebar-nav-settings"
-            title={isCollapsed ? 'Settings' : undefined}
-            aria-label="Settings"
-            className={`flex items-center rounded-xl text-xs font-medium transition-all ${
-              location.pathname === '/settings'
-                ? 'bg-amber-400/15 text-amber-400 border border-amber-400/30 shadow-sm shadow-amber-500/10'
-                : 'text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900/80'
-            } ${
-              isCollapsed
-                ? 'h-10 w-10 mx-auto justify-center'
-                : 'w-full gap-3.5 px-3.5 py-2 text-left'
-            }`}
-          >
-            <Settings className="w-4 h-4 shrink-0" />
-            {!isCollapsed && <span>Settings</span>}
-          </NavLink>
-
-          <button
-            type="button"
-            id="sidebar-nav-help"
-            onClick={onOpenHelp || onOpenSettings}
-            title={isCollapsed ? 'Help' : undefined}
-            aria-label="Help"
-            className={`flex items-center rounded-xl text-xs font-medium text-neutral-400 hover:text-neutral-100 hover:bg-neutral-900/80 transition-all cursor-pointer ${
-              isCollapsed
-                ? 'h-10 w-10 mx-auto justify-center'
-                : 'w-full gap-3.5 px-3.5 py-2 text-left'
-            }`}
-          >
-            <HelpCircle className="w-4 h-4 shrink-0 text-neutral-400" />
-            {!isCollapsed && <span>Help</span>}
-          </button>
         </div>
-
-        {/* Motivational Sidebar Card (expanded only) */}
-        {!isCollapsed && (
-          <div
-            id="sidebar-quote-card"
-            className="rounded-2xl border border-neutral-800/80 bg-neutral-900/60 p-3.5 animate-in fade-in duration-150"
-          >
-            <p className="text-xs text-neutral-300 italic leading-relaxed">
-              “Progress happens one keystroke at a time.”
-            </p>
-          </div>
-        )}
 
         {/* Sidebar Collapse/Expand Toggle Button */}
         <button
@@ -260,10 +259,10 @@ export function Sidebar({
           onClick={onToggleCollapse}
           title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className={`flex items-center rounded-xl border border-neutral-800/80 bg-neutral-900/90 text-neutral-400 hover:text-white hover:border-neutral-700 active:scale-95 transition-all cursor-pointer text-xs font-semibold ${
+          className={`flex items-center rounded-xl border border-neutral-800/80 bg-[#14110e] text-neutral-400 hover:text-white hover:border-neutral-700 active:scale-95 transition-all cursor-pointer text-xs font-semibold ${
             isCollapsed
               ? 'h-10 w-10 mx-auto justify-center'
-              : 'w-full justify-between px-3.5 py-2.5'
+              : 'w-full justify-between px-3 py-2'
           }`}
         >
           {isCollapsed ? (
@@ -274,7 +273,7 @@ export function Sidebar({
                 <ChevronLeft className="w-4 h-4 text-amber-400" />
                 <span>Collapse</span>
               </div>
-              <span className="text-[10px] font-mono text-neutral-500">◀</span>
+              <span className="text-[10px] font-mono text-neutral-400">◀</span>
             </>
           )}
         </button>

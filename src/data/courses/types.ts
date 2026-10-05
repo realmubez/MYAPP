@@ -1,6 +1,6 @@
 import { LanguageLesson, LessonSentence } from '../../types/lessons';
 
-export type CourseSubject = 'swedish' | 'english' | 'python';
+export type CourseSubject = 'swedish' | 'english' | 'python' | 'german' | 'mathematics';
 
 export interface ExerciseItem {
   id: string;
@@ -41,8 +41,8 @@ export interface PythonCourseUnit {
 export interface Course {
   id: string;
   subject: CourseSubject;
-  level: 'Beginner 1';
+  level: string;
   title: string;
   description: string;
-  units: CourseUnit[] | PythonCourseUnit[];
+  units: CourseUnit[] | PythonCourseUnit[] | any[];
 }

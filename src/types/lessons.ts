@@ -1,4 +1,4 @@
-export type Language = 'sv' | 'en';
+export type Language = 'sv' | 'en' | 'de';
 
 export type LessonSentence = {
   id: string;
@@ -35,6 +35,7 @@ export interface BaseStep {
   id: string;
   type: LessonStepType;
   stepTitle?: string;
+  title?: string;
 }
 
 export interface ConceptStep extends BaseStep {
@@ -57,6 +58,7 @@ export interface FlashcardStep extends BaseStep {
   translation: string;
   partOfSpeech?: string;
   explanation?: string;
+  hint?: string;
   exampleSentence?: {
     text: string;
     translation: string;
@@ -158,6 +160,8 @@ export type LanguageLesson = {
   description: string;
   category: LessonCategory;
   level?: 'Beginner' | 'Intermediate' | 'Advanced';
+  unitId?: string;
+  unitTitle?: string;
   sentences: LessonSentence[];
   steps?: LessonStep[];
 };

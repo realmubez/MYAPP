@@ -27,6 +27,8 @@ export function validateCurriculum(): ValidationReport {
   const summary: Record<CourseSubject, { unitsCount: number; exercisesCount: number }> = {
     swedish: { unitsCount: 0, exercisesCount: 0 },
     english: { unitsCount: 0, exercisesCount: 0 },
+    german: { unitsCount: 0, exercisesCount: 0 },
+    mathematics: { unitsCount: 0, exercisesCount: 0 },
     python: { unitsCount: 0, exercisesCount: 0 },
   };
 

@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { ChevronRight, ArrowRight, BookOpen, Layers, BarChart2 } from 'lucide-react';
 import { SubjectInfo, SubjectProgress } from '../../types';
 import { CURATED_LESSONS } from '../../data/curriculumConfig';
-import { SwedishFlagIcon, BritishFlagIcon, PythonLogoIcon } from './FlagIcons';
+import { SwedishFlagIcon, BritishFlagIcon, PythonLogoIcon, GermanFlagIcon, MathSymbolIcon } from './FlagIcons';
 
 interface SubjectCardProps {
   subject: SubjectInfo;
@@ -20,6 +20,8 @@ export function SubjectCard({ subject, progressData }: SubjectCardProps) {
   const unitNoun = totalLessons === 1 ? 'lesson' : 'lessons';
   const modeSequence = curated?.modeSequence || (subject?.id === 'python'
     ? 'Concept → Type → Predict → Code'
+    : subject?.id === 'mathematics'
+    ? 'Concept → Example → Solve → Recall'
     : 'Listen → Type → Speak');
   
   const structureMeta = curated
@@ -30,8 +32,8 @@ export function SubjectCard({ subject, progressData }: SubjectCardProps) {
       }
     : {
         chapters: '1 lesson',
-        modes: 'Interactive',
-        level: 'Beginner 1',
+        modes: subject?.id === 'mathematics' ? '12 steps' : 'Interactive',
+        level: subject?.id === 'mathematics' ? 'Foundation 1' : 'Beginner 1',
       };
 
   // Pick customized flag or icon
@@ -41,8 +43,10 @@ export function SubjectCard({ subject, progressData }: SubjectCardProps) {
         <div className="block sm:hidden">
           {subject.id === 'swedish' && <SwedishFlagIcon size={36} className="shrink-0" />}
           {subject.id === 'english' && <BritishFlagIcon size={36} className="shrink-0" />}
+          {subject.id === 'german' && <GermanFlagIcon size={36} className="shrink-0" />}
           {subject.id === 'python' && <PythonLogoIcon size={36} className="shrink-0" />}
-          {!['swedish', 'english', 'python'].includes(subject.id) && (
+          {subject.id === 'mathematics' && <MathSymbolIcon size={36} className="shrink-0" />}
+          {!['swedish', 'english', 'german', 'python', 'mathematics'].includes(subject.id) && (
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-neutral-800 text-base border border-neutral-700">
               {subject.flagOrIcon}
             </div>
@@ -51,8 +55,10 @@ export function SubjectCard({ subject, progressData }: SubjectCardProps) {
         <div className="hidden sm:block">
           {subject.id === 'swedish' && <SwedishFlagIcon size={40} className="shrink-0" />}
           {subject.id === 'english' && <BritishFlagIcon size={40} className="shrink-0" />}
+          {subject.id === 'german' && <GermanFlagIcon size={40} className="shrink-0" />}
           {subject.id === 'python' && <PythonLogoIcon size={40} className="shrink-0" />}
-          {!['swedish', 'english', 'python'].includes(subject.id) && (
+          {subject.id === 'mathematics' && <MathSymbolIcon size={40} className="shrink-0" />}
+          {!['swedish', 'english', 'german', 'python', 'mathematics'].includes(subject.id) && (
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-neutral-800 text-lg border border-neutral-700">
               {subject.flagOrIcon}
             </div>
