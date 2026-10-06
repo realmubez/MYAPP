@@ -1,7 +1,8 @@
 import { useState, FormEvent, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Lock, ArrowRight, AlertCircle, Loader2, User, Shield, Keyboard } from 'lucide-react';
+import { Lock, ArrowRight, AlertCircle, Loader2, User, Shield, Keyboard, Sparkles } from 'lucide-react';
 import { useAuth, normalizeAuthError } from '../context/AuthContext';
+import { VocabularyBar } from '../components/vocabulary/VocabularyBar';
 
 /**
  * Validates and sanitizes the redirect URL to prevent open redirect vulnerabilities.
@@ -259,6 +260,15 @@ export function LoginPage() {
             “I learn by typing.”
           </p>
         </div>
+      </div>
+
+      {/* Public Interactive Vocabulary Section (Zero Login Required) */}
+      <div className="w-full max-w-xl mt-6">
+        <VocabularyBar
+          onPracticeText={(text) => {
+            navigate('/practice', { state: { customText: text } });
+          }}
+        />
       </div>
     </div>
   );

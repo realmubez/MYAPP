@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   Volume2,
   VolumeX,
@@ -27,9 +27,14 @@ import {
   Play,
   Square,
   Radio,
+  Bot,
+  Plus,
 } from 'lucide-react';
 import { typingSoundService } from '../services/typingSoundService';
 import { getTTSUrl, fetchTTSAudioBlobUrl, cleanSpeechText, TTSRate } from '../services/tts';
+import { AIChatDrawer } from '../components/ai/AIChatDrawer';
+import { VocabularyBar } from '../components/vocabulary/VocabularyBar';
+import { findVocabularyByWord } from '../data/publicVocabulary';
 
 export interface TrainingStep {
   id: string;
@@ -43,13 +48,13 @@ export interface PassageItem {
   title: string;
   subtitle: string;
   tag: string;
-  gender: 'man' | 'woman';
+  gender: 'man' | 'woman' | 'custom';
   fullText: string;
   progressiveSteps: TrainingStep[];
   sentenceSteps: TrainingStep[];
 }
 
-export const PUBLIC_PASSAGES: PassageItem[] = [
+export const INITIAL_PUBLIC_PASSAGES: PassageItem[] = [
   {
     id: 'man-profile',
     title: 'Passage 1 — The Man',
@@ -179,13 +184,64 @@ export const PUBLIC_PASSAGES: PassageItem[] = [
   },
 ];
 
-type PracticeMode = 'progressive' | 'sentence' | 'full';
-type TimerOption = 0 | 15 | 30 | 60 | 90; // 0 = untimed
+export function generateStepsFromText(text: string, title = 'Custom AI Passage'): PassageItem {
+  const clean = text.trim();
+  const sentenceMatches = clean.match(/[^.!?]+[.!?]+(\s|$)|[^.!?]+$/g) || [clean];
+  const sentences = sentenceMatches.map((s) => s.trim()).filter(Boolean);
 
-// Ryan (Neural) UK voice constant
+  const progressiveSteps: TrainingStep[] = [];
+  let progressiveIndex = 1;
+
+  sentences.forEach((sentence, sIdx) => {
+    const clauses = sentence.split(/,\s*/).map((c, i, arr) => (i < arr.length - 1 ? `${c},` : c));
+    if (clauses.length > 1) {
+      clauses.forEach((clause, cIdx) => {
+        progressiveSteps.push({
+          id: `custom-p-${progressiveIndex++}`,
+          title: `Clause ${sIdx + 1}.${cIdx + 1}`,
+          chunk: clause.trim(),
+        });
+      });
+    }
+    progressiveSteps.push({
+      id: `custom-s-${progressiveIndex++}`,
+      title: `Sentence ${sIdx + 1} Mastery`,
+      chunk: sentence,
+    });
+  });
+
+  progressiveSteps.push({
+    id: `custom-full-${progressiveIndex}`,
+    title: 'Complete Passage Mastery',
+    chunk: clean,
+  });
+
+  const sentenceSteps: TrainingStep[] = sentences.map((s, idx) => ({
+    id: `custom-sent-${idx + 1}`,
+    title: `Sentence ${idx + 1}`,
+    chunk: s,
+  }));
+
+  return {
+    id: `custom-${Date.now()}`,
+    title,
+    subtitle: 'Generated via Groq Llama 3.3 (14.4k/day)',
+    tag: 'AI Generated',
+    gender: 'custom',
+    fullText: clean,
+    progressiveSteps,
+    sentenceSteps,
+  };
+}
+
+type PracticeMode = 'progressive' | 'sentence' | 'full';
+type TimerOption = 0 | 15 | 30 | 60 | 90;
+
 const RYAN_VOICE_ID = 'en-GB-RyanNeural';
 
 export function PublicTypingPage() {
+  const location = useLocation();
+  const [passages, setPassages] = useState<PassageItem[]>(INITIAL_PUBLIC_PASSAGES);
   const [selectedPassageIndex, setSelectedPassageIndex] = useState<number>(0);
   const [practiceMode, setPracticeMode] = useState<PracticeMode>('progressive');
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
@@ -194,6 +250,7 @@ export function PublicTypingPage() {
   const [autoAdvance, setAutoAdvance] = useState<boolean>(true);
   const [autoplayVoice, setAutoplayVoice] = useState<boolean>(true);
   const [speechRate, setSpeechRate] = useState<TTSRate>('0%');
+  const [isAIChatOpen, setIsAIChatOpen] = useState<boolean>(false);
 
   const [inputVal, setInputVal] = useState<string>('');
   const [startTime, setStartTime] = useState<number | null>(null);
@@ -204,11 +261,8 @@ export function PublicTypingPage() {
   const [isTimeUp, setIsTimeUp] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
 
-  // Audio State
   const [isAudioLoading, setIsAudioLoading] = useState<boolean>(false);
   const [isAudioPlaying, setIsAudioPlaying] = useState<boolean>(false);
-
-  // Completed steps tracking for current passage
   const [completedStepIds, setCompletedStepIds] = useState<Set<string>>(new Set());
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -218,9 +272,18 @@ export function PublicTypingPage() {
   const activeAudioRef = useRef<HTMLAudioElement | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const currentPassage = PUBLIC_PASSAGES[selectedPassageIndex];
+  // Check router state for custom text passed from AI drawer
+  useEffect(() => {
+    const customText = (location.state as { customText?: string })?.customText;
+    if (customText && customText.trim()) {
+      const newPassage = generateStepsFromText(customText, 'AI Generated Practice');
+      setPassages((prev) => [newPassage, ...prev]);
+      setSelectedPassageIndex(0);
+    }
+  }, [location.state]);
 
-  // Determine current active steps array based on practice mode
+  const currentPassage = passages[selectedPassageIndex] || passages[0];
+
   const currentStepsList: TrainingStep[] =
     practiceMode === 'progressive'
       ? currentPassage.progressiveSteps
@@ -239,7 +302,6 @@ export function PublicTypingPage() {
     currentStepsList[0];
   const targetText = currentStep.chunk;
 
-  // Stop any active audio
   const stopAudio = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -262,7 +324,6 @@ export function PublicTypingPage() {
     setIsAudioPlaying(false);
   }, []);
 
-  // Play text with Ryan (Neural) (United Kingdom)
   const playRyanAudio = useCallback(
     async (textToPlay: string) => {
       const clean = cleanSpeechText(textToPlay);
@@ -285,7 +346,7 @@ export function PublicTypingPage() {
         try {
           resolvedSrc = await fetchTTSAudioBlobUrl(targetUrl, abortController.signal);
         } catch {
-          // fallback to direct targetUrl if blob fetch fails
+          // fallback to direct targetUrl
         }
 
         if (abortController.signal.aborted) return;
@@ -307,7 +368,6 @@ export function PublicTypingPage() {
         };
 
         audio.onerror = () => {
-          // Fallback to browser UK Web Speech synthesis
           setIsAudioLoading(false);
           if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
             const utterance = new SpeechSynthesisUtterance(clean);
@@ -323,10 +383,9 @@ export function PublicTypingPage() {
         };
 
         await audio.play();
-      } catch (err) {
+      } catch {
         if (abortController.signal.aborted) return;
         setIsAudioLoading(false);
-        // Fallback to browser UK speech synthesis
         if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
           const utterance = new SpeechSynthesisUtterance(clean);
           utterance.lang = 'en-GB';
@@ -343,7 +402,6 @@ export function PublicTypingPage() {
     [speechRate, stopAudio]
   );
 
-  // Reset session for typing
   const resetSession = useCallback(() => {
     if (autoAdvanceTimeoutRef.current) {
       clearTimeout(autoAdvanceTimeoutRef.current);
@@ -367,13 +425,11 @@ export function PublicTypingPage() {
     }, 40);
   }, [timerMode, stopAudio]);
 
-  // When changing passage or practice mode, reset step index and clear state
   useEffect(() => {
     setCurrentStepIndex(0);
     resetSession();
   }, [selectedPassageIndex, practiceMode]);
 
-  // When step changes, reset input and optionally autoplay Ryan's voice
   useEffect(() => {
     resetSession();
     if (autoplayVoice && targetText) {
@@ -384,7 +440,6 @@ export function PublicTypingPage() {
     }
   }, [currentStepIndex, resetSession, autoplayVoice, targetText, playRyanAudio]);
 
-  // Timer countdown / count-up effect
   useEffect(() => {
     if (startTime && !endTime && !isCompleted && !isTimeUp) {
       timerIntervalRef.current = window.setInterval(() => {
@@ -409,14 +464,12 @@ export function PublicTypingPage() {
     };
   }, [startTime, endTime, isCompleted, isTimeUp, timerMode]);
 
-  // Handle keyboard typing input
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isCompleted || isTimeUp) return;
 
     const value = e.target.value;
     const now = Date.now();
 
-    // Start timer on first keystroke
     if (!startTime) {
       setStartTime(now);
       if (timerMode > 0) {
@@ -424,7 +477,6 @@ export function PublicTypingPage() {
       }
     }
 
-    // Play click sound if enabled
     if (soundEnabled && value.length > inputVal.length) {
       const lastChar = value[value.length - 1];
       const targetChar = targetText[value.length - 1];
@@ -435,7 +487,6 @@ export function PublicTypingPage() {
       }
     }
 
-    // Track mistakes
     const currentIndex = value.length - 1;
     if (currentIndex >= 0 && currentIndex < targetText.length) {
       if (value[currentIndex] !== targetText[currentIndex]) {
@@ -448,7 +499,6 @@ export function PublicTypingPage() {
 
     setInputVal(value);
 
-    // Check completion
     if (value.length >= targetText.length) {
       setEndTime(now);
       setIsCompleted(true);
@@ -458,7 +508,6 @@ export function PublicTypingPage() {
         typingSoundService.playCompletion();
       }
 
-      // Auto advance to next step if enabled and not at the last step
       if (autoAdvance && currentStepIndex < currentStepsList.length - 1) {
         autoAdvanceTimeoutRef.current = window.setTimeout(() => {
           goToNextStep();
@@ -479,12 +528,10 @@ export function PublicTypingPage() {
     }
   };
 
-  // Focus input automatically
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  // Global hotkeys (Escape to restart, Enter to advance when completed)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -493,16 +540,14 @@ export function PublicTypingPage() {
         if (currentStepIndex < currentStepsList.length - 1) {
           goToNextStep();
         } else {
-          // Switch to other passage or restart
-          setSelectedPassageIndex((prev) => (prev + 1) % PUBLIC_PASSAGES.length);
+          setSelectedPassageIndex((prev) => (prev + 1) % passages.length);
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [resetSession, isCompleted, currentStepIndex, currentStepsList.length]);
+  }, [resetSession, isCompleted, currentStepIndex, currentStepsList.length, passages.length]);
 
-  // Compute live / final stats
   const calculateStats = () => {
     const currentTime = endTime || (startTime ? Date.now() : Date.now());
     const durationSec = startTime ? Math.max(1, (currentTime - startTime) / 1000) : 1;
@@ -542,6 +587,13 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleInsertAIText = (text: string) => {
+    const newPassage = generateStepsFromText(text, 'Custom AI Exercise');
+    setPassages((prev) => [newPassage, ...prev]);
+    setSelectedPassageIndex(0);
+    setCurrentStepIndex(0);
+  };
+
   const completedCount = currentStepsList.filter((s) => completedStepIds.has(s.id)).length;
   const progressPercent = Math.round((completedCount / currentStepsList.length) * 100);
 
@@ -562,12 +614,22 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
                 </span>
               </div>
               <p className="text-[11px] text-neutral-400 hidden sm:block">
-                Powered by <strong className="text-amber-400 font-semibold">Ryan (Neural) • United Kingdom</strong>
+                Powered by <strong className="text-amber-400 font-semibold">Ryan (Neural) UK</strong> & <strong className="text-amber-400 font-semibold">Groq (14.4k/day)</strong>
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* AI Assistant Button */}
+            <button
+              onClick={() => setIsAIChatOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-xs font-semibold text-amber-300 transition-all cursor-pointer shadow-sm"
+              title="Open AI Messages & Generator (Groq 14.4k/day)"
+            >
+              <Zap className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
+              <span>AI Tutor</span>
+            </button>
+
             {/* Sound Effects Toggle */}
             <button
               onClick={() => {
@@ -596,9 +658,9 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
 
       {/* Main Container */}
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col justify-center gap-5">
-        {/* 1. Passage Selector Tabs (Man vs Woman) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {PUBLIC_PASSAGES.map((passage, idx) => {
+        {/* 1. Passage Selector Tabs (Man vs Woman vs AI Generated) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {passages.map((passage, idx) => {
             const isSelected = selectedPassageIndex === idx;
             return (
               <button
@@ -643,7 +705,7 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-xs font-semibold text-neutral-400 flex items-center gap-1 mr-1">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>Training Mode:</span>
+              <span>Mode:</span>
             </span>
             <button
               onClick={() => setPracticeMode('progressive')}
@@ -684,13 +746,11 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
 
           {/* Voice & Auto-play options */}
           <div className="flex items-center gap-3 flex-wrap">
-            {/* Ryan Neural Voice Pill */}
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-neutral-900 border border-neutral-800 text-[11px] text-amber-400">
               <Radio className="w-3 h-3 text-amber-400 animate-pulse" />
               <span className="font-semibold">Ryan (Neural) UK</span>
             </div>
 
-            {/* Autoplay Voice toggle */}
             <label className="flex items-center gap-1.5 text-xs text-neutral-300 cursor-pointer select-none">
               <input
                 type="checkbox"
@@ -698,10 +758,9 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
                 onChange={(e) => setAutoplayVoice(e.target.checked)}
                 className="w-3.5 h-3.5 rounded bg-neutral-900 border-neutral-700 text-amber-500 focus:ring-0 cursor-pointer"
               />
-              <span>Auto-read on Step</span>
+              <span>Auto-read</span>
             </label>
 
-            {/* Auto Advance Step Toggle */}
             {practiceMode !== 'full' && (
               <label className="flex items-center gap-1.5 text-xs text-neutral-400 cursor-pointer select-none">
                 <input
@@ -732,7 +791,6 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
               </div>
             </div>
 
-            {/* Progress Bar */}
             <div className="w-full h-1.5 bg-neutral-800 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-amber-500 to-emerald-400 transition-all duration-300 rounded-full"
@@ -740,7 +798,6 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
               />
             </div>
 
-            {/* Step Pills Navigation */}
             <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
               {currentStepsList.map((step, idx) => {
                 const isCurrent = currentStepIndex === idx;
@@ -831,7 +888,6 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
           onClick={() => inputRef.current?.focus()}
           className="relative rounded-3xl bg-[#110f0d] border border-neutral-800 p-6 sm:p-8 min-h-[220px] flex flex-col justify-between shadow-2xl cursor-text transition-all focus-within:border-amber-500/50 focus-within:ring-1 focus-within:ring-amber-500/30"
         >
-          {/* Current Step Prompt Header */}
           <div className="flex items-center justify-between pb-3 border-b border-neutral-900 mb-4 text-xs text-neutral-400">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-amber-400" />
@@ -843,7 +899,6 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
               )}
             </div>
 
-            {/* Audio Button with Ryan (Neural) UK voice indicator */}
             <div className="flex items-center gap-2">
               <button
                 onClick={(e) => {
@@ -894,7 +949,6 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
             </div>
           </div>
 
-          {/* Character-by-character live interactive coloring */}
           <div className="text-xl sm:text-3xl leading-relaxed sm:leading-loose font-mono tracking-normal select-none my-auto">
             {targetText.split('').map((char, index) => {
               const isTyped = index < inputVal.length;
@@ -922,7 +976,6 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
             })}
           </div>
 
-          {/* Hidden native input for typing captures */}
           <input
             ref={inputRef}
             type="text"
@@ -937,7 +990,6 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
             spellCheck="false"
           />
 
-          {/* Bottom helper prompt */}
           <div className="mt-6 pt-4 border-t border-neutral-900 flex flex-wrap items-center justify-between gap-3 text-xs text-neutral-500">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -951,7 +1003,7 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
           </div>
         </div>
 
-        {/* 6. Step Navigation Controls & Completion Card */}
+        {/* 6. Step Navigation Controls & Switch Passage */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2 w-full sm:w-auto">
             {practiceMode !== 'full' && (
@@ -980,17 +1032,20 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <button
               onClick={() => {
-                setSelectedPassageIndex((prev) => (prev + 1) % PUBLIC_PASSAGES.length);
+                setSelectedPassageIndex((prev) => (prev + 1) % passages.length);
               }}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-bold transition-all cursor-pointer"
             >
               <span>
-                Switch to {selectedPassageIndex === 0 ? 'Passage 2 (The Woman)' : 'Passage 1 (The Man)'}
+                Switch to {passages[(selectedPassageIndex + 1) % passages.length]?.title}
               </span>
               <FastForward className="w-4 h-4" />
             </button>
           </div>
         </div>
+
+        {/* 6.5 Interactive Vocabulary Bar (Clickable words with Ryan UK, German, Somali Audio) */}
+        <VocabularyBar onPracticeText={handleInsertAIText} />
 
         {/* 7. Completion Scorecard Card */}
         {(isCompleted || isTimeUp) && (
@@ -1021,7 +1076,6 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
               </div>
             </div>
 
-            {/* Results Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 my-6">
               <div className="p-3.5 rounded-2xl bg-[#0e0c0a] border border-neutral-800 text-center">
                 <div className="text-2xl sm:text-3xl font-black font-mono text-amber-400">
@@ -1060,7 +1114,6 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
               </div>
             </div>
 
-            {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
               <button
                 onClick={resetSession}
@@ -1081,12 +1134,12 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
               ) : (
                 <button
                   onClick={() => {
-                    setSelectedPassageIndex((prev) => (prev + 1) % PUBLIC_PASSAGES.length);
+                    setSelectedPassageIndex((prev) => (prev + 1) % passages.length);
                   }}
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-emerald-500/20 cursor-pointer"
                 >
                   <span>
-                    🎉 Mastered! Go to {selectedPassageIndex === 0 ? 'Passage 2' : 'Passage 1'}
+                    🎉 Mastered! Go to Next Passage
                   </span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
@@ -1095,6 +1148,13 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
           </div>
         )}
       </main>
+
+      {/* AI Chat Drawer */}
+      <AIChatDrawer
+        isOpen={isAIChatOpen}
+        onClose={() => setIsAIChatOpen(false)}
+        onSelectTypingText={handleInsertAIText}
+      />
 
       {/* Footer */}
       <footer className="w-full border-t border-neutral-900 bg-[#0c0a09] py-4 text-center text-xs text-neutral-500">

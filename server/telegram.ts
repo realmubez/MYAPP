@@ -16,6 +16,7 @@ import {
   toggleSomaliVoice,
   toggleTranslation,
 } from './telegramData.ts';
+import { generateAIResponse } from './aiRouter.ts';
 
 export interface TelegramConfig {
   botToken: string;
@@ -592,14 +593,173 @@ function escapeHtml(str: string): string {
  */
 export const MAIN_REPLY_KEYBOARD = {
   keyboard: [
-    [{ text: '📚 Today’s Review' }, { text: '🧠 Mistakes' }],
-    [{ text: '🗣️ Vocabulary' }, { text: '🐍 Python' }],
+    [{ text: '🤖 AI Tutor (/ai)' }, { text: '📚 Today’s Review' }],
+    [{ text: '🧠 Mistakes' }, { text: '🗣️ Vocabulary' }],
     [{ text: '🇬🇧 English' }, { text: '🇸🇪 Swedish' }],
-    [{ text: '📊 Progress' }, { text: '⚙️ Settings' }],
+    [{ text: '🐍 Python' }, { text: '📊 Progress' }],
+    [{ text: '⚙️ Settings' }],
   ],
   resize_keyboard: true,
   is_persistent: true,
 };
+
+/**
+ * Converts markdown formatting to safe Telegram HTML
+ */
+export function markdownToTelegramHtml(markdown: string): string {
+  if (!markdown) return '';
+  let text = escapeHtml(markdown);
+
+  // Convert ```code``` blocks
+  text = text.replace(/```([\s\S]*?)```/g, '<pre>$1</pre>');
+  // Convert `inline code`
+  text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // Convert **bold** or __bold__
+  text = text.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+  text = text.replace(/__([^_]+)__/g, '<b>$1</b>');
+  // Convert *italic* or _italic_
+  text = text.replace(/\*([^*]+)\*/g, '<i>$1</i>');
+  text = text.replace(/_([^_]+)_/g, '<i>$1</i>');
+
+  return text;
+}
+
+export function buildAIMenuMessage(): { text: string; replyMarkup: any } {
+  const baseUrl = getAppBaseUrl();
+  const text =
+`🤖 <b>AI LEARNING TUTOR</b>
+
+Powered by <b>Groq (14.4k/day Fast Inference)</b> &amp; <b>Ryan (Neural) UK Voice</b>.
+
+How can I assist your learning today?
+
+💡 <i>Commands you can send:</i>
+• <code>/summary</code> — Summarize your study progress &amp; goals
+• <code>/pronounce &lt;word&gt;</code> — Listen in Ryan (Neural) UK voice
+• <code>/ai &lt;question&gt;</code> — Ask about German B1, English, Somali, Math or Python
+• Or tap a quick action below:`;
+
+  const inlineKeyboard: Array<Array<{ text: string; url?: string; callback_data?: string }>> = [
+    [
+      { text: '📊 Study Summary', callback_data: 'ai:summary' },
+      { text: '🎙️ Ryan Voice Demo', callback_data: 'ai:pronounce:demo' },
+    ],
+    [
+      { text: '🇩🇪 German B1 Help', callback_data: 'ai:query:german' },
+      { text: '🧮 Math Step-by-Step', callback_data: 'ai:query:math' },
+    ],
+    [
+      { text: '⌨️ Practice on Website', url: `${baseUrl}/practice` },
+    ],
+    [
+      { text: '🏠 Main Menu', callback_data: 'menu:main' },
+    ],
+  ];
+
+  return {
+    text,
+    replyMarkup: { inline_keyboard: inlineKeyboard },
+  };
+}
+
+export async function sendTelegramAISummary(chatId: string | number): Promise<void> {
+  const prog = liveTelegramProgress;
+  const prompt = `Please provide a motivational, structured study progress summary for the learner on "MY LEARNING" OS:
+- Daily Streak: ${prog.streakDays} days
+- English: ${prog.englishPct}% (Active: ${prog.englishLesson || 'Everyday English & Conversations'})
+- Swedish: ${prog.swedishPct}% (Active: ${prog.swedishLesson || 'På café & Dialogues'})
+- Python: ${prog.pythonPct}% (Variables & Functions)
+- German B1: Begrüßungen & Grammar
+- Mathematics: Arithmetic & Word Problems
+- Mistakes to review: ${prog.mistakesCount}
+
+Highlight what they have achieved, give 2 clear high-priority study focuses for today, and conclude with the inspiring OS philosophy "I learn by typing ⌨️". Keep it concise (under 200 words).`;
+
+  await sendTelegramMessage(chatId, '🤖 <i>Analyzing your study progress with AI...</i>');
+
+  const aiRes = await generateAIResponse({
+    messages: [{ role: 'user', content: prompt }],
+    temperature: 0.6,
+  });
+
+  const summaryHtml = `📊 <b>AI STUDY SUMMARY</b>\n\n${markdownToTelegramHtml(aiRes.message || 'Great progress across your subjects!')}`;
+
+  const replyMarkup = {
+    inline_keyboard: [
+      [
+        { text: '⌨️ Open Practice', url: `${getAppBaseUrl()}/practice` },
+        { text: '📚 Today’s Review', callback_data: 'today:idx:0' },
+      ],
+      [
+        { text: '🏠 Main Menu', callback_data: 'menu:main' },
+      ],
+    ],
+  };
+
+  await sendTelegramMessage(chatId, summaryHtml, { replyMarkup });
+}
+
+export async function sendTelegramAIPronunciation(
+  chatId: string | number,
+  phrase: string
+): Promise<void> {
+  const clean = phrase.replace(/^\/(pronounce|speak|ryan|audio)\s*/i, '').trim() || 'The man is tall and slim, and he looks around 30 years old.';
+  await sendTelegramMessage(chatId, `🎙️ <i>Generating pronunciation for:</i> "<code>${escapeHtml(clean)}</code>" <i>in Ryan (Neural) UK voice...</i>`);
+
+  const tts = await fetchTTSAudio(clean, 'en-GB-RyanNeural');
+  if (tts) {
+    await sendTelegramAudio(chatId, tts.buffer, {
+      title: clean.length > 30 ? `${clean.slice(0, 30)}...` : clean,
+      performer: 'Ryan (Neural) • United Kingdom',
+      filename: `ryan_pronunciation_${Date.now()}.mp3`,
+      caption: `🇬🇧 <b>Pronunciation:</b>\n"<code>${escapeHtml(clean)}</code>"\n\n🎙️ <i>Voice: Ryan (Neural) (United Kingdom)</i>`,
+    });
+  } else {
+    await sendTelegramMessage(chatId, `⚠️ Audio unavailable for "${escapeHtml(clean)}". Please try again.`);
+  }
+}
+
+const telegramSpeechCache = new Map<string, string>();
+
+export async function sendTelegramAIQuery(
+  chatId: string | number,
+  query: string
+): Promise<void> {
+  const cleanQuery = query.replace(/^\/ai\s*/i, '').trim();
+  if (!cleanQuery) {
+    const menu = buildAIMenuMessage();
+    await sendTelegramMessage(chatId, menu.text, { replyMarkup: menu.replyMarkup });
+    return;
+  }
+
+  await sendTelegramMessage(chatId, `🤖 <i>Thinking with Groq (14.4k/day)...</i>`);
+
+  const aiRes = await generateAIResponse({
+    messages: [{ role: 'user', content: cleanQuery }],
+    temperature: 0.7,
+  });
+
+  const responseText = aiRes.message || 'No response from AI.';
+  const html = `🤖 <b>AI TUTOR</b>\n\n${markdownToTelegramHtml(responseText)}`;
+
+  // Store speech snippet with a short key (< 10 bytes) to respect Telegram 64-byte callback_data limit
+  const speechId = `s_${Date.now().toString(36)}`;
+  telegramSpeechCache.set(speechId, responseText.slice(0, 400));
+
+  const replyMarkup = {
+    inline_keyboard: [
+      [
+        { text: '🎙️ Listen in Ryan Voice', callback_data: `ai:speak:${speechId}` },
+      ],
+      [
+        { text: '⌨️ Practice on Website', url: `${getAppBaseUrl()}/practice` },
+        { text: '🏠 Main Menu', callback_data: 'menu:main' },
+      ],
+    ],
+  };
+
+  await sendTelegramMessage(chatId, html, { replyMarkup });
+}
 
 export function buildMainMenuMessage(): { text: string; replyMarkup: any } {
   const text =
@@ -1147,6 +1307,61 @@ export async function handleTelegramWebhook(
       return { ok: true };
     }
 
+    // --- Action: AI Tutor Callbacks ---
+    if (data === 'ai:menu') {
+      const card = buildAIMenuMessage();
+      if (messageId) {
+        await editTelegramMessageText(chatId, messageId, card.text, { replyMarkup: card.replyMarkup }).catch(() =>
+          sendTelegramMessage(chatId, card.text, { replyMarkup: card.replyMarkup })
+        );
+      } else {
+        await sendTelegramMessage(chatId, card.text, { replyMarkup: card.replyMarkup });
+      }
+      await answerTelegramCallbackQuery(cq.id);
+      return { ok: true, responseMessage: 'AI menu' };
+    }
+
+    if (data === 'ai:summary') {
+      await answerTelegramCallbackQuery(cq.id, { text: 'Generating study summary... 🤖' });
+      await sendTelegramAISummary(chatId);
+      return { ok: true, responseMessage: 'AI summary sent' };
+    }
+
+    if (data === 'ai:pronounce:demo') {
+      await answerTelegramCallbackQuery(cq.id, { text: 'Playing Ryan (Neural) UK voice demo 🎙️' });
+      await sendTelegramAIPronunciation(
+        chatId,
+        'The man is tall and slim, and he looks around 30 years old. He has short dark hair, a beard, and he wears glasses.'
+      );
+      return { ok: true, responseMessage: 'Ryan demo audio sent' };
+    }
+
+    if (data === 'ai:query:german') {
+      await answerTelegramCallbackQuery(cq.id, { text: 'Asking AI Tutor about German B1... 🇩🇪' });
+      await sendTelegramAIQuery(
+        chatId,
+        'Explain the top 3 German B1 connectors (weil, obwohl, damit) with clear examples, English translations, and grammar word order rules.'
+      );
+      return { ok: true };
+    }
+
+    if (data === 'ai:query:math') {
+      await answerTelegramCallbackQuery(cq.id, { text: 'Asking AI Tutor about Math... 🧮' });
+      await sendTelegramAIQuery(
+        chatId,
+        'Explain step-by-step how to solve algebraic linear equations with parenthesis: 4(3x - 2) = 28.'
+      );
+      return { ok: true };
+    }
+
+    if (data.startsWith('ai:speak:')) {
+      const speechId = data.replace(/^ai:speak:/, '');
+      const cachedPhrase = telegramSpeechCache.get(speechId) || decodeURIComponent(speechId);
+      await answerTelegramCallbackQuery(cq.id, { text: 'Generating Ryan voice audio 🎙️' });
+      await sendTelegramAIPronunciation(chatId, cachedPhrase);
+      return { ok: true };
+    }
+
     // --- Action: Settings Toggles ---
     if (data === 'settings:voice:toggle') {
       const newVoice = toggleSomaliVoice();
@@ -1204,6 +1419,55 @@ export async function handleTelegramWebhook(
     const card = buildMainMenuMessage();
     await sendTelegramMessage(chatId, card.text, { replyMarkup: card.replyMarkup });
     return { ok: true, responseMessage: 'Main menu sent' };
+  }
+
+  // Route 1.5: AI Tutor & Commands
+  if (
+    text.includes('AI Tutor') ||
+    lower === '/ai' ||
+    lower === 'ai' ||
+    lower.startsWith('/ai ')
+  ) {
+    if (lower.startsWith('/ai ') && text.length > 4) {
+      await sendTelegramAIQuery(chatId, text.slice(4));
+    } else {
+      const card = buildAIMenuMessage();
+      await sendTelegramMessage(chatId, card.text, { replyMarkup: card.replyMarkup });
+    }
+    return { ok: true, responseMessage: 'AI Tutor processed' };
+  }
+
+  // Route 1.6: Study Summary (/summary, "Summary", "What did I study?")
+  if (
+    lower.startsWith('/summary') ||
+    lower === 'summary' ||
+    lower.includes('summarize') ||
+    lower.includes('what did i study') ||
+    lower.includes('study summary')
+  ) {
+    await sendTelegramAISummary(chatId);
+    return { ok: true, responseMessage: 'AI study summary sent' };
+  }
+
+  // Route 1.7: Pronunciation in Ryan Voice (/pronounce, /speak, /ryan, "pronounce ...")
+  if (
+    lower.startsWith('/pronounce') ||
+    lower.startsWith('/speak') ||
+    lower.startsWith('/ryan') ||
+    lower.startsWith('pronounce ') ||
+    lower.startsWith('pronunciation of ') ||
+    lower.includes('in ryan voice')
+  ) {
+    let word = text;
+    if (lower.startsWith('pronounce ')) word = text.slice(10);
+    else if (lower.startsWith('pronunciation of ')) word = text.slice(17);
+    else if (lower.startsWith('/pronounce ')) word = text.slice(11);
+    else if (lower.startsWith('/speak ')) word = text.slice(7);
+    else if (lower.startsWith('/ryan ')) word = text.slice(6);
+    else word = text.replace(/in ryan voice/i, '').replace(/pronounce/i, '').trim();
+
+    await sendTelegramAIPronunciation(chatId, word);
+    return { ok: true, responseMessage: 'Pronunciation sent' };
   }
 
   // Route 2: Today's Review

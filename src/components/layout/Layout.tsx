@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Layers } from 'lucide-react';
+import { ArrowLeft, BookOpen, Layers, Zap } from 'lucide-react';
 import { BottomNav } from './BottomNav';
 import { Sidebar } from './Sidebar';
 import { DesktopTopBar } from './DesktopTopBar';
 import { SettingsModal } from '../common/SettingsModal';
 import { PwaUpdatePrompt } from '../common/PwaUpdatePrompt';
+import { AIChatDrawer } from '../ai/AIChatDrawer';
 import { storageService } from '../../services/storage';
 
 export function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() =>
     storageService.getSidebarCollapsed()
   );
@@ -125,6 +127,25 @@ export function Layout() {
       <div className="lg:hidden">
         <BottomNav onOpenSettings={() => navigate('/settings')} />
       </div>
+
+      {/* Floating AI Tutor & Messages Button (Groq 14.4k/day) */}
+      <button
+        onClick={() => setIsAIChatOpen(true)}
+        className="fixed bottom-20 lg:bottom-6 right-6 z-40 flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-neutral-950 font-bold text-xs shadow-xl shadow-amber-500/25 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+        title="Open AI Learning Messages & Tutor"
+      >
+        <Zap className="w-4 h-4 fill-neutral-950" />
+        <span className="hidden sm:inline">AI Tutor</span>
+      </button>
+
+      {/* Global AI Chat Drawer */}
+      <AIChatDrawer
+        isOpen={isAIChatOpen}
+        onClose={() => setIsAIChatOpen(false)}
+        onSelectTypingText={(text) => {
+          navigate('/practice', { state: { customText: text } });
+        }}
+      />
 
       {/* Global Settings Modal fallback if opened */}
       <SettingsModal
