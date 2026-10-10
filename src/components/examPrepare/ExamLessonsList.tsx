@@ -7,8 +7,12 @@ import {
   ArrowRight,
   Bookmark,
   Sparkles,
+  PenTool,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { EXAM_LESSONS, ExamLesson } from '../../data/examPrepare/straightforwardUnits';
+import { VisualGrammarNotes } from './VisualGrammarNotes';
 
 interface ExamLessonsListProps {
   completedLessonIds: string[];
@@ -25,6 +29,7 @@ export const ExamLessonsList: React.FC<ExamLessonsListProps> = ({
   const [activeCategory, setActiveCategory] = useState<string>('all');
 
   const [sprintFilter, setSprintFilter] = useState<'all' | 'day1' | 'day2'>('all');
+  const [isVisualNotesOpen, setIsVisualNotesOpen] = useState(true);
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -54,6 +59,49 @@ export const ExamLessonsList: React.FC<ExamLessonsListProps> = ({
 
   return (
     <div className="w-full space-y-4">
+      {/* Visual Grammar Scratchpad Feature Block */}
+      <div className="rounded-3xl border border-[#d6c79f]/70 bg-[#16120e] overflow-hidden shadow-lg">
+        <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-amber-500/15 via-[#1a1510] to-[#14100c] border-b border-amber-500/20">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-400 text-neutral-950 flex items-center justify-center font-black shadow shrink-0">
+              <PenTool className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono uppercase tracking-wider font-extrabold bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded-full">
+                  Visual Scratchpad Study Sheet
+                </span>
+                <span className="text-xs text-neutral-400 hidden sm:inline">
+                  AM / IS / ARE vs DO / DOES
+                </span>
+              </div>
+              <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
+                English Grammar — Let's Make It Easy!
+              </h3>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsVisualNotesOpen((prev) => !prev)}
+            className="min-h-[40px] px-4 py-2 rounded-xl text-xs font-bold bg-[#241d17] hover:bg-[#2e251e] text-amber-200 border border-amber-500/30 flex items-center justify-between sm:justify-start gap-2 transition-all cursor-pointer shadow-sm"
+          >
+            <span>{isVisualNotesOpen ? 'Hide Scratchpad' : 'Open Handwritten Scratchpad'}</span>
+            {isVisualNotesOpen ? (
+              <ChevronUp className="w-4 h-4 text-amber-400" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-amber-400" />
+            )}
+          </button>
+        </div>
+
+        {isVisualNotesOpen && (
+          <div className="p-3 sm:p-5 bg-[#0e0c0a]/90">
+            <VisualGrammarNotes />
+          </div>
+        )}
+      </div>
+
       {/* 2-Day Sprint Plan Banner & Toggle */}
       <div className="p-3.5 sm:p-4 rounded-3xl bg-gradient-to-r from-amber-500/10 via-[#181410] to-[#14100c] border border-amber-500/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="space-y-0.5">

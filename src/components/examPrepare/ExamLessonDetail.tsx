@@ -12,12 +12,16 @@ import {
   Check,
   Bookmark,
   Layers,
+  PenTool,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { ExamLesson, LessonPracticeQuestion } from '../../data/examPrepare/straightforwardUnits';
 import { EXAM_VOCABULARY_LIST } from '../../data/examPrepare/vocabularyBank';
 import { useEdgeTTS } from '../../hooks/useEdgeTTS';
 import { examProgressService } from '../../services/examProgressService';
 import { InteractiveReadingPassage } from './InteractiveReadingPassage';
+import { VisualGrammarNotes } from './VisualGrammarNotes';
 import { isAnswerAcceptable } from '../../utils/grammarValidation';
 
 interface ExamLessonDetailProps {
@@ -47,6 +51,7 @@ export const ExamLessonDetail: React.FC<ExamLessonDetailProps> = ({
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState<Record<string, boolean>>({});
   const [showHint, setShowHint] = useState<Record<string, boolean>>({});
+  const [showVisualNotes, setShowVisualNotes] = useState<boolean>(false);
 
   const currentIndex = allLessons.findIndex((l) => l.id === lesson.id);
   const prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
@@ -262,6 +267,34 @@ export const ExamLessonDetail: React.FC<ExamLessonDetailProps> = ({
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Expandable Teacher's Handwritten Scratchpad */}
+        <div className="pt-2 border-t border-neutral-800">
+          <button
+            type="button"
+            onClick={() => setShowVisualNotes((prev) => !prev)}
+            className="w-full min-h-[44px] px-4 py-2.5 rounded-2xl text-xs font-bold bg-[#1c1611] hover:bg-[#251e18] text-amber-300 border border-amber-500/30 flex items-center justify-between transition-all cursor-pointer shadow-sm"
+          >
+            <div className="flex items-center gap-2">
+              <PenTool className="w-4 h-4 text-amber-400" />
+              <span>Teacher's Handwritten Scratchpad: AM / IS / ARE vs DO / DOES</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-amber-400/90 font-mono">
+              <span>{showVisualNotes ? 'Hide Notes' : 'Show Notes'}</span>
+              {showVisualNotes ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
+            </div>
+          </button>
+
+          {showVisualNotes && (
+            <div className="mt-3">
+              <VisualGrammarNotes />
+            </div>
+          )}
         </div>
       </section>
 
