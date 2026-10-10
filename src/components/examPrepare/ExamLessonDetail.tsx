@@ -17,6 +17,7 @@ import { ExamLesson, LessonPracticeQuestion } from '../../data/examPrepare/strai
 import { EXAM_VOCABULARY_LIST } from '../../data/examPrepare/vocabularyBank';
 import { useEdgeTTS } from '../../hooks/useEdgeTTS';
 import { examProgressService } from '../../services/examProgressService';
+import { InteractiveReadingPassage } from './InteractiveReadingPassage';
 
 interface ExamLessonDetailProps {
   lesson: ExamLesson;
@@ -214,44 +215,12 @@ export const ExamLessonDetail: React.FC<ExamLessonDetailProps> = ({
         </div>
       </section>
 
-      {/* 2. Reading Passage (if applicable) */}
+      {/* 2. Interactive Reading Passage (if applicable) */}
       {lesson.readingPassage && (
-        <section className="bg-[#171310] border border-sky-500/30 rounded-3xl p-5 sm:p-6 space-y-3.5 shadow-md">
-          <div className="flex items-center justify-between gap-2 border-b border-neutral-800 pb-2.5">
-            <div className="flex items-center gap-2">
-              <span className="w-7 h-7 rounded-xl bg-sky-500/15 text-sky-400 flex items-center justify-center font-bold text-xs">
-                📖
-              </span>
-              <div>
-                <span className="text-[10px] font-mono uppercase text-sky-400 font-bold tracking-wider block">
-                  Reading Text
-                </span>
-                <h3 className="text-sm sm:text-base font-bold text-white">
-                  {lesson.readingPassage.title}
-                </h3>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() =>
-                play(`reading-${lesson.id}`, lesson.readingPassage!.text)
-              }
-              className={`min-h-[34px] px-3 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer ${
-                activeSpeechId === `reading-${lesson.id}` && isSpeaking
-                  ? 'bg-sky-500 text-neutral-950 font-bold border-sky-400'
-                  : 'bg-neutral-800 text-neutral-300 hover:text-white border-neutral-700'
-              }`}
-            >
-              <Volume2 className="w-3.5 h-3.5" />
-              <span>Listen to Text</span>
-            </button>
-          </div>
-
-          <div className="bg-[#110e0c] p-4 rounded-2xl border border-neutral-800 text-xs sm:text-sm text-neutral-200 leading-relaxed whitespace-pre-line font-serif italic">
-            "{lesson.readingPassage.text}"
-          </div>
-        </section>
+        <InteractiveReadingPassage
+          lessonId={lesson.id}
+          passage={lesson.readingPassage}
+        />
       )}
 
       {/* 3. Examples with Individual Listen Buttons */}
