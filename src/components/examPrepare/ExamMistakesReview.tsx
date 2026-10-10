@@ -13,6 +13,7 @@ import {
   MistakeRecord,
   examProgressService,
 } from '../../services/examProgressService';
+import { isAnswerAcceptable } from '../../utils/grammarValidation';
 
 interface ExamMistakesReviewProps {
   mistakes: MistakeRecord[];
@@ -36,8 +37,7 @@ export const ExamMistakesReview: React.FC<ExamMistakesReviewProps> = ({
     if (!val) return;
 
     setCheckedIds((prev) => ({ ...prev, [m.id]: true }));
-    const expected = m.expectedAnswer.toLowerCase().trim();
-    const isCorrect = val === expected;
+    const isCorrect = isAnswerAcceptable(val, m.expectedAnswer);
 
     if (isCorrect) {
       examProgressService.resolveMistake(m.id);

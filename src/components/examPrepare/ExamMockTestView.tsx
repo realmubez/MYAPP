@@ -24,6 +24,7 @@ import {
   MockExamResult,
 } from '../../services/examProgressService';
 import { useEdgeTTS } from '../../hooks/useEdgeTTS';
+import { isAnswerAcceptable } from '../../utils/grammarValidation';
 
 interface ExamMockTestViewProps {
   onBackToLessons: () => void;
@@ -94,9 +95,8 @@ export const ExamMockTestView: React.FC<ExamMockTestViewProps> = ({
       const expected = q.expectedAnswer.toLowerCase().trim();
       const alternates = (q.alternateAnswers || []).map((a) => a.toLowerCase().trim());
 
-      // Only evaluate if user gave an answer
-      const hasAnswer = Boolean(userAns);
-      const isCorrect = hasAnswer && (userAns === expected || alternates.includes(userAns));
+      const hasAnswer = Boolean((rawUserAns || '').trim());
+      const isCorrect = hasAnswer && isAnswerAcceptable(rawUserAns || '', q.expectedAnswer, q.alternateAnswers);
 
       breakdown[q.section].total += 1;
       if (isCorrect) {
@@ -652,8 +652,7 @@ export const ExamMockTestView: React.FC<ExamMockTestViewProps> = ({
                 const rawUserAns = userAnswers[q.id];
                 const userAns = (rawUserAns || '').trim().toLowerCase();
                 const expected = q.expectedAnswer.toLowerCase().trim();
-                const alternates = (q.alternateAnswers || []).map((a) => a.toLowerCase().trim());
-                const isCorrect = Boolean(userAns) && (userAns === expected || alternates.includes(userAns));
+                const isCorrect = Boolean(userAns) && isAnswerAcceptable(rawUserAns || '', q.expectedAnswer, q.alternateAnswers);
 
                 return (
                   <div

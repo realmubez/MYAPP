@@ -41,6 +41,21 @@ interface TokenItem {
   cleanWord?: string;
 }
 
+interface TokenCluster {
+  type: 'cluster';
+  id: string;
+  word: TokenItem;
+  trailingPunct: TokenItem[];
+}
+
+interface StandaloneToken {
+  type: 'standalone';
+  id: string;
+  token: TokenItem;
+}
+
+type ParagraphRenderItem = TokenCluster | StandaloneToken;
+
 const FONT_SIZES: ReadingFontSize[] = ['small', 'medium', 'large', 'xlarge'];
 
 const FONT_SIZE_CONFIG: Record<
@@ -191,7 +206,36 @@ export const InteractiveReadingPassage: React.FC<InteractiveReadingPassageProps>
           });
         }
       }
-      return tokens;
+
+      // Group words and immediately trailing punctuation into atomic line-wrap units
+      const items: ParagraphRenderItem[] = [];
+      let i = 0;
+      while (i < tokens.length) {
+        const tok = tokens[i];
+        if (tok.type === 'word') {
+          const trailingPunct: TokenItem[] = [];
+          let j = i + 1;
+          while (j < tokens.length && tokens[j].type === 'punct') {
+            trailingPunct.push(tokens[j]);
+            j++;
+          }
+          items.push({
+            type: 'cluster',
+            id: `cluster-${tok.id}`,
+            word: tok,
+            trailingPunct,
+          });
+          i = j;
+        } else {
+          items.push({
+            type: 'standalone',
+            id: tok.id,
+            token: tok,
+          });
+          i++;
+        }
+      }
+      return items;
     });
   }, [passage.text]);
 
@@ -403,43 +447,57 @@ export const InteractiveReadingPassage: React.FC<InteractiveReadingPassageProps>
       <div
         className={`bg-[#110e0c] p-5 sm:p-7 rounded-2xl border border-neutral-800/90 text-neutral-200 font-serif select-text transition-all ${currentConfig.textClass} ${currentConfig.leadingClass}`}
       >
-        {paragraphs.map((paraTokens, pIdx) => (
+        {paragraphs.map((paraItems, pIdx) => (
           <p key={`p-${pIdx}`} className="mb-4 last:mb-0">
-            {paraTokens.map((token) => {
-              if (token.type === 'word') {
-                const isSelected = selectedWordToken?.id === token.id;
-                const isSpeakingThis = isWordAudioPlaying(token.text);
+            {paraItems.map((item) => {
+              if (item.type === 'cluster') {
+                const wordToken = item.word;
+                const isSelected = selectedWordToken?.id === wordToken.id;
+                const isSpeakingThis = isWordAudioPlaying(wordToken.text);
 
                 return (
-                  <button
-                    key={token.id}
-                    type="button"
-                    onClick={() => handleSelectWord(token)}
-                    role="button"
-                    aria-label={`Translate word: ${token.text}`}
-                    aria-pressed={isSelected}
-                    className={`inline font-serif transition-colors rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400/80 cursor-pointer select-none ${
-                      currentConfig.wordPadding
-                    } ${
-                      isSelected
-                        ? 'bg-amber-400/25 text-amber-200 font-bold ring-2 ring-amber-400/90 shadow-sm'
-                        : isSpeakingThis
-                        ? 'bg-sky-500/25 text-sky-200 font-bold ring-2 ring-sky-400/90'
-                        : 'text-neutral-200 hover:bg-neutral-800/90 hover:text-white'
-                    }`}
+                  <span
+                    key={item.id}
+                    className="inline-block whitespace-nowrap align-baseline"
                   >
-                    {token.text}
-                  </button>
+                    <button
+                      key={wordToken.id}
+                      type="button"
+                      onClick={() => handleSelectWord(wordToken)}
+                      role="button"
+                      aria-label={`Translate word: ${wordToken.text}`}
+                      aria-pressed={isSelected}
+                      className={`inline font-serif transition-colors rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400/80 cursor-pointer select-none ${
+                        currentConfig.wordPadding
+                      } ${
+                        isSelected
+                          ? 'bg-amber-400/25 text-amber-200 font-bold ring-2 ring-amber-400/90 shadow-sm'
+                          : isSpeakingThis
+                          ? 'bg-sky-500/25 text-sky-200 font-bold ring-2 ring-sky-400/90'
+                          : 'text-neutral-200 hover:bg-neutral-800/90 hover:text-white'
+                      }`}
+                    >
+                      {wordToken.text}
+                    </button>
+                    {item.trailingPunct.map((p) => (
+                      <span
+                        key={p.id}
+                        className="text-neutral-400 font-serif inline select-none pointer-events-none"
+                      >
+                        {p.text}
+                      </span>
+                    ))}
+                  </span>
                 );
               }
 
-              if (token.type === 'punct') {
+              if (item.token.type === 'punct') {
                 return (
                   <span
-                    key={token.id}
+                    key={item.id}
                     className="text-neutral-400 font-serif inline select-none pointer-events-none"
                   >
-                    {token.text}
+                    {item.token.text}
                   </span>
                 );
               }
@@ -447,10 +505,10 @@ export const InteractiveReadingPassage: React.FC<InteractiveReadingPassageProps>
               // Space
               return (
                 <span
-                  key={token.id}
+                  key={item.id}
                   className="font-serif inline select-none pointer-events-none"
                 >
-                  {token.text}
+                  {item.token.text}
                 </span>
               );
             })}

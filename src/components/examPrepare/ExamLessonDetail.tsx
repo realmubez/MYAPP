@@ -18,6 +18,7 @@ import { EXAM_VOCABULARY_LIST } from '../../data/examPrepare/vocabularyBank';
 import { useEdgeTTS } from '../../hooks/useEdgeTTS';
 import { examProgressService } from '../../services/examProgressService';
 import { InteractiveReadingPassage } from './InteractiveReadingPassage';
+import { isAnswerAcceptable } from '../../utils/grammarValidation';
 
 interface ExamLessonDetailProps {
   lesson: ExamLesson;
@@ -66,9 +67,7 @@ export const ExamLessonDetail: React.FC<ExamLessonDetailProps> = ({
 
     setSubmitted((prev) => ({ ...prev, [q.id]: true }));
 
-    const expected = q.expectedAnswer.toLowerCase().trim();
-    const alternates = (q.alternateAnswers || []).map((a) => a.toLowerCase().trim());
-    const isCorrect = userVal === expected || alternates.includes(userVal);
+    const isCorrect = isAnswerAcceptable(userVal, q.expectedAnswer, q.alternateAnswers);
 
     examProgressService.recordPracticeAnswer(isCorrect);
 
@@ -191,6 +190,57 @@ export const ExamLessonDetail: React.FC<ExamLessonDetailProps> = ({
         <p className="text-xs sm:text-sm text-neutral-200 leading-relaxed">
           {lesson.explanation}
         </p>
+
+        {/* Crucial Transformation Rule Callout (if available) */}
+        {lesson.crucialRule && (
+          <div className="bg-gradient-to-r from-amber-500/15 via-[#1e1913] to-amber-500/10 border-2 border-amber-400/50 rounded-2xl p-4 sm:p-5 space-y-2.5 shadow-md">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+              <span className="text-xs font-mono font-bold uppercase tracking-wider text-amber-300">
+                ⭐ {lesson.crucialRule.title}
+              </span>
+            </div>
+            <div className="bg-[#120f0d] p-3 rounded-xl border border-amber-400/30 text-amber-200 font-mono text-xs sm:text-sm font-bold tracking-tight">
+              {lesson.crucialRule.transformation}
+            </div>
+            <p className="text-xs text-neutral-300 leading-relaxed">
+              {lesson.crucialRule.explanation}
+            </p>
+          </div>
+        )}
+
+        {/* Comparison Table (if available) */}
+        {lesson.comparisonTable && lesson.comparisonTable.length > 0 && (
+          <div className="space-y-2 pt-1">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-amber-400 font-bold block">
+              Pattern Comparison Table:
+            </span>
+            <div className="overflow-x-auto rounded-2xl border border-neutral-800 bg-[#16120e]">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-neutral-800 text-[11px] font-mono text-neutral-400 bg-[#1a1510]">
+                    <th className="p-2.5 sm:p-3 font-semibold">Subject</th>
+                    <th className="p-2.5 sm:p-3 font-semibold text-emerald-400">Positive (+)</th>
+                    <th className="p-2.5 sm:p-3 font-semibold text-rose-400">Negative (-)</th>
+                    <th className="p-2.5 sm:p-3 font-semibold text-sky-400">Question (?)</th>
+                    <th className="p-2.5 sm:p-3 font-semibold text-amber-400">Short Answer</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-800/80">
+                  {lesson.comparisonTable.map((row, rIdx) => (
+                    <tr key={rIdx} className="hover:bg-neutral-850/50 transition-colors">
+                      <td className="p-2.5 sm:p-3 font-mono font-bold text-amber-300">{row.subject}</td>
+                      <td className="p-2.5 sm:p-3 text-neutral-200">{row.positive}</td>
+                      <td className="p-2.5 sm:p-3 text-neutral-200">{row.negative}</td>
+                      <td className="p-2.5 sm:p-3 text-neutral-200">{row.question}</td>
+                      <td className="p-2.5 sm:p-3 text-neutral-200 font-mono text-[11px]">{row.shortAnswer}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* Rules Box */}
         <div className="space-y-2 pt-2">
@@ -331,12 +381,7 @@ export const ExamLessonDetail: React.FC<ExamLessonDetailProps> = ({
           {lesson.practiceQuestions.map((q, idx) => {
             const isSub = !!submitted[q.id];
             const currentAns = answers[q.id] || '';
-            const isCorrect =
-              isSub &&
-              (currentAns.toLowerCase().trim() === q.expectedAnswer.toLowerCase().trim() ||
-                (q.alternateAnswers || []).some(
-                  (a) => a.toLowerCase().trim() === currentAns.toLowerCase().trim()
-                ));
+            const isCorrect = isSub && isAnswerAcceptable(currentAns, q.expectedAnswer, q.alternateAnswers);
 
             return (
               <div

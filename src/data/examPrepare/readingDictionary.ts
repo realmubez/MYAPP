@@ -733,6 +733,239 @@ export const READING_WORD_DICTIONARY: Record<string, WordContextTranslation> = {
       so: { translation: 'mid' },
     },
   },
+
+  // --- Lisa's Weekend Routine Vocabulary ---
+  lisa: {
+    word: 'Lisa',
+    partOfSpeech: 'proper noun',
+    contextMeaning: 'A female first name; the subject of the Unit 2 reading text.',
+    translations: {
+      de: { translation: 'Lisa (weiblicher Vorname)' },
+      sv: { translation: 'Lisa (kvinnonamn)' },
+      so: { translation: 'Lisa (magac dheddig)' },
+    },
+  },
+  small: {
+    word: 'small',
+    partOfSpeech: 'adjective',
+    contextMeaning: 'Little in size (here: "a small town").',
+    translations: {
+      de: { translation: 'klein', note: 'eine kleine Stadt' },
+      sv: { translation: 'liten' },
+      so: { translation: 'yar' },
+    },
+  },
+  town: {
+    word: 'town',
+    partOfSpeech: 'noun',
+    contextMeaning: 'An urban area that is smaller than a city but larger than a village.',
+    translations: {
+      de: { translation: 'Kleinstadt / Stadt', note: 'Wohnort' },
+      sv: { translation: 'stad / småstad' },
+      so: { translation: 'magaalo / magaalo yar' },
+    },
+  },
+  works: {
+    word: 'works',
+    partOfSpeech: 'present verb (he/she/it)',
+    contextMeaning: 'Third-person singular form of work (here: "She works at a hotel").',
+    translations: {
+      de: { translation: 'arbeitet', note: 'sie arbeitet' },
+      sv: { translation: 'arbetar / jobbar' },
+      so: { translation: 'shaqeysaa' },
+    },
+  },
+  at: {
+    word: 'at',
+    partOfSpeech: 'preposition',
+    contextMeaning: 'Used to specify workplace or place (here: "at a hotel").',
+    translations: {
+      de: { translation: 'in / bei', note: 'in einem Hotel' },
+      sv: { translation: 'på / vid' },
+      so: { translation: 'joogta / xagga' },
+    },
+  },
+  hotel: {
+    word: 'hotel',
+    partOfSpeech: 'noun',
+    contextMeaning: 'An establishment providing accommodation, meals, and services for travellers.',
+    translations: {
+      de: { translation: 'Hotel' },
+      sv: { translation: 'hotell' },
+      so: { translation: 'huteel' },
+    },
+  },
+  saturdays: {
+    word: 'Saturdays',
+    partOfSpeech: 'plural noun',
+    contextMeaning: 'The day of the week between Friday and Sunday (here: "On Saturdays" = every Saturday).',
+    translations: {
+      de: { translation: 'samstags / an Samstagen' },
+      sv: { translation: 'lördagar / på lördagar' },
+      so: { translation: 'sabtiyada / maalmaha sabtida' },
+    },
+  },
+  brother: {
+    word: 'brother',
+    partOfSpeech: 'noun',
+    contextMeaning: 'A male sibling.',
+    translations: {
+      de: { translation: 'Bruder', note: 'Geschwister' },
+      sv: { translation: 'bror' },
+      so: { translation: 'walaal (lab)' },
+    },
+  },
+  they: {
+    word: 'they',
+    partOfSpeech: 'pronoun',
+    contextMeaning: 'Plural third-person pronoun (here: Lisa and her brother).',
+    translations: {
+      de: { translation: 'sie (Mehrzahl)' },
+      sv: { translation: 'de / dom' },
+      so: { translation: 'iyaga' },
+    },
+  },
+  have: {
+    word: 'have',
+    partOfSpeech: 'verb',
+    contextMeaning: 'To eat, drink, or consume a meal (here: "They have breakfast").',
+    translations: {
+      de: { translation: 'frühstücken / haben', note: 'sie frühstücken' },
+      sv: { translation: 'äta / ha' },
+      so: { translation: 'cuni / haystaan' },
+    },
+  },
+  breakfast: {
+    word: 'breakfast',
+    partOfSpeech: 'noun',
+    contextMeaning: 'The first meal of the day taken after getting up in the morning.',
+    translations: {
+      de: { translation: 'Frühstück' },
+      sv: { translation: 'frukost' },
+      so: { translation: 'quraac' },
+    },
+  },
+  together: {
+    word: 'together',
+    partOfSpeech: 'adverb',
+    contextMeaning: 'With or in proximity to another person (here: Lisa with her brother).',
+    translations: {
+      de: { translation: 'zusammen / gemeinsam' },
+      sv: { translation: 'tillsammans' },
+      so: { translation: 'wada jir / wadajir' },
+    },
+  },
+  drink: {
+    word: 'drink',
+    partOfSpeech: 'verb',
+    contextMeaning: 'To take liquid into the mouth and swallow (here: "drink tea").',
+    translations: {
+      de: { translation: 'trinken' },
+      sv: { translation: 'dricka' },
+      so: { translation: 'cabid' },
+    },
+  },
+  eat: {
+    word: 'eat',
+    partOfSpeech: 'verb',
+    contextMeaning: 'To put food into the mouth and chew and swallow it (here: "eat sandwiches").',
+    translations: {
+      de: { translation: 'essen' },
+      sv: { translation: 'äta' },
+      so: { translation: 'cunid' },
+    },
+  },
+  sandwiches: {
+    word: 'sandwiches',
+    partOfSpeech: 'plural noun',
+    contextMeaning: 'Two pieces of bread with a filling between them.',
+    translations: {
+      de: { translation: 'Sandwiches / belegte Brote' },
+      sv: { translation: 'smörgåsar / mackor' },
+      so: { translation: 'sanwiijyo' },
+    },
+  },
+  afternoon: {
+    word: 'afternoon',
+    partOfSpeech: 'noun',
+    contextMeaning: 'The time from noon or lunchtime until evening (here: "In the afternoon").',
+    translations: {
+      de: { translation: 'Nachmittag', note: 'am Nachmittag' },
+      sv: { translation: 'eftermiddag' },
+      so: { translation: 'galab' },
+    },
+  },
+  reads: {
+    word: 'reads',
+    partOfSpeech: 'present verb (he/she/it)',
+    contextMeaning: 'Third-person singular form of read (here: "Lisa reads a book").',
+    translations: {
+      de: { translation: 'liest', note: 'Lisa liest ein Buch' },
+      sv: { translation: 'läser' },
+      so: { translation: 'akhrisaa' },
+    },
+  },
+  book: {
+    word: 'book',
+    partOfSpeech: 'noun',
+    contextMeaning: 'A written or printed work consisting of pages bound together.',
+    translations: {
+      de: { translation: 'Buch' },
+      sv: { translation: 'bok' },
+      so: { translation: 'buug' },
+    },
+  },
+
+  photos: {
+    word: 'photos',
+    partOfSpeech: 'plural noun',
+    contextMeaning: 'Photographs or pictures taken with a camera.',
+    translations: {
+      de: { translation: 'Fotos / Bilder' },
+      sv: { translation: 'foton / bilder' },
+      so: { translation: 'sawirro' },
+    },
+  },
+  evening: {
+    word: 'evening',
+    partOfSpeech: 'noun',
+    contextMeaning: 'The period of time at the end of the day (here: "In the evening").',
+    translations: {
+      de: { translation: 'Abend', note: 'am Abend' },
+      sv: { translation: 'kväll' },
+      so: { translation: 'fiid / habeen hore' },
+    },
+  },
+  take: {
+    word: 'take',
+    partOfSpeech: 'verb',
+    contextMeaning: 'To travel by a means of transport (here: "they take the train").',
+    translations: {
+      de: { translation: 'nehmen / fahren mit' },
+      sv: { translation: 'ta / åka med' },
+      so: { translation: 'raacid / qaadasho' },
+    },
+  },
+  train: {
+    word: 'train',
+    partOfSpeech: 'noun',
+    contextMeaning: 'A connected series of railway carriages or wagons.',
+    translations: {
+      de: { translation: 'Zug / Bahn' },
+      sv: { translation: 'tåg' },
+      so: { translation: 'tareen' },
+    },
+  },
+  home: {
+    word: 'home',
+    partOfSpeech: 'adverb / noun',
+    contextMeaning: 'To or at the place where one lives (here: "take the train home").',
+    translations: {
+      de: { translation: 'nach Hause / heim' },
+      sv: { translation: 'hem' },
+      so: { translation: 'guriga' },
+    },
+  },
 };
 
 /**

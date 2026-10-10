@@ -1,7 +1,8 @@
 /**
  * Mock Exam Question Pool for Straightforward Elementary (Units 1–2D)
  * Simulates a realistic elementary English test covering:
- * Grammar (40%), Vocabulary (30%), Reading (20%), Writing (10%).
+ * Grammar (40%), Vocabulary (25%), Reading (20%), Writing (15%).
+ * Verified against course notes (Emily & Lisa routines).
  */
 
 export interface MockExamQuestion {
@@ -19,7 +20,7 @@ export interface MockExamQuestion {
 }
 
 export const MOCK_EXAM_POOL: MockExamQuestion[] = [
-  // --- Grammar Section ---
+  // --- Grammar Section (10 questions) ---
   {
     id: 'me-g-1',
     section: 'grammar',
@@ -27,7 +28,7 @@ export const MOCK_EXAM_POOL: MockExamQuestion[] = [
     prompt: 'Choose the correct form: "Where _______ your brother work?"',
     options: ['does', 'do', 'is', 'are'],
     expectedAnswer: 'does',
-    explanation: 'Singular third person (your brother) in present simple questions uses auxiliary "does".',
+    explanation: 'Singular third person (your brother = he) in present simple questions uses auxiliary "does".',
     points: 1,
   },
   {
@@ -66,22 +67,22 @@ export const MOCK_EXAM_POOL: MockExamQuestion[] = [
     type: 'fill-blank',
     prompt: 'Complete with a or an: "I need _______ dictionary for the English class."',
     expectedAnswer: 'a',
-    explanation: '"Dictionary" begins with a consonant sound, so we use "a".',
+    explanation: '"Dictionary" begins with a consonant sound (/d/), so we use "a".',
     points: 1,
   },
   {
     id: 'me-g-6',
     section: 'grammar',
     type: 'multiple-choice',
-    prompt: 'Which sentence is grammatically correct?',
+    prompt: 'Which negative sentence is grammatically correct?',
     options: [
-      'David doesn\'t drink tea in the morning.',
-      'David don\'t drinks tea in the morning.',
+      "David doesn't drink tea in the morning.",
+      "David doesn't drinks tea in the morning.",
       'David not drinks tea in the morning.',
-      'David isn\'t drink tea in the morning.',
+      "David isn't drink tea in the morning.",
     ],
-    expectedAnswer: 'David doesn\'t drink tea in the morning.',
-    explanation: 'He/she/it takes "doesn\'t" + base form "drink".',
+    expectedAnswer: "David doesn't drink tea in the morning.",
+    explanation: 'After doesn\'t, the main verb is in base form: "doesn\'t drink".',
     points: 1,
   },
   {
@@ -94,8 +95,37 @@ export const MOCK_EXAM_POOL: MockExamQuestion[] = [
     explanation: 'We ask "How old...?" to inquire about someone\'s age.',
     points: 1,
   },
+  {
+    id: 'me-g-8',
+    section: 'grammar',
+    type: 'multiple-choice',
+    prompt: '"Does Lisa work at a hotel?" What is the correct positive short answer?',
+    options: ['Yes, she does.', 'Yes, she works.', 'Yes, she is.', 'Yes, does she.'],
+    expectedAnswer: 'Yes, she does.',
+    explanation: 'Questions starting with "Does" use "does" in positive short answers: "Yes, she does."',
+    points: 1,
+  },
+  {
+    id: 'me-g-9',
+    section: 'grammar',
+    type: 'multiple-choice',
+    prompt: 'Where does the frequency adverb go? "She _______ in the park."',
+    options: ['often walks', 'walks often', 'often walk', 'walk often'],
+    expectedAnswer: 'often walks',
+    explanation: 'Frequency adverbs go BEFORE the main verb: "often walks".',
+    points: 1,
+  },
+  {
+    id: 'me-g-10',
+    section: 'grammar',
+    type: 'fill-blank',
+    prompt: '"Are you and Sarah students?" "Yes, we _______."',
+    expectedAnswer: 'are',
+    explanation: 'Positive short answer for we: "Yes, we are." (Never contract to Yes, we\'re).',
+    points: 1,
+  },
 
-  // --- Vocabulary Section ---
+  // --- Vocabulary Section (7 questions) ---
   {
     id: 'me-v-1',
     section: 'vocabulary',
@@ -120,10 +150,10 @@ export const MOCK_EXAM_POOL: MockExamQuestion[] = [
     id: 'me-v-3',
     section: 'vocabulary',
     type: 'multiple-choice',
-    prompt: 'Which word means attractive and gracefully thin?',
+    prompt: 'Which word means slim and gracefully thin (German: schlank)?',
     options: ['slim', 'heavy', 'short', 'tall'],
     expectedAnswer: 'slim',
-    explanation: '"Slim" means gracefully thin / schlank.',
+    explanation: 'German "schlank" = English "slim".',
     points: 1,
   },
   {
@@ -145,23 +175,47 @@ export const MOCK_EXAM_POOL: MockExamQuestion[] = [
     explanation: 'The sequence of weekdays is: Monday, Tuesday, Wednesday...',
     points: 1,
   },
+  {
+    id: 'me-v-6',
+    section: 'vocabulary',
+    type: 'multiple-choice',
+    prompt: 'How do you ask politely for a drink in an English café?',
+    options: [
+      'Could I have a coffee, please?',
+      'I want a coffee.',
+      'Give me coffee.',
+      'Coffee is good for me.',
+    ],
+    expectedAnswer: 'Could I have a coffee, please?',
+    explanation: '"Could I have..., please?" is the polite ordering formula.',
+    points: 1,
+  },
+  {
+    id: 'me-v-7',
+    section: 'vocabulary',
+    type: 'fill-blank',
+    prompt: 'A mother and father together are your _______ (German: Eltern).',
+    expectedAnswer: 'parents',
+    explanation: 'Mother and father = "parents".',
+    points: 1,
+  },
 
-  // --- Reading Section ---
+  // --- Reading Section (Emily & Lisa course texts - 5 questions) ---
   {
     id: 'me-r-1',
     section: 'reading',
     type: 'multiple-choice',
     contextPassage:
-      'Michael is a 32-year-old software developer from Berlin. He lives in a modern apartment with his wife, Sarah. Michael is tall and slim with short brown hair, and he wears glasses. On weekdays, he wakes up at 7:00, drinks black coffee, and walks to his office. On Saturdays, he plays football with his friends and visits his parents in Munich.',
-    prompt: 'What is Michael\'s profession and where is he from?',
+      'Emily is 29 years old and comes from Bristol, England. She is a graphic designer. Three years ago, she moved to Canada. Now, she lives in Vancouver in an apartment on the tenth floor. She takes the bus to work because her office is far away. In winter, Emily goes skiing with her Canadian boyfriend, and in summer she goes hiking.',
+    prompt: 'What is Emily\'s job and where is she from?',
     options: [
-      'Software developer from Berlin',
-      'English teacher from Munich',
+      'Graphic designer from Bristol, England',
+      'English teacher from Vancouver',
       'Doctor from London',
-      'Student from Madrid',
+      'Hotel receptionist from Munich',
     ],
-    expectedAnswer: 'Software developer from Berlin',
-    explanation: 'The passage says: "Michael is a 32-year-old software developer from Berlin."',
+    expectedAnswer: 'Graphic designer from Bristol, England',
+    explanation: 'The passage says: "Emily is 29 years old and comes from Bristol, England. She is a graphic designer."',
     points: 2,
   },
   {
@@ -169,11 +223,11 @@ export const MOCK_EXAM_POOL: MockExamQuestion[] = [
     section: 'reading',
     type: 'fill-blank',
     contextPassage:
-      'Michael is tall and slim with short brown hair, and he wears glasses. On weekdays, he wakes up at 7:00, drinks black coffee, and walks to his office.',
-    prompt: 'What does Michael drink on weekday mornings? He drinks _______ _______.',
-    expectedAnswer: 'black coffee',
-    alternateAnswers: ['coffee'],
-    explanation: 'The text states: "...drinks black coffee, and walks to his office."',
+      'Emily lives in Vancouver in an apartment on the tenth floor. She takes the bus to work because her office is far away.',
+    prompt: 'Why does Emily take the bus to work? Because her office is _______ _______.',
+    expectedAnswer: 'far away',
+    alternateAnswers: ['far'],
+    explanation: 'The text states: "...because her office is far away."',
     points: 2,
   },
   {
@@ -181,15 +235,38 @@ export const MOCK_EXAM_POOL: MockExamQuestion[] = [
     section: 'reading',
     type: 'multiple-choice',
     contextPassage:
-      'On Saturdays, he plays football with his friends and visits his parents in Munich.',
-    prompt: 'Who does Michael visit in Munich on Saturdays?',
-    options: ['his parents', 'his teacher', 'his children', 'his brother'],
-    expectedAnswer: 'his parents',
-    explanation: 'The text states: "...visits his parents in Munich."',
+      'In winter, Emily goes skiing with her boyfriend, and in summer she goes hiking. She loves Canada, but she misses her family, her friends, and English tea.',
+    prompt: 'What outdoor activity does Emily do in winter?',
+    options: ['Skiing', 'Hiking', 'Tennis', 'Football'],
+    expectedAnswer: 'Skiing',
+    explanation: 'The text says: "In winter, Emily goes skiing with her boyfriend..."',
+    points: 2,
+  },
+  {
+    id: 'me-r-4',
+    section: 'reading',
+    type: 'multiple-choice',
+    contextPassage:
+      'Lisa lives in a small town near the mountains. She works at a hotel. On Saturdays, she goes to the mountains with her brother. They have breakfast together, drink tea and eat sandwiches. In the afternoon, Lisa reads a book, and her brother takes photos. In the evening, they take the train home.',
+    prompt: 'Where does Lisa work?',
+    options: ['At a hotel', 'In a hospital', 'In a bank', 'In an office'],
+    expectedAnswer: 'At a hotel',
+    explanation: 'The text states: "Lisa lives in a small town near the mountains. She works at a hotel."',
+    points: 2,
+  },
+  {
+    id: 'me-r-5',
+    section: 'reading',
+    type: 'fill-blank',
+    contextPassage:
+      'In the afternoon, Lisa reads a book, and her brother takes photos. In the evening, they take the train home.',
+    prompt: 'How do Lisa and her brother travel home in the evening? They take the _______.',
+    expectedAnswer: 'train',
+    explanation: 'The passage concludes: "In the evening, they take the train home."',
     points: 2,
   },
 
-  // --- Writing / Sentence Construction Section ---
+  // --- Writing Section (3 questions) ---
   {
     id: 'me-w-1',
     section: 'writing',
@@ -210,43 +287,74 @@ export const MOCK_EXAM_POOL: MockExamQuestion[] = [
     id: 'me-w-2',
     section: 'writing',
     type: 'fill-blank',
-    prompt: 'Put the words in order: "is / She / wearing / black shoes / today" -> She _______ _______ _______ _______.',
-    expectedAnswer: 'is wearing black shoes today',
-    alternateAnswers: ['is wearing black shoes today.'],
-    explanation: 'Subject (She) + is wearing + object (black shoes) + time (today).',
+    prompt: 'Put the words in order: "at / hotel / doesn\'t / She / work / a" ➔ She _______ _______ _______ _______ _______.',
+    expectedAnswer: "doesn't work at a hotel",
+    alternateAnswers: ['does not work at a hotel', "doesnt work at a hotel", "doesn't work at a hotel."],
+    explanation: 'Subject (She) + doesn\'t + base verb (work) + prepositional phrase (at a hotel).',
+    points: 3,
+  },
+  {
+    id: 'me-w-3',
+    section: 'writing',
+    type: 'fill-blank',
+    prompt: 'Transform into question: "Lisa lives in a small town." ➔ _______ Lisa _______ in a small town?',
+    expectedAnswer: 'Does / live',
+    alternateAnswers: [
+      'Does live',
+      'does / live',
+      'does live',
+      'Does, live',
+      'does, live',
+      'Does - live',
+      'does - live',
+    ],
+    explanation: 'Question formula: Does + Lisa + base verb "live"? Either type "Does live" or "Does / live".',
     points: 3,
   },
 ];
 
+function shuffleArray<T>(items: T[]): T[] {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 export function generateMockExam(questionCount: number = 15): MockExamQuestion[] {
-  // Balanced sample across sections
-  const grammar = MOCK_EXAM_POOL.filter((q) => q.section === 'grammar');
-  const vocab = MOCK_EXAM_POOL.filter((q) => q.section === 'vocabulary');
-  const reading = MOCK_EXAM_POOL.filter((q) => q.section === 'reading');
-  const writing = MOCK_EXAM_POOL.filter((q) => q.section === 'writing');
+  const grammar = shuffleArray(MOCK_EXAM_POOL.filter((q) => q.section === 'grammar'));
+  const vocab = shuffleArray(MOCK_EXAM_POOL.filter((q) => q.section === 'vocabulary'));
+  const reading = shuffleArray(MOCK_EXAM_POOL.filter((q) => q.section === 'reading'));
+  const writing = shuffleArray(MOCK_EXAM_POOL.filter((q) => q.section === 'writing'));
 
   const selected: MockExamQuestion[] = [];
 
   if (questionCount <= 10) {
+    // 10 questions: 4 grammar + 3 vocab + 2 reading + 1 writing = 10
     selected.push(...grammar.slice(0, 4));
     selected.push(...vocab.slice(0, 3));
     selected.push(...reading.slice(0, 2));
     selected.push(...writing.slice(0, 1));
   } else if (questionCount <= 15) {
+    // 15 questions: 6 grammar + 4 vocab + 3 reading + 2 writing = 15
     selected.push(...grammar.slice(0, 6));
-    selected.push(...vocab.slice(0, 5));
+    selected.push(...vocab.slice(0, 4));
     selected.push(...reading.slice(0, 3));
-    selected.push(...writing.slice(0, 1));
+    selected.push(...writing.slice(0, 2));
   } else {
-    // 20-25 questions (all available)
-    selected.push(...grammar);
-    selected.push(...vocab);
-    selected.push(...reading);
-    selected.push(...writing);
+    // 20 questions: 8 grammar + 5 vocab + 4 reading + 3 writing = 20
+    selected.push(...grammar.slice(0, 8));
+    selected.push(...vocab.slice(0, 5));
+    selected.push(...reading.slice(0, 4));
+    selected.push(...writing.slice(0, 3));
   }
 
+  // Shuffle selected questions so sections appear in natural variety, while keeping reading context intact
+  const randomizedExam = shuffleArray(selected);
+
   // Assign clean sequential question numbers
-  return selected.map((q, index) => ({
+  return randomizedExam.map((q, index) => ({
     ...q,
     questionNumber: index + 1,
   }));
