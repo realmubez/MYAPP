@@ -97,7 +97,7 @@ export const ExamLessonsList: React.FC<ExamLessonsListProps> = ({
 
         {isVisualNotesOpen && (
           <div className="p-3 sm:p-5 bg-[#0e0c0a]/90">
-            <VisualGrammarNotes />
+            <VisualGrammarNotes lessonId="exam-lessons-overview" />
           </div>
         )}
       </div>

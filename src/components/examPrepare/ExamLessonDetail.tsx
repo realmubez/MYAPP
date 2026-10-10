@@ -292,7 +292,7 @@ export const ExamLessonDetail: React.FC<ExamLessonDetailProps> = ({
 
           {showVisualNotes && (
             <div className="mt-3">
-              <VisualGrammarNotes />
+              <VisualGrammarNotes lessonId={lesson.id} />
             </div>
           )}
         </div>

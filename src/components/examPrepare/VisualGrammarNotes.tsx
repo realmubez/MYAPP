@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   PenTool,
   CheckCircle2,
@@ -7,8 +7,13 @@ import {
   Sparkles,
   ArrowDown,
   ArrowRight,
-  HelpCircle,
-  BookOpen,
+  Eraser,
+  Undo2,
+  Redo2,
+  Trash2,
+  Check,
+  MousePointer,
+  Palette,
 } from 'lucide-react';
 
 interface QuizQuestion {
@@ -71,9 +76,242 @@ const QUIZ_QUESTIONS: QuizQuestion[] = [
   },
 ];
 
-export const VisualGrammarNotes: React.FC = () => {
+type ToolType = 'select' | 'pen' | 'highlighter' | 'eraser';
+type PenColor = '#1a5fb4' | '#dc2626' | '#16a34a' | '#1e293b';
+type PenSize = 'thin' | 'medium' | 'thick';
+
+interface VisualGrammarNotesProps {
+  lessonId?: string;
+}
+
+export const VisualGrammarNotes: React.FC<VisualGrammarNotesProps> = ({
+  lessonId = 'general-grammar',
+}) => {
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string>>({});
   const [hasSubmitted, setHasSubmitted] = useState<boolean>(false);
+
+  // Drawing tools state
+  const [tool, setTool] = useState<ToolType>('select'); // default select/scroll so page is scrollable
+  const [color, setColor] = useState<PenColor>('#1a5fb4'); // blue default
+  const [size, setSize] = useState<PenSize>('medium');
+  const [showClearConfirm, setShowClearConfirm] = useState<boolean>(false);
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const isDrawingRef = useRef<boolean>(false);
+  const lastPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Undo / Redo history stacks of ImageData
+  const [undoStack, setUndoStack] = useState<string[]>([]);
+  const [redoStack, setRedoStack] = useState<string[]>([]);
+
+  const storageKey = `visual_grammar_scratchpad_${lessonId}`;
+
+  // Save current canvas state to undo stack
+  const saveToUndoStack = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const dataUrl = canvas.toDataURL();
+    setUndoStack((prev) => [...prev, dataUrl]);
+    setRedoStack([]); // clear redo on new stroke
+  }, []);
+
+  // Initialize and resize canvas
+  const initCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const rect = container.getBoundingClientRect();
+    const width = rect.width || container.offsetWidth || 600;
+    const height = container.scrollHeight || rect.height || 800;
+
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+
+    ctx.scale(dpr, dpr);
+
+    // Restore from localStorage if available
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const img = new Image();
+        img.onload = () => {
+          ctx.clearRect(0, 0, width, height);
+          ctx.drawImage(img, 0, 0, width, height);
+        };
+        img.src = saved;
+      }
+    } catch {
+      // ignore
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    initCanvas();
+    window.addEventListener('resize', initCanvas);
+    return () => window.removeEventListener('resize', initCanvas);
+  }, [initCanvas]);
+
+  // Save to localStorage when undo stack changes
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    try {
+      const dataUrl = canvas.toDataURL();
+      localStorage.setItem(storageKey, dataUrl);
+    } catch {
+      // ignore
+    }
+  }, [undoStack, storageKey]);
+
+  // Pointer event handlers for drawing
+  const getCanvasCoordinates = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    };
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (tool === 'select') return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    isDrawingRef.current = true;
+    canvas.setPointerCapture(e.pointerId);
+
+    saveToUndoStack();
+
+    const pos = getCanvasCoordinates(e);
+    lastPosRef.current = pos;
+
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!isDrawingRef.current || tool === 'select') return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const pos = getCanvasCoordinates(e);
+
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    if (tool === 'eraser') {
+      ctx.globalCompositeOperation = 'destination-out';
+      const sizeMap = { thin: 12, medium: 24, thick: 40 };
+      ctx.lineWidth = sizeMap[size];
+    } else if (tool === 'highlighter') {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = 0.35;
+      const sizeMap = { thin: 10, medium: 20, thick: 32 };
+      ctx.lineWidth = sizeMap[size];
+    } else {
+      // pen
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = 1.0;
+      const sizeMap = { thin: 2, num: 4, medium: 4, thick: 8 };
+      ctx.lineWidth = sizeMap[size] || 4;
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(lastPosRef.current.x, lastPosRef.current.y);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    ctx.restore();
+
+    lastPosRef.current = pos;
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!isDrawingRef.current) return;
+    isDrawingRef.current = false;
+    try {
+      canvasRef.current?.releasePointerCapture(e.pointerId);
+    } catch {
+      // ignore
+    }
+  };
+
+  // Undo action
+  const handleUndo = () => {
+    if (undoStack.length === 0) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const currentDataUrl = canvas.toDataURL();
+    setRedoStack((prev) => [currentDataUrl, ...prev]);
+
+    const previousDataUrl = undoStack[undoStack.length - 1];
+    setUndoStack((prev) => prev.slice(0, prev.length - 1));
+
+    const img = new Image();
+    img.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width / (window.devicePixelRatio || 1), canvas.height / (window.devicePixelRatio || 1));
+    };
+    img.src = previousDataUrl;
+  };
+
+  // Redo action
+  const handleRedo = () => {
+    if (redoStack.length === 0) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const currentDataUrl = canvas.toDataURL();
+    setUndoStack((prev) => [...prev, currentDataUrl]);
+
+    const nextDataUrl = redoStack[0];
+    setRedoStack((prev) => prev.slice(1));
+
+    const img = new Image();
+    img.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width / (window.devicePixelRatio || 1), canvas.height / (window.devicePixelRatio || 1));
+    };
+    img.src = nextDataUrl;
+  };
+
+  // Clear canvas
+  const handleClearCanvas = () => {
+    saveToUndoStack();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    try {
+      localStorage.removeItem(storageKey);
+    } catch {
+      // ignore
+    }
+    setShowClearConfirm(false);
+  };
 
   const handleSelect = (questionId: number, option: string) => {
     if (hasSubmitted) return;
@@ -95,10 +333,183 @@ export const VisualGrammarNotes: React.FC = () => {
   return (
     <section className="w-full space-y-4 my-2">
       {/* =========================================================================
-          THE MAIN NOTEBOOK / SCRATCHPAD SHEET
-          Warm cream paper background (#fdfbf7), subtle notebook lines, handwriting style
+          INTERACTIVE DRAWING TOOLBAR
+          ========================================================================= */}
+      <div className="bg-[#1c1814] border border-amber-500/30 rounded-2xl p-3 shadow-md flex flex-wrap items-center justify-between gap-3 text-xs">
+        {/* Left: Tools & Mode */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] font-mono text-amber-400 font-bold uppercase mr-1 flex items-center gap-1">
+            <PenTool className="w-3.5 h-3.5" />
+            <span>Digital Pen:</span>
+          </span>
+
+          {/* Mode Selector */}
+          <div className="flex items-center bg-[#14100d] p-1 rounded-xl border border-neutral-800">
+            <button
+              type="button"
+              onClick={() => setTool('select')}
+              title="Scroll & Select Mode (Normal page scrolling)"
+              className={`px-3 py-1 rounded-lg font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                tool === 'select'
+                  ? 'bg-neutral-700 text-white shadow-sm'
+                  : 'text-neutral-400 hover:text-white'
+              }`}
+            >
+              <MousePointer className="w-3.5 h-3.5" />
+              <span>Scroll / Select</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setTool('pen')}
+              title="Pen (Write & draw freely)"
+              className={`px-3 py-1 rounded-lg font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                tool === 'pen'
+                  ? 'bg-amber-400 text-neutral-950 shadow-sm'
+                  : 'text-neutral-400 hover:text-white'
+              }`}
+            >
+              <span>✏️ Pen</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setTool('highlighter')}
+              title="Highlighter (Transparent marker)"
+              className={`px-3 py-1 rounded-lg font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                tool === 'highlighter'
+                  ? 'bg-amber-400 text-neutral-950 shadow-sm'
+                  : 'text-neutral-400 hover:text-white'
+              }`}
+            >
+              <span>🖍️ Highlighter</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setTool('eraser')}
+              title="Eraser"
+              className={`px-3 py-1 rounded-lg font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                tool === 'eraser'
+                  ? 'bg-rose-500 text-white shadow-sm'
+                  : 'text-neutral-400 hover:text-white'
+              }`}
+            >
+              <Eraser className="w-3.5 h-3.5" />
+              <span>Eraser</span>
+            </button>
+          </div>
+
+          {/* Colors (Visible when tool is pen or highlighter) */}
+          {tool !== 'select' && tool !== 'eraser' && (
+            <div className="flex items-center gap-1 ml-1 bg-[#14100d] px-2 py-1 rounded-xl border border-neutral-800">
+              <span className="text-[10px] text-neutral-400 font-mono mr-0.5">Color:</span>
+              {[
+                { hex: '#1a5fb4', label: 'Blue' },
+                { hex: '#dc2626', label: 'Red' },
+                { hex: '#16a34a', label: 'Green' },
+                { hex: '#1e293b', label: 'Black' },
+              ].map((c) => (
+                <button
+                  key={c.hex}
+                  type="button"
+                  onClick={() => setColor(c.hex as PenColor)}
+                  title={c.label}
+                  className={`w-5 h-5 rounded-full border-2 transition-all cursor-pointer ${
+                    color === c.hex ? 'scale-110 border-white shadow' : 'border-transparent opacity-75 hover:opacity-100'
+                  }`}
+                  style={{ backgroundColor: c.hex }}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Thickness (Visible when not select) */}
+          {tool !== 'select' && (
+            <div className="flex items-center gap-1 ml-1 bg-[#14100d] px-2 py-1 rounded-xl border border-neutral-800">
+              <span className="text-[10px] text-neutral-400 font-mono mr-0.5">Size:</span>
+              {(['thin', 'medium', 'thick'] as PenSize[]).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setSize(s)}
+                  className={`px-2 py-0.5 rounded-lg text-[11px] font-bold capitalize transition-all cursor-pointer ${
+                    size === s
+                      ? 'bg-amber-400 text-neutral-950 shadow-sm'
+                      : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Right: Undo, Redo, Clear */}
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={handleUndo}
+            disabled={undoStack.length === 0}
+            title="Undo last stroke"
+            className="px-2.5 py-1 rounded-xl bg-[#14100d] hover:bg-neutral-800 disabled:opacity-30 text-neutral-300 border border-neutral-800 flex items-center gap-1 transition-colors cursor-pointer"
+          >
+            <Undo2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Undo</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleRedo}
+            disabled={redoStack.length === 0}
+            title="Redo stroke"
+            className="px-2.5 py-1 rounded-xl bg-[#14100d] hover:bg-neutral-800 disabled:opacity-30 text-neutral-300 border border-neutral-800 flex items-center gap-1 transition-colors cursor-pointer"
+          >
+            <Redo2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Redo</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowClearConfirm(true)}
+            title="Clear all drawings"
+            className="px-2.5 py-1 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-500/30 flex items-center gap-1 transition-colors cursor-pointer"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Clear</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Clear Confirmation Modal / Banner */}
+      {showClearConfirm && (
+        <div className="bg-rose-950/80 border border-rose-500 text-rose-200 p-3 rounded-2xl flex items-center justify-between gap-3 text-xs animate-fadeIn">
+          <span>Clear all handwritten annotations on this scratchpad?</span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleClearCanvas}
+              className="px-3 py-1 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold cursor-pointer"
+            >
+              Yes, Clear
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowClearConfirm(false)}
+              className="px-3 py-1 rounded-xl bg-neutral-800 text-neutral-300 hover:text-white cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* =========================================================================
+          THE MAIN NOTEBOOK / SCRATCHPAD SHEET WITH OVERLAY DRAWING CANVAS
           ========================================================================= */}
       <div
+        ref={containerRef}
         className="relative rounded-3xl p-5 sm:p-8 md:p-10 shadow-2xl border-2 border-[#e7dec8] text-[#1c2e4a] overflow-hidden"
         style={{
           backgroundColor: '#fbf8ee',
@@ -109,8 +520,20 @@ export const VisualGrammarNotes: React.FC = () => {
           backgroundSize: '20px 20px, 100% 28px',
         }}
       >
+        {/* Drawing Canvas Overlay */}
+        <canvas
+          ref={canvasRef}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          className={`absolute inset-0 z-20 ${
+            tool === 'select' ? 'pointer-events-none' : 'touch-none cursor-crosshair'
+          }`}
+        />
+
         {/* Notebook top binding holes effect */}
-        <div className="absolute top-3 left-6 right-6 flex justify-between pointer-events-none opacity-40">
+        <div className="absolute top-3 left-6 right-6 flex justify-between pointer-events-none opacity-40 z-10">
           {[...Array(8)].map((_, i) => (
             <span
               key={i}
@@ -120,17 +543,17 @@ export const VisualGrammarNotes: React.FC = () => {
         </div>
 
         {/* Header tape / note pin */}
-        <div className="flex justify-center mb-6 pt-3">
+        <div className="flex justify-center mb-6 pt-3 relative z-10">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#f3ebd3] border border-[#d6c79f] text-[#2c3e50] text-xs font-semibold shadow-sm rotate-[-1deg]">
             <PenTool className="w-3.5 h-3.5 text-[#1a5fb4]" />
             <span className="font-mono uppercase tracking-wider text-[11px]">
-              Teacher's Handwritten Study Notes
+              Teacher's Handwritten Study Notes {tool !== 'select' ? `(✍️ Drawing Mode: ${tool.toUpperCase()})` : ''}
             </span>
           </div>
         </div>
 
         {/* 2. TITLE SECTION */}
-        <div className="text-center space-y-2 mb-8">
+        <div className="text-center space-y-2 mb-8 relative z-10">
           <h2
             className="text-2xl sm:text-4xl md:text-5xl font-black text-[#1a365d] tracking-tight"
             style={{ fontFamily: "'Caveat', cursive, sans-serif" }}
@@ -150,7 +573,7 @@ export const VisualGrammarNotes: React.FC = () => {
         </div>
 
         {/* Grid for Scratchpad 1 and Scratchpad 2 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 relative z-10">
           {/* =========================================================================
               3. FIRST SCRATCHPAD — AM / IS / ARE
               ========================================================================= */}
@@ -353,7 +776,7 @@ export const VisualGrammarNotes: React.FC = () => {
         {/* =========================================================================
             5. THE MOST IMPORTANT VISUAL — THE VERB TRANSFORMATION (HERO BLOCK)
             ========================================================================= */}
-        <div className="my-8 bg-[#fffefb] rounded-3xl p-6 sm:p-8 border-4 border-[#dc2626] shadow-xl relative overflow-hidden">
+        <div className="my-8 bg-[#fffefb] rounded-3xl p-6 sm:p-8 border-4 border-[#dc2626] shadow-xl relative overflow-hidden z-10">
           {/* Hand-drawn corner tape */}
           <div className="absolute top-2 right-4 bg-rose-200/90 text-rose-900 px-3 py-1 rounded-md text-[11px] font-mono font-black uppercase rotate-2 shadow-sm">
             ★ Most Important Exam Rule ★
@@ -471,9 +894,8 @@ export const VisualGrammarNotes: React.FC = () => {
 
         {/* =========================================================================
             6. SHOW THE DIFFERENCE SIDE BY SIDE
-            Box A (State / Description) vs Box B (Action) + Memory Trick
             ========================================================================= */}
-        <div className="space-y-4 mb-8">
+        <div className="space-y-4 mb-8 relative z-10">
           <div className="text-center">
             <span className="text-xs font-mono font-bold text-[#1f4e78] uppercase tracking-wider">
               Side-by-Side Comparison:
@@ -553,9 +975,8 @@ export const VisualGrammarNotes: React.FC = () => {
 
         {/* =========================================================================
             7. INTERACTIVE SCRATCHPAD PRACTICE SECTION
-            6 questions with immediate feedback, explanations, and retry
             ========================================================================= */}
-        <div className="mt-10 pt-6 border-t-2 border-dashed border-[#d3c7a8]">
+        <div className="mt-10 pt-6 border-t-2 border-dashed border-[#d3c7a8] relative z-10">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
             <div>
               <span className="text-[11px] font-mono uppercase tracking-wider text-[#1a5fb4] font-bold block">
