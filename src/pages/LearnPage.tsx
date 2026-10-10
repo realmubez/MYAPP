@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Sparkles, ArrowRight, CheckCircle2, Lock, Flame } from 'lucide-react';
+import { BookOpen, Sparkles, ArrowRight, CheckCircle2, Lock, Flame, GraduationCap } from 'lucide-react';
 import { useProfile } from '../hooks/useProfile';
 import { SUBJECTS } from '../data/mockData';
 import { progressService } from '../services/progress';
@@ -52,12 +52,53 @@ export function LearnPage() {
         <div className="flex items-center gap-2">
           <button
             type="button"
+            onClick={() => navigate('/exam-prepare')}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-amber-500/40 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-bold transition-all cursor-pointer shadow-md"
+          >
+            <GraduationCap className="w-4 h-4 text-amber-400" />
+            <span>Exam Prepare (Units 1–2D)</span>
+          </button>
+          <button
+            type="button"
             onClick={() => navigate('/review')}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-semibold transition-all cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-neutral-800 bg-[#16120e] hover:bg-neutral-800 text-neutral-300 text-xs font-semibold transition-all cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>Mistake Review</span>
           </button>
+        </div>
+      </div>
+
+      {/* Featured Exam Prepare Banner */}
+      <div
+        onClick={() => navigate('/exam-prepare')}
+        className="group relative rounded-3xl border border-amber-500/30 bg-gradient-to-r from-[#1b1713] via-[#16120e] to-[#120f0d] p-5 sm:p-6 shadow-xl hover:border-amber-500/50 transition-all duration-200 cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+      >
+        <div className="flex items-start gap-3.5">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 shadow-md">
+            <GraduationCap className="w-6 h-6" />
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] font-mono uppercase font-bold text-amber-400 bg-amber-500/10 border border-amber-500/25 px-2 py-0.5 rounded-full">
+                Featured Exam Preparation
+              </span>
+              <span className="text-[10px] text-neutral-400 font-mono">
+                Elementary English (Units 1–2D)
+              </span>
+            </div>
+            <h2 className="text-lg sm:text-xl font-extrabold text-white group-hover:text-amber-300 transition-colors">
+              Exam Prepare: Units 1–2D Revision & Practice
+            </h2>
+            <p className="text-xs text-neutral-300 max-w-2xl leading-relaxed">
+              16 lessons covering reading comprehension, grammar, vocabulary, practice drills, and mock exams with natural Microsoft Edge speech synthesis.
+            </p>
+          </div>
+        </div>
+
+        <div className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 group-hover:bg-amber-400 text-neutral-950 text-xs font-bold transition-all shadow self-end sm:self-center">
+          <span>Open Exam Prepare</span>
+          <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
         </div>
       </div>
 

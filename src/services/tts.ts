@@ -141,7 +141,7 @@ export const SOMALI_VOICES: VoiceOption[] = [
 ];
 
 export const TTS_DEFAULT_VOICES: Record<string, string> = {
-  en: 'en-US-GuyNeural',
+  en: 'en-GB-RyanNeural',
   sv: 'sv-SE-MattiasNeural',
   de: 'de-DE-KillianNeural',
   so: 'so-SO-MuuseNeural',
@@ -321,11 +321,13 @@ class LessonSpeechManager {
     key,
     text,
     language = 'en',
+    voice: customVoice,
     rate,
   }: {
     key: string;
     text: string;
     language?: 'en' | 'sv' | 'so' | string;
+    voice?: string;
     rate?: TTSRate;
   }): Promise<void> {
     const cleanedText = cleanSpeechText(text);
@@ -340,7 +342,7 @@ class LessonSpeechManager {
     // Stop any ongoing speech
     this.stopSpeech();
 
-    const voice = getVoiceForLanguage(language);
+    const voice = customVoice || getVoiceForLanguage(language);
     const effectiveRate = rate ?? getStoredRate(language);
     const targetUrl = getTTSUrl({ text: cleanedText, voice, rate: effectiveRate });
 

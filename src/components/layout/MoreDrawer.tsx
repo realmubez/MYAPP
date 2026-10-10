@@ -5,6 +5,7 @@ import {
   FileText,
   FolderKanban,
   Sparkles,
+  GraduationCap,
   User,
   Settings,
   Shield,
@@ -105,6 +106,24 @@ export function MoreDrawer({ isOpen, onClose, onOpenSettings }: MoreDrawerProps)
             View
           </button>
         </div>
+
+        {/* Exam Prepare Featured Quick Action */}
+        <button
+          type="button"
+          onClick={() => handleItemClick('/exam-prepare')}
+          className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 to-amber-600/10 border border-amber-500/30 text-amber-300 hover:bg-amber-500/20 transition-all text-left"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+              <GraduationCap className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-white">Exam Prepare</p>
+              <p className="text-[10px] text-amber-300/80">Straightforward Elementary (Units 1–2D)</p>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-amber-400" />
+        </button>
 
         {/* Navigation Grid */}
         <div className="grid grid-cols-2 gap-2.5">

@@ -28,6 +28,8 @@ import { SubjectProtectedRoute } from './components/auth/SubjectProtectedRoute';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { PublicTypingPage } from './pages/PublicTypingPage';
 
+import { ExamPreparePage } from './pages/ExamPreparePage';
+
 export default function App() {
   return (
     <ErrorBoundary>
@@ -36,7 +38,17 @@ export default function App() {
           <Routes>
             {/* Public Routes (No Login Required) */}
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/exam-prepare" element={<ExamPreparePage />} />
+            <Route path="/exam-prep" element={<ExamPreparePage />} />
+            <Route path="/exam" element={<ExamPreparePage />} />
+            <Route path="/math" element={<MathematicsPage />} />
+            <Route path="/mathe" element={<MathematicsPage />} />
+            <Route path="/mathematics-public" element={<MathematicsPage />} />
             <Route path="/practice" element={<PublicTypingPage />} />
+            <Route path="/read" element={<PublicTypingPage />} />
+            <Route path="/lesen" element={<PublicTypingPage />} />
+            <Route path="/file-reader" element={<PublicTypingPage />} />
+            <Route path="/study" element={<PublicTypingPage />} />
             <Route path="/public-typing" element={<PublicTypingPage />} />
             <Route path="/quick-practice" element={<PublicTypingPage />} />
             <Route path="/public" element={<PublicTypingPage />} />
@@ -48,6 +60,9 @@ export default function App() {
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/home" element={<Dashboard />} />
                 <Route path="/learn" element={<LearnPage />} />
+                <Route path="/exam-prepare" element={<ExamPreparePage />} />
+                <Route path="/exam-prep" element={<ExamPreparePage />} />
+                <Route path="/exam" element={<ExamPreparePage />} />
                 <Route path="/library" element={<LibraryPage />} />
                 <Route path="/notes" element={<NotesPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />

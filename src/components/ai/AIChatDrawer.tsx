@@ -26,6 +26,7 @@ interface AIChatDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectTypingText?: (text: string) => void;
+  initialPrompt?: string;
 }
 
 const QUICK_PROMPTS = [
@@ -56,7 +57,7 @@ const QUICK_PROMPTS = [
   },
 ];
 
-export function AIChatDrawer({ isOpen, onClose, onSelectTypingText }: AIChatDrawerProps) {
+export function AIChatDrawer({ isOpen, onClose, onSelectTypingText, initialPrompt }: AIChatDrawerProps) {
   const [messages, setMessages] = useState<AIMessage[]>([
     {
       role: 'assistant',
@@ -81,9 +82,12 @@ export function AIChatDrawer({ isOpen, onClose, onSelectTypingText }: AIChatDraw
 
   useEffect(() => {
     if (isOpen) {
+      if (initialPrompt && initialPrompt.trim()) {
+        setInputMessage(initialPrompt.trim());
+      }
       setTimeout(() => inputRef.current?.focus(), 100);
     }
-  }, [isOpen]);
+  }, [isOpen, initialPrompt]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

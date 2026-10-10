@@ -15,10 +15,38 @@ export interface VocabularyEntry {
   somaliMeaning: string;
   somaliExample: string;
 
-  passageContext: string;
+  passageContext?: string;
 }
 
 export const PUBLIC_VOCABULARY_LIST: VocabularyEntry[] = [
+  {
+    id: 'vocab-tall',
+    word: 'tall',
+    partOfSpeech: 'adjective',
+    englishMeaning: 'Of great or more than average height.',
+    englishExample: 'The man is tall and slim.',
+    germanWord: 'groß (Körpergröße)',
+    germanMeaning: 'Eine überdurchschnittliche Körpergröße habend.',
+    germanExample: 'Der Mann ist groß und schlank.',
+    somaliWord: 'dheer (joog ahaan)',
+    somaliMeaning: 'Qof dhererkiisu ka sarreeyo celceliska.',
+    somaliExample: 'Ninku waa dheer yahay oo dhuuban yahay.',
+    passageContext: 'The man is tall and slim...',
+  },
+  {
+    id: 'vocab-slim',
+    word: 'slim',
+    partOfSpeech: 'adjective',
+    englishMeaning: 'Gracefully thin, slender in an attractive and fit way.',
+    englishExample: 'He has a slim and healthy build.',
+    germanWord: 'schlank / dünn',
+    germanMeaning: 'Dünn auf eine ansprechende und sportliche Art.',
+    germanExample: 'Er hat eine schlanke Figur.',
+    somaliWord: 'dhuuban / caato fiican',
+    somaliMeaning: 'Qof aan buurnayn oo dhuuban.',
+    somaliExample: 'Wuxuu leeyahay jir dhuuban.',
+    passageContext: 'The man is tall and slim...',
+  },
   {
     id: 'vocab-wearing',
     word: 'wearing',
@@ -51,7 +79,7 @@ export const PUBLIC_VOCABULARY_LIST: VocabularyEntry[] = [
     id: 'vocab-around',
     word: 'around',
     partOfSpeech: 'preposition / adverb',
-    englishMeaning: 'Approximately or roughly (used with age or quantity).',
+    englishMeaning: 'Approximately or roughly (used with age, time, or quantity).',
     englishExample: 'He looks around 30 years old.',
     germanWord: 'ungefähr / circa / etwa',
     germanMeaning: 'Etwa oder annähernd ein bestimmtes Alter haben.',
@@ -90,34 +118,6 @@ export const PUBLIC_VOCABULARY_LIST: VocabularyEntry[] = [
     passageContext: '...and black shoes / ...and flat shoes.',
   },
   {
-    id: 'vocab-tall',
-    word: 'tall',
-    partOfSpeech: 'adjective',
-    englishMeaning: 'Of great or more than average height.',
-    englishExample: 'The man is tall and athletic.',
-    germanWord: 'groß (Körpergröße)',
-    germanMeaning: 'Eine überdurchschnittliche Körpergröße habend.',
-    germanExample: 'Der Mann ist groß und schlank.',
-    somaliWord: 'dheer (joog ahaan)',
-    somaliMeaning: 'Qof dhererkiisu ka sarreeyo celceliska.',
-    somaliExample: 'Ninku waa dheer yahay oo dhuuban yahay.',
-    passageContext: 'The man is tall and slim...',
-  },
-  {
-    id: 'vocab-slim',
-    word: 'slim',
-    partOfSpeech: 'adjective',
-    englishMeaning: 'Gracefully thin, slender in an attractive way.',
-    englishExample: 'He has a slim and healthy build.',
-    germanWord: 'schlank / dünn',
-    germanMeaning: 'Dünn auf eine ansprechende und sportliche Art.',
-    germanExample: 'Er hat eine schlanke Figur.',
-    somaliWord: 'dhuuban / caato fiican',
-    somaliMeaning: 'Qof aan buurnayn oo dhuuban.',
-    somaliExample: 'Wuxuu leeyahay jir dhuuban.',
-    passageContext: 'The man is tall and slim...',
-  },
-  {
     id: 'vocab-beard',
     word: 'beard',
     partOfSpeech: 'noun',
@@ -149,10 +149,10 @@ export const PUBLIC_VOCABULARY_LIST: VocabularyEntry[] = [
     id: 'vocab-short',
     word: 'short',
     partOfSpeech: 'adjective',
-    englishMeaning: 'Measuring a small distance from head to toe (height).',
+    englishMeaning: 'Measuring a small distance from head to toe (height) or small length.',
     englishExample: 'The woman is short and friendly.',
-    germanWord: 'klein (Körpergröße)',
-    germanMeaning: 'Geringe Körpergröße habend.',
+    germanWord: 'klein (Körpergröße) / kurz',
+    germanMeaning: 'Geringe Körpergröße habend oder von kurzer Dauer.',
     germanExample: 'Die Frau ist eher klein gewachsen.',
     somaliWord: 'gaaban (joog ahaan)',
     somaliMeaning: 'Qof aan dherer lahayn oo gaaban.',
@@ -202,30 +202,71 @@ export const PUBLIC_VOCABULARY_LIST: VocabularyEntry[] = [
     passageContext: 'She is wearing a light tunic shirt...',
   },
   {
-    id: 'vocab-flat-shoes',
-    word: 'flat shoes',
-    partOfSpeech: 'noun phrase',
-    englishMeaning: 'Shoes having little or no heel, designed for walking comfort.',
-    englishExample: 'She prefers walking in flat shoes.',
-    germanWord: 'flache Schuhe',
-    germanMeaning: 'Bequeme Schuhe ohne Absatz.',
-    germanExample: 'Sie trägt bequeme, flache Schuhe.',
-    somaliWord: 'kabo fidsan (cidhib la’aan)',
-    somaliMeaning: 'Kabo raaxo leh oo aan cidhib dheer lahayn.',
-    somaliExample: 'Waxay xidhan tahay kabo fidsan oo raaxo leh.',
+    id: 'vocab-flat',
+    word: 'flat',
+    partOfSpeech: 'adjective',
+    englishMeaning: 'Having a level surface without raised parts or heels.',
+    englishExample: 'She wears flat shoes for walking.',
+    germanWord: 'flach (ohne Absatz)',
+    germanMeaning: 'Ebene Fläche ohne erhöhten Absatz.',
+    germanExample: 'Sie trägt flache Schuhe.',
+    somaliWord: 'fidsan (cidhib la’aan)',
+    somaliMeaning: 'Kabo toosan oo aan cidhib taagan lahayn.',
+    somaliExample: 'Waxay xidhataa kabo fidsan.',
     passageContext: '...pants, and flat shoes.',
+  },
+  {
+    id: 'vocab-hair',
+    word: 'hair',
+    partOfSpeech: 'noun',
+    englishMeaning: 'The fine thread-like strands growing from the skin of humans, especially on the head.',
+    englishExample: 'He has short dark hair.',
+    germanWord: 'die Haare / das Haar',
+    germanMeaning: 'Fadenförmige Hornfäden auf dem Kopf.',
+    germanExample: 'Er hat kurze dunkle Haare.',
+    somaliWord: 'timo / timaha',
+    somaliMeaning: 'Dunta dabiiciga ah ee madaxa ka baxda.',
+    somaliExample: 'Wuxuu leeyahay timo gaagaaban.',
+    passageContext: '...short dark hair and a beard...',
+  },
+  {
+    id: 'vocab-dark',
+    word: 'dark',
+    partOfSpeech: 'adjective',
+    englishMeaning: 'With little or no light; of a deep shade approaching black.',
+    englishExample: 'He is wearing a dark T-shirt.',
+    germanWord: 'dunkel',
+    germanMeaning: 'Wenig Licht aufweisend oder ein tiefer Farbton.',
+    germanExample: 'Er trägt ein dunkles T-Shirt.',
+    somaliWord: 'madow / gudcur',
+    somaliMeaning: 'Midab adag oo iftiin yar leh ama xiga madowga.',
+    somaliExample: 'Wuxuu xidhan yahay funaanad madow.',
+    passageContext: '...wearing a dark T-shirt...',
   },
 ];
 
 export function findVocabularyByWord(rawWord: string): VocabularyEntry | undefined {
   const clean = rawWord.toLowerCase().replace(/[^a-z-]/g, '');
-  return PUBLIC_VOCABULARY_LIST.find(
-    (v) =>
-      v.word.toLowerCase() === clean ||
-      v.id.includes(clean) ||
-      (clean === 'wear' && v.word === 'wears') ||
-      (clean === 'shoe' && v.word === 'shoes') ||
-      (clean === 'pant' && v.word === 'pants') ||
-      (clean === 'glasses' && v.word === 'glasses')
-  );
+  if (!clean) return undefined;
+
+  return PUBLIC_VOCABULARY_LIST.find((v) => {
+    const vWord = v.word.toLowerCase();
+    if (vWord === clean) return true;
+    if (v.id === `vocab-${clean}`) return true;
+
+    // Stemming and variation matching
+    if (clean === 'wear' && (vWord === 'wears' || vWord === 'wearing')) return true;
+    if (clean === 'wears' && vWord === 'wears') return true;
+    if (clean === 'wearing' && vWord === 'wearing') return true;
+    if (clean === 'shoe' && vWord === 'shoes') return true;
+    if (clean === 'shoes' && vWord === 'shoes') return true;
+    if (clean === 'pant' && vWord === 'pants') return true;
+    if (clean === 'pants' && vWord === 'pants') return true;
+    if (clean === 'glasses' && vWord === 'glasses') return true;
+    if (clean === 'smiles' && vWord === 'smile') return true;
+    if (clean === 'smiling' && vWord === 'smile') return true;
+    if (clean === 'beards' && vWord === 'beard') return true;
+
+    return false;
+  });
 }

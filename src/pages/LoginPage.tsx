@@ -1,8 +1,7 @@
 import { useState, FormEvent, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Lock, ArrowRight, AlertCircle, Loader2, User, Shield, Keyboard, Sparkles } from 'lucide-react';
+import { Lock, ArrowRight, AlertCircle, Loader2, User, Shield, Keyboard, Sparkles, BookOpen, FileText, HardDrive } from 'lucide-react';
 import { useAuth, normalizeAuthError } from '../context/AuthContext';
-import { VocabularyBar } from '../components/vocabulary/VocabularyBar';
 
 /**
  * Validates and sanitizes the redirect URL to prevent open redirect vulnerabilities.
@@ -242,14 +241,38 @@ export function LoginPage() {
             )}
           </button>
 
-          {/* Public Typing Practice Shortcut (No login required) */}
-          <div className="pt-2">
+          {/* Public Learning Hub Divider & Buttons (No login required) */}
+          <div className="pt-3 border-t border-neutral-800/80 space-y-2">
+            <div className="text-[10px] sm:text-[11px] font-mono text-neutral-400 text-center uppercase tracking-wider">
+              Free Study · No Login Needed
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Link
+                to="/read"
+                className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 border border-neutral-800 hover:border-amber-500/40 text-neutral-200 text-xs font-semibold text-center transition-all cursor-pointer shadow-xs active:scale-95"
+              >
+                <BookOpen className="w-4 h-4 text-amber-400 mb-1" />
+                <span className="text-white">Read & Listen</span>
+                <span className="text-[9px] text-neutral-400">PDF & Multi-Voice</span>
+              </Link>
+
+              <Link
+                to="/practice"
+                className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 border border-neutral-800 hover:border-amber-500/40 text-neutral-200 text-xs font-semibold text-center transition-all cursor-pointer shadow-xs active:scale-95"
+              >
+                <Keyboard className="w-4 h-4 text-amber-400 mb-1" />
+                <span className="text-white">Typing Trainer</span>
+                <span className="text-[9px] text-neutral-400">Ryan UK Audio</span>
+              </Link>
+            </div>
+
+            {/* Google Drive Connect Shortcut */}
             <Link
-              to="/practice"
-              className="w-full h-10 flex items-center justify-center gap-2 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 border border-neutral-800/80 hover:border-amber-500/40 text-neutral-300 hover:text-amber-300 text-xs font-semibold transition-all cursor-pointer"
+              to="/read"
+              className="w-full h-10 flex items-center justify-center gap-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 hover:text-emerald-200 text-xs font-semibold transition-all cursor-pointer shadow-xs active:scale-95"
             >
-              <Keyboard className="w-3.5 h-3.5 text-amber-400" />
-              <span>⚡ Public Typing Practice (No Login Needed)</span>
+              <HardDrive className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Connect & Read from Google Drive</span>
             </Link>
           </div>
         </form>
@@ -260,15 +283,6 @@ export function LoginPage() {
             “I learn by typing.”
           </p>
         </div>
-      </div>
-
-      {/* Public Interactive Vocabulary Section (Zero Login Required) */}
-      <div className="w-full max-w-xl mt-6">
-        <VocabularyBar
-          onPracticeText={(text) => {
-            navigate('/practice', { state: { customText: text } });
-          }}
-        />
       </div>
     </div>
   );

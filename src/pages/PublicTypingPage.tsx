@@ -29,12 +29,16 @@ import {
   Radio,
   Bot,
   Plus,
+  Languages,
+  UploadCloud,
+  FileUp,
 } from 'lucide-react';
 import { typingSoundService } from '../services/typingSoundService';
 import { getTTSUrl, fetchTTSAudioBlobUrl, cleanSpeechText, TTSRate } from '../services/tts';
 import { AIChatDrawer } from '../components/ai/AIChatDrawer';
-import { VocabularyBar } from '../components/vocabulary/VocabularyBar';
-import { findVocabularyByWord } from '../data/publicVocabulary';
+import { findVocabularyByWord, VocabularyEntry } from '../data/publicVocabulary';
+import { PublicVocabularyModal } from '../components/vocabulary/PublicVocabularyModal';
+import { PublicDocumentReader } from '../components/reader/PublicDocumentReader';
 
 export interface TrainingStep {
   id: string;
@@ -184,7 +188,7 @@ export const INITIAL_PUBLIC_PASSAGES: PassageItem[] = [
   },
 ];
 
-export function generateStepsFromText(text: string, title = 'Custom AI Passage'): PassageItem {
+export function generateStepsFromText(text: string, title = 'Custom Document Passage'): PassageItem {
   const clean = text.trim();
   const sentenceMatches = clean.match(/[^.!?]+[.!?]+(\s|$)|[^.!?]+$/g) || [clean];
   const sentences = sentenceMatches.map((s) => s.trim()).filter(Boolean);
@@ -225,8 +229,8 @@ export function generateStepsFromText(text: string, title = 'Custom AI Passage')
   return {
     id: `custom-${Date.now()}`,
     title,
-    subtitle: 'Generated via Groq Llama 3.3 (14.4k/day)',
-    tag: 'AI Generated',
+    subtitle: 'Uploaded Document / File Practice',
+    tag: 'Custom File',
     gender: 'custom',
     fullText: clean,
     progressiveSteps,
@@ -236,11 +240,13 @@ export function generateStepsFromText(text: string, title = 'Custom AI Passage')
 
 type PracticeMode = 'progressive' | 'sentence' | 'full';
 type TimerOption = 0 | 15 | 30 | 60 | 90;
+type MainTab = 'reader' | 'trainer';
 
 const RYAN_VOICE_ID = 'en-GB-RyanNeural';
 
 export function PublicTypingPage() {
   const location = useLocation();
+  const [activeMainTab, setActiveMainTab] = useState<MainTab>('reader');
   const [passages, setPassages] = useState<PassageItem[]>(INITIAL_PUBLIC_PASSAGES);
   const [selectedPassageIndex, setSelectedPassageIndex] = useState<number>(0);
   const [practiceMode, setPracticeMode] = useState<PracticeMode>('progressive');
@@ -251,6 +257,8 @@ export function PublicTypingPage() {
   const [autoplayVoice, setAutoplayVoice] = useState<boolean>(true);
   const [speechRate, setSpeechRate] = useState<TTSRate>('0%');
   const [isAIChatOpen, setIsAIChatOpen] = useState<boolean>(false);
+  const [aiCustomPrompt, setAiCustomPrompt] = useState<string>('');
+  const [selectedVocabEntry, setSelectedVocabEntry] = useState<VocabularyEntry | null>(null);
 
   const [inputVal, setInputVal] = useState<string>('');
   const [startTime, setStartTime] = useState<number | null>(null);
@@ -272,13 +280,19 @@ export function PublicTypingPage() {
   const activeAudioRef = useRef<HTMLAudioElement | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Check router state for custom text passed from AI drawer
+  // Check router state or query param for tab / custom text
   useEffect(() => {
-    const customText = (location.state as { customText?: string })?.customText;
+    const customText = (location.state as { customText?: string; tab?: MainTab })?.customText;
+    const targetTab = (location.state as { tab?: MainTab })?.tab;
+
+    if (targetTab) {
+      setActiveMainTab(targetTab);
+    }
     if (customText && customText.trim()) {
-      const newPassage = generateStepsFromText(customText, 'AI Generated Practice');
+      const newPassage = generateStepsFromText(customText, 'Custom Practice');
       setPassages((prev) => [newPassage, ...prev]);
       setSelectedPassageIndex(0);
+      setActiveMainTab('trainer');
     }
   }, [location.state]);
 
@@ -428,17 +442,17 @@ export function PublicTypingPage() {
   useEffect(() => {
     setCurrentStepIndex(0);
     resetSession();
-  }, [selectedPassageIndex, practiceMode]);
+  }, [selectedPassageIndex, practiceMode, resetSession]);
 
   useEffect(() => {
     resetSession();
-    if (autoplayVoice && targetText) {
+    if (autoplayVoice && targetText && activeMainTab === 'trainer') {
       const timer = setTimeout(() => {
         playRyanAudio(targetText);
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [currentStepIndex, resetSession, autoplayVoice, targetText, playRyanAudio]);
+  }, [currentStepIndex, resetSession, autoplayVoice, targetText, playRyanAudio, activeMainTab]);
 
   useEffect(() => {
     if (startTime && !endTime && !isCompleted && !isTimeUp) {
@@ -448,105 +462,75 @@ export function PublicTypingPage() {
           const remaining = Math.max(0, timerMode - elapsedSec);
           setTimeLeft(remaining);
           if (remaining <= 0) {
-            setEndTime(Date.now());
             setIsTimeUp(true);
+            setEndTime(Date.now());
             if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
           }
         }
-      }, 100);
+      }, 1000);
     }
-
     return () => {
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-        timerIntervalRef.current = null;
-      }
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     };
   }, [startTime, endTime, isCompleted, isTimeUp, timerMode]);
+
+  const goToNextStep = useCallback(() => {
+    if (currentStepIndex < currentStepsList.length - 1) {
+      setCurrentStepIndex((prev) => prev + 1);
+    }
+  }, [currentStepIndex, currentStepsList.length]);
+
+  const goToPrevStep = useCallback(() => {
+    if (currentStepIndex > 0) {
+      setCurrentStepIndex((prev) => prev - 1);
+    }
+  }, [currentStepIndex]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isCompleted || isTimeUp) return;
 
-    const value = e.target.value;
-    const now = Date.now();
+    const val = e.target.value;
 
-    if (!startTime) {
-      setStartTime(now);
-      if (timerMode > 0) {
-        setTimeLeft(timerMode);
-      }
+    if (!startTime && val.length > 0) {
+      setStartTime(Date.now());
     }
 
-    if (soundEnabled && value.length > inputVal.length) {
-      const lastChar = value[value.length - 1];
-      const targetChar = targetText[value.length - 1];
+    if (val.length > inputVal.length) {
+      const charIndex = val.length - 1;
+      const targetChar = targetText[charIndex];
+      const lastChar = val[charIndex];
+
       if (lastChar === targetChar) {
         typingSoundService.playCorrectKey();
       } else {
         typingSoundService.playIncorrectKey();
-      }
-    }
-
-    const currentIndex = value.length - 1;
-    if (currentIndex >= 0 && currentIndex < targetText.length) {
-      if (value[currentIndex] !== targetText[currentIndex]) {
-        if (!mistakeSetRef.current.has(currentIndex)) {
-          mistakeSetRef.current.add(currentIndex);
+        if (!mistakeSetRef.current.has(charIndex)) {
+          mistakeSetRef.current.add(charIndex);
           setMistakesCount((prev) => prev + 1);
         }
       }
     }
 
-    setInputVal(value);
+    setInputVal(val);
 
-    if (value.length >= targetText.length) {
-      setEndTime(now);
+    if (val === targetText) {
+      setEndTime(Date.now());
       setIsCompleted(true);
-      setCompletedStepIds((prev) => new Set([...prev, currentStep.id]));
+      typingSoundService.playCompletion();
 
-      if (soundEnabled) {
-        typingSoundService.playCompletion();
-      }
+      setCompletedStepIds((prev) => {
+        const next = new Set(prev);
+        next.add(currentStep.id);
+        return next;
+      });
 
       if (autoAdvance && currentStepIndex < currentStepsList.length - 1) {
         autoAdvanceTimeoutRef.current = window.setTimeout(() => {
           goToNextStep();
-        }, 900);
+        }, 800);
       }
     }
   };
-
-  const goToNextStep = () => {
-    if (currentStepIndex < currentStepsList.length - 1) {
-      setCurrentStepIndex((prev) => prev + 1);
-    }
-  };
-
-  const goToPrevStep = () => {
-    if (currentStepIndex > 0) {
-      setCurrentStepIndex((prev) => prev - 1);
-    }
-  };
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        resetSession();
-      } else if (e.key === 'Enter' && isCompleted) {
-        if (currentStepIndex < currentStepsList.length - 1) {
-          goToNextStep();
-        } else {
-          setSelectedPassageIndex((prev) => (prev + 1) % passages.length);
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [resetSession, isCompleted, currentStepIndex, currentStepsList.length, passages.length]);
 
   const calculateStats = () => {
     const currentTime = endTime || (startTime ? Date.now() : Date.now());
@@ -587,44 +571,68 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleInsertAIText = (text: string) => {
-    const newPassage = generateStepsFromText(text, 'Custom AI Exercise');
-    setPassages((prev) => [newPassage, ...prev]);
+  const handlePracticeFileText = (text: string, title: string) => {
+    const newPassage = generateStepsFromText(text, title);
+    setPassages((prev) => [newPassage, ...prev.filter((p) => p.id !== newPassage.id)]);
     setSelectedPassageIndex(0);
     setCurrentStepIndex(0);
+    setActiveMainTab('trainer');
+    resetSession();
+  };
+
+  const handleOpenAIChatWithPrompt = (prompt: string) => {
+    setAiCustomPrompt(prompt);
+    setIsAIChatOpen(true);
   };
 
   const completedCount = currentStepsList.filter((s) => completedStepIds.has(s.id)).length;
   const progressPercent = Math.round((completedCount / currentStepsList.length) * 100);
 
+  // Extract interactive vocabulary items present in the current target text
+  const activeStepVocab = React.useMemo(() => {
+    if (!targetText) return [];
+    const words = targetText.split(/\s+/);
+    const set = new Map<string, VocabularyEntry>();
+    for (const w of words) {
+      const match = findVocabularyByWord(w);
+      if (match && !set.has(match.id)) {
+        set.set(match.id, match);
+      }
+    }
+    return Array.from(set.values());
+  }, [targetText]);
+
   return (
     <div className="min-h-screen w-full bg-[#0a0908] text-neutral-100 flex flex-col justify-between selection:bg-amber-500/30 selection:text-amber-200">
       {/* Top Navigation Bar */}
-      <header className="w-full border-b border-neutral-800/80 bg-[#120f0c]/80 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl select-none">⌨️</span>
+      <header className="w-full border-b border-neutral-800/80 bg-[#120f0c]/90 backdrop-blur-md sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-3.5 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <span className="text-xl sm:text-2xl select-none">📖</span>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-base sm:text-lg font-bold text-white tracking-tight">
+                <span className="text-sm sm:text-base font-bold text-white tracking-tight">
                   MY LEARNING
                 </span>
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  Public Audio Trainer
+                <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  Public Hub
                 </span>
               </div>
-              <p className="text-[11px] text-neutral-400 hidden sm:block">
+              <p className="text-[10px] sm:text-[11px] text-neutral-400 hidden sm:block">
                 Powered by <strong className="text-amber-400 font-semibold">Ryan (Neural) UK</strong> & <strong className="text-amber-400 font-semibold">Groq (14.4k/day)</strong>
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2.5">
             {/* AI Assistant Button */}
             <button
-              onClick={() => setIsAIChatOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-xs font-semibold text-amber-300 transition-all cursor-pointer shadow-sm"
-              title="Open AI Messages & Generator (Groq 14.4k/day)"
+              onClick={() => {
+                setAiCustomPrompt('');
+                setIsAIChatOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-xs font-semibold text-amber-300 transition-all cursor-pointer shadow-xs active:scale-95"
+              title="Open AI Messages & Tutor (Groq 14.4k/day)"
             >
               <Zap className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
               <span>AI Tutor</span>
@@ -639,7 +647,7 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
                 if (nextState) typingSoundService.playCorrectKey();
               }}
               title={soundEnabled ? 'Mute typing sounds' : 'Enable typing sounds'}
-              className="p-2 rounded-xl bg-neutral-900 border border-neutral-800 text-neutral-300 hover:text-amber-400 hover:border-amber-500/30 transition-all cursor-pointer"
+              className="p-1.5 sm:p-2 rounded-xl bg-neutral-900 border border-neutral-800 text-neutral-300 hover:text-amber-400 hover:border-amber-500/30 transition-all cursor-pointer"
             >
               {soundEnabled ? <Volume2 className="w-4 h-4 text-amber-400" /> : <VolumeX className="w-4 h-4 text-neutral-500" />}
             </button>
@@ -647,7 +655,7 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
             {/* Login Link */}
             <Link
               to="/login"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-xs font-semibold text-neutral-300 hover:text-white transition-all cursor-pointer"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-xs font-semibold text-neutral-300 hover:text-white transition-all cursor-pointer"
             >
               <Lock className="w-3.5 h-3.5 text-amber-400" />
               <span>Sign In</span>
@@ -656,495 +664,541 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
         </div>
       </header>
 
-      {/* Main Container */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col justify-center gap-5">
-        {/* 1. Passage Selector Tabs (Man vs Woman vs AI Generated) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {passages.map((passage, idx) => {
-            const isSelected = selectedPassageIndex === idx;
-            return (
-              <button
-                key={passage.id}
-                onClick={() => setSelectedPassageIndex(idx)}
-                className={`relative flex items-start gap-3 p-4 rounded-2xl text-left border transition-all cursor-pointer ${
-                  isSelected
-                    ? 'bg-amber-950/20 border-amber-500/60 ring-1 ring-amber-500/30 shadow-lg shadow-amber-500/5'
-                    : 'bg-[#14110e] border-neutral-800/80 hover:border-neutral-700 opacity-75 hover:opacity-100'
-                }`}
-              >
-                <div
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 font-bold ${
-                    isSelected ? 'bg-amber-500/20 text-amber-400' : 'bg-neutral-900 text-neutral-500'
-                  }`}
-                >
-                  {idx + 1}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
-                      {passage.tag}
-                    </span>
-                    {isSelected && (
-                      <span className="flex h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
-                    )}
-                  </div>
-                  <div className="text-sm font-semibold text-neutral-100 truncate mt-0.5">
-                    {passage.title}
-                  </div>
-                  <div className="text-xs text-neutral-400 truncate mt-0.5">
-                    {passage.subtitle}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* 2. Practice Mode & Neural Audio Controls Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-[#14110e] border border-neutral-800/80">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-xs font-semibold text-neutral-400 flex items-center gap-1 mr-1">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>Mode:</span>
-            </span>
+      {/* Primary Tab Navigation Strip (Reader / Trainer) */}
+      <div className="w-full bg-[#120f0c] border-b border-neutral-800/80 sticky top-14 sm:top-16 z-30">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 py-2 flex items-center justify-between gap-2 overflow-x-auto scrollbar-none">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
-              onClick={() => setPracticeMode('progressive')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
-                practiceMode === 'progressive'
-                  ? 'bg-amber-500 text-neutral-950 font-bold shadow-md shadow-amber-500/20'
-                  : 'bg-neutral-900/90 text-neutral-400 hover:text-neutral-200'
-              }`}
-            >
-              <ListOrdered className="w-3.5 h-3.5" />
-              <span>🎯 Step-by-Step (One-by-One)</span>
-            </button>
-
-            <button
-              onClick={() => setPracticeMode('sentence')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
-                practiceMode === 'sentence'
-                  ? 'bg-amber-500 text-neutral-950 font-bold shadow-md shadow-amber-500/20'
-                  : 'bg-neutral-900/90 text-neutral-400 hover:text-neutral-200'
+              onClick={() => setActiveMainTab('reader')}
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeMainTab === 'reader'
+                  ? 'bg-amber-500 text-neutral-950 shadow-xs'
+                  : 'bg-neutral-900/90 text-neutral-400 hover:text-white border border-neutral-800'
               }`}
             >
               <BookOpen className="w-3.5 h-3.5" />
-              <span>Sentence by Sentence</span>
+              <span>📖 Reader & Audio</span>
+              <span className="text-[10px] font-mono opacity-80">(Files & Words)</span>
             </button>
 
             <button
-              onClick={() => setPracticeMode('full')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
-                practiceMode === 'full'
-                  ? 'bg-amber-500 text-neutral-950 font-bold shadow-md shadow-amber-500/20'
-                  : 'bg-neutral-900/90 text-neutral-400 hover:text-neutral-200'
+              onClick={() => setActiveMainTab('trainer')}
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeMainTab === 'trainer'
+                  ? 'bg-amber-500 text-neutral-950 shadow-xs'
+                  : 'bg-neutral-900/90 text-neutral-400 hover:text-white border border-neutral-800'
               }`}
             >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Full Passage</span>
+              <ListOrdered className="w-3.5 h-3.5" />
+              <span>🎯 Typing Trainer</span>
+              <span className="hidden sm:inline">(Ryan UK)</span>
             </button>
           </div>
 
-          {/* Voice & Auto-play options */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-neutral-900 border border-neutral-800 text-[11px] text-amber-400">
-              <Radio className="w-3 h-3 text-amber-400 animate-pulse" />
-              <span className="font-semibold">Ryan (Neural) UK</span>
-            </div>
-
-            <label className="flex items-center gap-1.5 text-xs text-neutral-300 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={autoplayVoice}
-                onChange={(e) => setAutoplayVoice(e.target.checked)}
-                className="w-3.5 h-3.5 rounded bg-neutral-900 border-neutral-700 text-amber-500 focus:ring-0 cursor-pointer"
-              />
-              <span>Auto-read</span>
-            </label>
-
-            {practiceMode !== 'full' && (
-              <label className="flex items-center gap-1.5 text-xs text-neutral-400 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={autoAdvance}
-                  onChange={(e) => setAutoAdvance(e.target.checked)}
-                  className="w-3.5 h-3.5 rounded bg-neutral-900 border-neutral-700 text-amber-500 focus:ring-0 cursor-pointer"
-                />
-                <span>Auto-advance</span>
-              </label>
-            )}
+          <div className="hidden lg:flex items-center gap-2 text-[11px] text-neutral-400 font-mono">
+            <span className="px-2.5 py-1 rounded-lg bg-neutral-900 border border-neutral-800 text-amber-400">
+              🇬🇧 Ryan UK • 🇩🇪 Killian DE • 🇸🇴 Muuse SO
+            </span>
           </div>
         </div>
+      </div>
 
-        {/* 3. Progressive Steps Stepper Strip (When in progressive or sentence mode) */}
-        {practiceMode !== 'full' && (
-          <div className="space-y-2 p-3.5 rounded-2xl bg-[#120f0d] border border-neutral-800">
-            <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2 font-medium text-neutral-300">
-                <span className="text-amber-400 font-bold">
-                  Step {currentStepIndex + 1} of {currentStepsList.length}
-                </span>
-                <span className="text-neutral-500">•</span>
-                <span className="text-neutral-400 truncate">{currentStep.title}</span>
-              </div>
-              <div className="text-neutral-400 font-mono text-[11px]">
-                {completedCount}/{currentStepsList.length} Mastered ({progressPercent}%)
-              </div>
-            </div>
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 flex flex-col justify-start gap-4 sm:gap-6">
+        {/* VIEW 1: Document Reader & File Study Hub */}
+        {activeMainTab === 'reader' && (
+          <div className="space-y-4 sm:space-y-6">
+            <PublicDocumentReader
+              onPracticeFileText={handlePracticeFileText}
+              onOpenAIChatWithPrompt={handleOpenAIChatWithPrompt}
+            />
+          </div>
+        )}
 
-            <div className="w-full h-1.5 bg-neutral-800 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-amber-500 to-emerald-400 transition-all duration-300 rounded-full"
-                style={{ width: `${Math.max(5, progressPercent)}%` }}
-              />
-            </div>
-
-            <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
-              {currentStepsList.map((step, idx) => {
-                const isCurrent = currentStepIndex === idx;
-                const isDone = completedStepIds.has(step.id);
+        {/* VIEW 2: Step-by-Step Progressive Typing Trainer */}
+        {activeMainTab === 'trainer' && (
+          <div className="space-y-4 sm:space-y-5">
+            {/* 1. Passage Selector Tabs (Man vs Woman vs AI Generated / Uploaded) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3">
+              {passages.map((passage, idx) => {
+                const isSelected = selectedPassageIndex === idx;
                 return (
                   <button
-                    key={step.id}
-                    onClick={() => setCurrentStepIndex(idx)}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-mono shrink-0 transition-all flex items-center gap-1 cursor-pointer ${
-                      isCurrent
-                        ? 'bg-amber-500 text-neutral-950 font-bold shadow-sm shadow-amber-500/20'
-                        : isDone
-                        ? 'bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 hover:bg-emerald-900/80'
-                        : 'bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-neutral-200'
+                    key={passage.id}
+                    onClick={() => setSelectedPassageIndex(idx)}
+                    className={`relative flex items-start gap-2.5 sm:gap-3 p-3 sm:p-4 rounded-xl sm:rounded-2xl text-left border transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-amber-950/20 border-amber-500/60 ring-1 ring-amber-500/30 shadow-xs'
+                        : 'bg-[#14110e] border-neutral-800/80 hover:border-neutral-700 opacity-75 hover:opacity-100'
                     }`}
                   >
-                    {isDone && !isCurrent && <Check className="w-3 h-3 text-emerald-400" />}
-                    <span>{idx + 1}</span>
-                    <span className="hidden md:inline max-w-[90px] truncate">{step.title}</span>
+                    <div
+                      className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center text-sm sm:text-base shrink-0 font-bold ${
+                        isSelected ? 'bg-amber-500/20 text-amber-400' : 'bg-neutral-900 text-neutral-500'
+                      }`}
+                    >
+                      {idx + 1}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-400">
+                          {passage.tag}
+                        </span>
+                        {isSelected && (
+                          <span className="flex h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                        )}
+                      </div>
+                      <div className="text-xs sm:text-sm font-semibold text-neutral-100 truncate mt-0.5">
+                        {passage.title}
+                      </div>
+                      <div className="text-[11px] text-neutral-400 truncate">
+                        {passage.subtitle}
+                      </div>
+                    </div>
                   </button>
                 );
               })}
             </div>
-          </div>
-        )}
 
-        {/* 4. Live HUD Metrics & Timer Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="p-3.5 rounded-2xl bg-[#14110e] border border-neutral-800/80 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
-              <Zap className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-xl sm:text-2xl font-black font-mono text-amber-400">
-                {stats.wpm}
-              </div>
-              <div className="text-[10px] uppercase font-bold tracking-wider text-neutral-400">
-                Speed (WPM)
-              </div>
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded-2xl bg-[#14110e] border border-neutral-800/80 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-              <Target className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-xl sm:text-2xl font-black font-mono text-emerald-400">
-                {stats.accuracy}%
-              </div>
-              <div className="text-[10px] uppercase font-bold tracking-wider text-neutral-400">
-                Accuracy
-              </div>
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded-2xl bg-[#14110e] border border-neutral-800/80 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center">
-              <Clock className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-xl sm:text-2xl font-black font-mono text-blue-400">
-                {timerMode > 0 ? `${timeLeft ?? timerMode}s` : `${stats.durationSec}s`}
-              </div>
-              <div className="text-[10px] uppercase font-bold tracking-wider text-neutral-400">
-                {timerMode > 0 ? 'Time Left' : 'Elapsed'}
-              </div>
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded-2xl bg-[#14110e] border border-neutral-800/80 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center">
-              <Gauge className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-xl sm:text-2xl font-black font-mono text-rose-400">
-                {stats.mistakes}
-              </div>
-              <div className="text-[10px] uppercase font-bold tracking-wider text-neutral-400">
-                Mistakes
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 5. Interactive Typing Canvas with Ryan Neural Audio Trigger */}
-        <div
-          onClick={() => inputRef.current?.focus()}
-          className="relative rounded-3xl bg-[#110f0d] border border-neutral-800 p-6 sm:p-8 min-h-[220px] flex flex-col justify-between shadow-2xl cursor-text transition-all focus-within:border-amber-500/50 focus-within:ring-1 focus-within:ring-amber-500/30"
-        >
-          <div className="flex items-center justify-between pb-3 border-b border-neutral-900 mb-4 text-xs text-neutral-400">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-amber-400" />
-              <span className="font-semibold text-neutral-200">{currentStep.title}</span>
-              {currentStep.hint && (
-                <span className="text-neutral-500 italic hidden sm:inline">
-                  — {currentStep.hint}
+            {/* 2. Practice Mode & Neural Audio Controls Bar */}
+            <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-[#14110e] border border-neutral-800/80">
+              <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
+                <span className="text-xs font-semibold text-neutral-400 hidden sm:flex items-center gap-1 mr-1">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Mode:</span>
                 </span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (isAudioPlaying) {
-                    stopAudio();
-                  } else {
-                    playRyanAudio(targetText);
-                  }
-                }}
-                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
-                  isAudioPlaying
-                    ? 'bg-amber-500/20 border-amber-500/60 text-amber-300 ring-1 ring-amber-500/40 animate-pulse'
-                    : isAudioLoading
-                    ? 'bg-neutral-900 border-neutral-800 text-neutral-400'
-                    : 'bg-neutral-900 hover:bg-neutral-800 border-neutral-800 text-neutral-300 hover:text-amber-400'
-                }`}
-                title="Listen with Ryan (Neural) (United Kingdom)"
-              >
-                {isAudioLoading ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
-                    <span>Loading...</span>
-                  </>
-                ) : isAudioPlaying ? (
-                  <>
-                    <Square className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                    <span>Stop Reading</span>
-                  </>
-                ) : (
-                  <>
-                    <Volume2 className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Listen (Ryan UK)</span>
-                  </>
-                )}
-              </button>
-
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  resetSession();
-                }}
-                className="p-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-400 hover:text-white transition-all cursor-pointer"
-                title="Restart this step"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-
-          <div className="text-xl sm:text-3xl leading-relaxed sm:leading-loose font-mono tracking-normal select-none my-auto">
-            {targetText.split('').map((char, index) => {
-              const isTyped = index < inputVal.length;
-              const isCurrent = index === inputVal.length;
-              const isCorrect = isTyped && inputVal[index] === char;
-              const isIncorrect = isTyped && inputVal[index] !== char;
-
-              let charClass = 'text-neutral-500';
-              if (isCorrect) {
-                charClass = 'text-amber-300 font-semibold';
-              } else if (isIncorrect) {
-                charClass = 'text-red-400 bg-red-950/80 underline decoration-red-500';
-              }
-
-              return (
-                <span
-                  key={index}
-                  className={`relative ${charClass} ${
-                    isCurrent ? 'border-b-2 border-amber-400 bg-amber-500/20 text-white animate-pulse' : ''
+                <button
+                  onClick={() => setPracticeMode('progressive')}
+                  className={`px-2.5 py-1.5 rounded-lg sm:rounded-xl text-xs font-medium transition-all flex items-center gap-1 cursor-pointer ${
+                    practiceMode === 'progressive'
+                      ? 'bg-amber-500 text-neutral-950 font-bold shadow-xs'
+                      : 'bg-neutral-900/90 text-neutral-400 hover:text-neutral-200'
                   }`}
                 >
-                  {char}
-                </span>
-              );
-            })}
-          </div>
-
-          <input
-            ref={inputRef}
-            type="text"
-            value={inputVal}
-            onChange={handleInputChange}
-            disabled={isCompleted || isTimeUp}
-            className="absolute opacity-0 inset-0 pointer-events-auto cursor-text w-full h-full"
-            autoFocus
-            autoCapitalize="off"
-            autoCorrect="off"
-            autoComplete="off"
-            spellCheck="false"
-          />
-
-          <div className="mt-6 pt-4 border-t border-neutral-900 flex flex-wrap items-center justify-between gap-3 text-xs text-neutral-500">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Type the highlighted text • Exact spelling & punctuation</span>
-            </div>
-            <div className="flex items-center gap-3 font-mono text-[11px]">
-              <span>[Esc] to Reset</span>
-              <span>•</span>
-              <span>{inputVal.length} / {targetText.length} chars</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 6. Step Navigation Controls & Switch Passage */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            {practiceMode !== 'full' && (
-              <>
-                <button
-                  onClick={goToPrevStep}
-                  disabled={currentStepIndex === 0}
-                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#14110e] border border-neutral-800 text-xs font-semibold text-neutral-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span>Previous Step</span>
+                  <ListOrdered className="w-3.5 h-3.5" />
+                  <span>🎯 One-by-One</span>
                 </button>
 
                 <button
-                  onClick={goToNextStep}
-                  disabled={currentStepIndex >= currentStepsList.length - 1}
-                  className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#14110e] border border-neutral-800 text-xs font-semibold text-neutral-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                  onClick={() => setPracticeMode('sentence')}
+                  className={`px-2.5 py-1.5 rounded-lg sm:rounded-xl text-xs font-medium transition-all flex items-center gap-1 cursor-pointer ${
+                    practiceMode === 'sentence'
+                      ? 'bg-amber-500 text-neutral-950 font-bold shadow-xs'
+                      : 'bg-neutral-900/90 text-neutral-400 hover:text-neutral-200'
+                  }`}
                 >
-                  <span>Next Step</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>Sentences</span>
                 </button>
-              </>
-            )}
-          </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-            <button
-              onClick={() => {
-                setSelectedPassageIndex((prev) => (prev + 1) % passages.length);
-              }}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-bold transition-all cursor-pointer"
-            >
-              <span>
-                Switch to {passages[(selectedPassageIndex + 1) % passages.length]?.title}
-              </span>
-              <FastForward className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+                <button
+                  onClick={() => setPracticeMode('full')}
+                  className={`px-2.5 py-1.5 rounded-lg sm:rounded-xl text-xs font-medium transition-all flex items-center gap-1 cursor-pointer ${
+                    practiceMode === 'full'
+                      ? 'bg-amber-500 text-neutral-950 font-bold shadow-xs'
+                      : 'bg-neutral-900/90 text-neutral-400 hover:text-neutral-200'
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Full</span>
+                </button>
+              </div>
 
-        {/* 6.5 Interactive Vocabulary Bar (Clickable words with Ryan UK, German, Somali Audio) */}
-        <VocabularyBar onPracticeText={handleInsertAIText} />
+              {/* Voice & Auto-play options */}
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-neutral-900 border border-neutral-800 text-[10px] sm:text-[11px] text-amber-400">
+                  <Radio className="w-2.5 h-2.5 text-amber-400 animate-pulse" />
+                  <span className="font-semibold">Ryan UK</span>
+                </div>
 
-        {/* 7. Completion Scorecard Card */}
-        {(isCompleted || isTimeUp) && (
-          <div className="p-6 rounded-3xl bg-[#16120e] border border-amber-500/50 shadow-2xl shadow-amber-500/10 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pb-4 border-b border-neutral-800">
-              <div className="flex items-center gap-3 text-center sm:text-left">
-                <div className="w-12 h-12 rounded-2xl bg-amber-400/20 text-amber-400 flex items-center justify-center text-2xl font-black">
-                  <Trophy className="w-6 h-6 text-amber-400" />
+                <label className="flex items-center gap-1.5 text-xs text-neutral-300 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={autoplayVoice}
+                    onChange={(e) => setAutoplayVoice(e.target.checked)}
+                    className="rounded border-neutral-700 text-amber-500 focus:ring-amber-500 bg-neutral-900"
+                  />
+                  <span className="text-[11px]">Auto-read</span>
+                </label>
+
+                <label className="flex items-center gap-1.5 text-xs text-neutral-300 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={autoAdvance}
+                    onChange={(e) => setAutoAdvance(e.target.checked)}
+                    className="rounded border-neutral-700 text-amber-500 focus:ring-amber-500 bg-neutral-900"
+                  />
+                  <span className="text-[11px]">Auto-advance</span>
+                </label>
+              </div>
+            </div>
+
+            {/* 3. Step Progression Stepper Strip (One-by-One visual track) */}
+            <div className="p-4 rounded-2xl bg-[#14110e] border border-neutral-800/80 space-y-3">
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-white">
+                    Step {currentStepIndex + 1} of {currentStepsList.length}:
+                  </span>
+                  <span className="text-amber-400 font-semibold">{currentStep.title}</span>
+                  {currentStep.hint && (
+                    <span className="text-neutral-400 hidden sm:inline">({currentStep.hint})</span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[11px] text-neutral-400">
+                    Progress: {progressPercent}%
+                  </span>
+                  <div className="w-20 h-1.5 rounded-full bg-neutral-800 overflow-hidden">
+                    <div
+                      className="h-full bg-amber-500 transition-all duration-300"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Numbered Step Badges Strip */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                {currentStepsList.map((step, idx) => {
+                  const isCurrent = currentStepIndex === idx;
+                  const isDone = completedStepIds.has(step.id);
+                  return (
+                    <button
+                      key={step.id}
+                      onClick={() => setCurrentStepIndex(idx)}
+                      className={`group shrink-0 h-8 px-2.5 rounded-xl font-mono text-xs flex items-center gap-1.5 border transition-all cursor-pointer ${
+                        isCurrent
+                          ? 'bg-amber-500 border-amber-400 text-neutral-950 font-bold shadow-md shadow-amber-500/20'
+                          : isDone
+                          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 font-medium'
+                          : 'bg-neutral-900/90 border-neutral-800 text-neutral-400 hover:border-neutral-700 hover:text-neutral-200'
+                      }`}
+                      title={`${step.title}: "${step.chunk}"`}
+                    >
+                      {isDone ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      ) : (
+                        <span>{idx + 1}</span>
+                      )}
+                      <span className="truncate max-w-[90px] sm:max-w-[120px] text-[11px]">
+                        {step.chunk}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 4. Real-time Live HUD Metrics */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+              <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#14110e] border border-neutral-800 flex items-center gap-2.5 sm:gap-3">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
+                  <Gauge className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white">
-                    {isCompleted ? '🎉 Step Mastered!' : '⏱️ Time’s Up!'}
-                  </h3>
-                  <p className="text-xs text-neutral-400">
-                    {currentStep.title} — {stats.wpm} WPM • {stats.accuracy}% Accuracy
-                  </p>
+                  <div className="text-[9px] sm:text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                    Speed (WPM)
+                  </div>
+                  <div className="text-lg sm:text-xl font-black font-mono text-white">{stats.wpm}</div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleShareResults}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-xs font-semibold text-neutral-200 transition-all cursor-pointer"
-                >
-                  {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4 text-neutral-400" />}
-                  <span>{copied ? 'Copied!' : 'Copy Stats'}</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 my-6">
-              <div className="p-3.5 rounded-2xl bg-[#0e0c0a] border border-neutral-800 text-center">
-                <div className="text-2xl sm:text-3xl font-black font-mono text-amber-400">
-                  {stats.wpm}
+              <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#14110e] border border-neutral-800 flex items-center gap-2.5 sm:gap-3">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
+                  <Target className="w-4 h-4" />
                 </div>
-                <div className="text-[11px] font-bold text-neutral-400 uppercase mt-1">
-                  Speed (WPM)
+                <div>
+                  <div className="text-[9px] sm:text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                    Accuracy
+                  </div>
+                  <div className="text-lg sm:text-xl font-black font-mono text-emerald-400">
+                    {stats.accuracy}%
+                  </div>
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-[#0e0c0a] border border-neutral-800 text-center">
-                <div className="text-2xl sm:text-3xl font-black font-mono text-emerald-400">
-                  {stats.accuracy}%
+              <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#14110e] border border-neutral-800 flex items-center gap-2.5 sm:gap-3">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0">
+                  <Clock className="w-4 h-4" />
                 </div>
-                <div className="text-[11px] font-bold text-neutral-400 uppercase mt-1">
-                  Accuracy
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-2xl bg-[#0e0c0a] border border-neutral-800 text-center">
-                <div className="text-2xl sm:text-3xl font-black font-mono text-blue-400">
-                  {stats.durationSec}s
-                </div>
-                <div className="text-[11px] font-bold text-neutral-400 uppercase mt-1">
-                  Duration
+                <div>
+                  <div className="text-[9px] sm:text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                    Time
+                  </div>
+                  <div className="text-lg sm:text-xl font-black font-mono text-blue-400">
+                    {timeLeft !== null ? `${timeLeft}s` : `${stats.durationSec}s`}
+                  </div>
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-[#0e0c0a] border border-neutral-800 text-center">
-                <div className="text-2xl sm:text-3xl font-black font-mono text-rose-400">
-                  {stats.mistakes}
+              <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#14110e] border border-neutral-800 flex items-center gap-2.5 sm:gap-3">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center shrink-0">
+                  <Flame className="w-4 h-4" />
                 </div>
-                <div className="text-[11px] font-bold text-neutral-400 uppercase mt-1">
-                  Mistakes
+                <div>
+                  <div className="text-[9px] sm:text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                    Mistakes
+                  </div>
+                  <div className="text-lg sm:text-xl font-black font-mono text-rose-400">
+                    {stats.mistakes}
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-              <button
-                onClick={resetSession}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
-              >
-                <RotateCcw className="w-4 h-4" />
-                <span>Repeat Step</span>
-              </button>
-
-              {currentStepIndex < currentStepsList.length - 1 ? (
-                <button
-                  onClick={goToNextStep}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
-                >
-                  <span>Next Step: {currentStepsList[currentStepIndex + 1]?.title}</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    setSelectedPassageIndex((prev) => (prev + 1) % passages.length);
-                  }}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-emerald-500/20 cursor-pointer"
-                >
-                  <span>
-                    🎉 Mastered! Go to Next Passage
+            {/* 5. Main Active Typing Engine Box */}
+            <div
+              onClick={() => inputRef.current?.focus()}
+              className="relative p-4 sm:p-7 rounded-2xl sm:rounded-3xl bg-[#14110e] border border-neutral-800 hover:border-amber-500/40 transition-all shadow-lg space-y-4 sm:space-y-6 cursor-text"
+            >
+              {/* Header inside typing box with Listen Audio button */}
+              <div className="flex items-center justify-between gap-2 border-b border-neutral-800/80 pb-2.5">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-amber-400 font-mono shrink-0">
+                    Target:
                   </span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
+                  <span className="text-xs text-neutral-300 font-medium truncate">
+                    {currentStep.title}
+                  </span>
+                </div>
+
+                {/* Audio Listen Ryan UK Button */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (isAudioPlaying) {
+                        stopAudio();
+                      } else {
+                        playRyanAudio(targetText);
+                      }
+                    }}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl text-xs font-semibold transition-all cursor-pointer shadow-xs ${
+                      isAudioPlaying
+                        ? 'bg-rose-500 text-white animate-pulse'
+                        : 'bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300'
+                    }`}
+                  >
+                    {isAudioLoading ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : isAudioPlaying ? (
+                      <Square className="w-3.5 h-3.5 fill-current" />
+                    ) : (
+                      <Volume2 className="w-3.5 h-3.5" />
+                    )}
+                    <span>{isAudioPlaying ? 'Stop' : 'Listen (Ryan UK)'}</span>
+                  </button>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      resetSession();
+                    }}
+                    className="p-1 rounded-lg bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-white"
+                    title="Reset chunk"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Character by character rendering */}
+              <div className="text-base sm:text-2xl font-mono leading-relaxed select-none tracking-normal min-h-[50px] sm:min-h-[70px]">
+                {targetText.split('').map((char, index) => {
+                  let statusColor = 'text-neutral-500';
+                  let bgHighlight = '';
+
+                  if (index < inputVal.length) {
+                    if (inputVal[index] === char) {
+                      statusColor = 'text-emerald-400 font-bold';
+                    } else {
+                      statusColor = 'text-rose-400 font-black bg-rose-950/50 rounded-xs';
+                    }
+                  } else if (index === inputVal.length) {
+                    bgHighlight = 'bg-amber-500/20 border-b-2 border-amber-400 animate-pulse text-amber-200';
+                  }
+
+                  return (
+                    <span
+                      key={index}
+                      className={`relative inline-block transition-colors duration-75 ${statusColor} ${bgHighlight}`}
+                    >
+                      {char === ' ' ? '\u00A0' : char}
+                    </span>
+                  );
+                })}
+              </div>
+
+              {/* Hidden text input for hardware keyboard input capture */}
+              <input
+                ref={inputRef}
+                type="text"
+                value={inputVal}
+                onChange={handleInputChange}
+                className="opacity-0 absolute inset-0 w-full h-full cursor-default"
+                autoFocus
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
+              />
+
+              {/* Active Step Interactive Yellow Vocabulary Chips */}
+              {activeStepVocab.length > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-neutral-800/60">
+                  <span className="text-[11px] font-mono text-neutral-400">
+                    Interactive Words (Tap for 3-Language Audio Card):
+                  </span>
+                  {activeStepVocab.map((vocab) => (
+                    <button
+                      key={vocab.id}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedVocabEntry(vocab);
+                      }}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-400/20 hover:bg-amber-400/35 border border-amber-400/50 text-amber-300 hover:text-amber-200 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-xs"
+                      title={`"${vocab.word}" • German: ${vocab.germanWord} • Somali: ${vocab.somaliWord}`}
+                    >
+                      <span>{vocab.word}</span>
+                      <Volume2 className="w-3 h-3 text-amber-400" />
+                    </button>
+                  ))}
+                </div>
               )}
+
+              {/* Bottom Step Navigation Buttons */}
+              <div className="flex items-center justify-between pt-3 border-t border-neutral-800/80">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    goToPrevStep();
+                  }}
+                  disabled={currentStepIndex === 0}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 disabled:opacity-40 disabled:pointer-events-none text-xs text-neutral-300 font-medium transition-colors cursor-pointer"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Prev</span>
+                </button>
+
+                <div className="text-[10px] sm:text-[11px] text-neutral-400 hidden sm:block">
+                  Press <kbd className="px-1 py-0.5 rounded bg-neutral-900 border border-neutral-800 text-neutral-300 font-mono">Esc</kbd> to restart
+                </div>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    goToNextStep();
+                  }}
+                  disabled={currentStepIndex === currentStepsList.length - 1}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 disabled:opacity-40 disabled:pointer-events-none text-xs text-neutral-300 font-medium transition-colors cursor-pointer"
+                >
+                  <span>Next</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
+
+            {/* 7. Completion Scorecard Card */}
+            {(isCompleted || isTimeUp) && (
+              <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-[#16120e] border border-amber-500/50 shadow-xl shadow-amber-500/10 animate-in fade-in zoom-in-95 duration-200">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pb-3 border-b border-neutral-800">
+                  <div className="flex items-center gap-2.5 text-center sm:text-left">
+                    <div className="w-10 h-10 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center text-xl font-black shrink-0">
+                      <Trophy className="w-5 h-5 text-amber-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-white">
+                        {isCompleted ? '🎉 Step Mastered!' : '⏱️ Time’s Up!'}
+                      </h3>
+                      <p className="text-xs text-neutral-400">
+                        {currentStep.title} — {stats.wpm} WPM • {stats.accuracy}% Accuracy
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleShareResults}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-xs font-semibold text-neutral-200 transition-all cursor-pointer"
+                    >
+                      {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5 text-neutral-400" />}
+                      <span>{copied ? 'Copied!' : 'Copy Stats'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 my-4 sm:my-6">
+                  <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#0e0c0a] border border-neutral-800 text-center">
+                    <div className="text-xl sm:text-2xl font-black font-mono text-amber-400">
+                      {stats.wpm}
+                    </div>
+                    <div className="text-[10px] font-bold text-neutral-400 uppercase mt-0.5">
+                      Speed (WPM)
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#0e0c0a] border border-neutral-800 text-center">
+                    <div className="text-xl sm:text-2xl font-black font-mono text-emerald-400">
+                      {stats.accuracy}%
+                    </div>
+                    <div className="text-[10px] font-bold text-neutral-400 uppercase mt-0.5">
+                      Accuracy
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#0e0c0a] border border-neutral-800 text-center">
+                    <div className="text-xl sm:text-2xl font-black font-mono text-blue-400">
+                      {stats.durationSec}s
+                    </div>
+                    <div className="text-[10px] font-bold text-neutral-400 uppercase mt-0.5">
+                      Duration
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#0e0c0a] border border-neutral-800 text-center">
+                    <div className="text-xl sm:text-2xl font-black font-mono text-rose-400">
+                      {stats.mistakes}
+                    </div>
+                    <div className="text-[10px] font-bold text-neutral-400 uppercase mt-0.5">
+                      Mistakes
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-1">
+                  <button
+                    onClick={resetSession}
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Repeat Step</span>
+                  </button>
+
+                  {currentStepIndex < currentStepsList.length - 1 ? (
+                    <button
+                      onClick={goToNextStep}
+                      className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-bold uppercase tracking-wider transition-all shadow-md shadow-amber-500/20 cursor-pointer"
+                    >
+                      <span>Next: {currentStepsList[currentStepIndex + 1]?.title}</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setSelectedPassageIndex((prev) => (prev + 1) % passages.length);
+                      }}
+                      className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 text-xs font-bold uppercase tracking-wider transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
+                    >
+                      <span>🎉 Mastered! Next Passage</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>
@@ -1153,12 +1207,20 @@ Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationS
       <AIChatDrawer
         isOpen={isAIChatOpen}
         onClose={() => setIsAIChatOpen(false)}
-        onSelectTypingText={handleInsertAIText}
+        onSelectTypingText={(txt) => handlePracticeFileText(txt, 'AI Generated Practice')}
+        initialPrompt={aiCustomPrompt}
+      />
+
+      {/* Tri-Lingual Interactive Vocabulary Modal */}
+      <PublicVocabularyModal
+        entry={selectedVocabEntry}
+        onClose={() => setSelectedVocabEntry(null)}
+        onPracticeText={(txt) => handlePracticeFileText(txt, 'Vocabulary Practice')}
       />
 
       {/* Footer */}
       <footer className="w-full border-t border-neutral-900 bg-[#0c0a09] py-4 text-center text-xs text-neutral-500">
-        <p className="font-mono">“I learn by typing.”</p>
+        <p className="font-mono">“I learn by reading and typing.”</p>
       </footer>
     </div>
   );

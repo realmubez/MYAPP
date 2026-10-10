@@ -7,6 +7,7 @@ import {
   FolderKanban,
   Sparkles,
   BarChart2,
+  GraduationCap,
   User,
   Settings,
   Shield,
@@ -55,6 +56,13 @@ export function Sidebar({
         '/python',
         '/typing',
       ],
+    },
+    {
+      id: 'sidebar-nav-exam-prepare',
+      label: 'Exam Prepare',
+      path: '/exam-prepare',
+      icon: GraduationCap,
+      matchPrefix: ['/exam-prepare', '/exam-prep', '/exam'],
     },
     {
       id: 'sidebar-nav-library',

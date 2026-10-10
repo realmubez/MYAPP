@@ -26,8 +26,10 @@ export function Layout() {
     });
   };
 
-  // If route is /lesson/:id, /focus/*, or /typing/day*, bypass all nav wrappers for pure focus mode
+  // If route is /mathematics, /lesson/:id, /focus/*, or /typing/day*, bypass all nav wrappers for pure single-page mode
   const isFocusLesson =
+    location.pathname === '/mathematics' ||
+    location.pathname.startsWith('/math') ||
     location.pathname.startsWith('/lesson') ||
     location.pathname.startsWith('/focus') ||
     location.pathname.startsWith('/exercise') ||
@@ -46,6 +48,7 @@ export function Layout() {
     const p = location.pathname;
     if (p === '/' || p === '/home') return 'Home';
     if (p === '/learn') return 'Learn Hub';
+    if (p.startsWith('/exam')) return 'Exam Prepare';
     if (p === '/library') return 'Library';
     if (p === '/notes') return 'Notes';
     if (p === '/projects') return 'Projects';
