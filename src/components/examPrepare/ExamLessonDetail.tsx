@@ -22,6 +22,7 @@ import { useEdgeTTS } from '../../hooks/useEdgeTTS';
 import { examProgressService } from '../../services/examProgressService';
 import { InteractiveReadingPassage } from './InteractiveReadingPassage';
 import { VisualGrammarNotes } from './VisualGrammarNotes';
+import { InteractiveDialogueLesson } from './InteractiveDialogueLesson';
 import { isAnswerAcceptable } from '../../utils/grammarValidation';
 
 interface ExamLessonDetailProps {
@@ -164,6 +165,8 @@ export const ExamLessonDetail: React.FC<ExamLessonDetailProps> = ({
           {lesson.description}
         </p>
       </header>
+
+      {lesson.id === 'lesson-17' && <InteractiveDialogueLesson />}
 
       {/* 1. Clear Grammar / Topic Explanation */}
       <section className="bg-[#15120f] border border-neutral-800 rounded-3xl p-5 sm:p-6 space-y-4">

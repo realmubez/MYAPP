@@ -1931,4 +1931,159 @@ export const EXAM_LESSONS: ExamLesson[] = [
       },
     ],
   },
+
+  // ==========================================
+  // LESSON 17: Writing a Dialogue: Introductions (Anna, Sam & Muhammed)
+  // ==========================================
+  {
+    id: 'lesson-17',
+    number: 17,
+    title: 'Writing a Dialogue: Introductions',
+    unit: 'Unit 1A & 2D',
+    category: 'Writing & Speaking',
+    estimatedMinutes: 25,
+    description: 'Learn how to write an English dialogue step by step, featuring Anna, Sam, and Muhammed from the worksheet.',
+    explanation:
+      'Macnaha Af-Soomaaliga:\nImtixaanka dhexdiisa, waxaa laga yaabaa inaberri lagu weydiiyo inaad qorto wadahadal (dialogue) u dhaxeeya laba ama saddex qof. Casharkan waxaan ku baraneynaa sida loo qoro wadahadal nadiif ah, sida loo is-baro, sida loo weydiiyo da\'da, shaqada, wadanka, iyo sida loo soo bandhigo qof saddexaad (tusaale ahaan Sam oo Muuse u keenaya Anna).\n\nStructure of an English Dialogue:\n1. Magaca qofka oo xiga laba-dhibcood (colon): "Anna: Hello!"\n2. Salaanta iyo magaca: "Hello, my name is Anna. What is your name?"\n3. Su\'aalaha muhiimka ah: Where do you live? What is your job? What is your favourite colour?\n4. Soo bandhigida qof saddexaad (Introducing a third person): "Anna, this is Muhammed. Muhammed, this is Anna."\n5. Jawaabaha edebta leh: "Pleased to meet you, Muhammed." — "Nice to meet you, too."',
+    rules: [
+      { rule: 'Write speaker name followed by colon and direct speech.', example: 'Sam: Anna, this is Muhammed.' },
+      { rule: 'Use capital letters for names, countries, and start of sentences.', example: 'Anna is from London.' },
+      { rule: 'Match question auxiliary verbs (Where do you live? / What is your job?).', example: 'What is your favourite colour? — Blue.' },
+    ],
+    examples: [
+      { id: 'ex-17-1', english: 'Sam: Anna, this is Muhammed. — Anna: Pleased to meet you, Muhammed.', german: 'Sam: Anna, das ist Muhammed. — Anna: Freut mich, Muhammed.' },
+      { id: 'ex-17-2', english: 'Anna: Where do you live, Muhammed? — Muhammed: I live in Berlin.', german: 'Anna: Wo wohnst du, Muhammed? — Muhammed: Ich wohne in Berlin.' },
+    ],
+    keyVocabularyIds: ['v-meet', 'v-hello', 'v-friend'],
+    practiceQuestions: [
+      {
+        id: 'q-17-1',
+        type: 'multiple-choice',
+        prompt: 'How do you introduce a third person in English?',
+        options: [
+          'Anna, this is Muhammed.',
+          'This is speak Muhammed.',
+          'Muhammed is meet Anna.',
+          'Hello Muhammed is Anna.',
+        ],
+        expectedAnswer: 'Anna, this is Muhammed.',
+        explanation: 'We use "This is [Name]" to introduce someone.',
+      },
+      {
+        id: 'q-17-2',
+        type: 'fill-blank',
+        prompt: 'When someone says "Pleased to meet you", what is the best reply? "Nice to meet you, _______."',
+        expectedAnswer: 'too',
+        alternateAnswers: ['too!'],
+        explanation: 'Standard polite reply is "Nice to meet you, too."',
+      },
+      {
+        id: 'q-17-3',
+        type: 'multiple-choice',
+        prompt: 'Which punctuation mark comes immediately after the speaker name in a written dialogue?',
+        options: ['Colon (:)', 'Comma (,)', 'Full stop (.)', 'Question mark (?)'],
+        expectedAnswer: 'Colon (:)',
+        explanation: 'We write: "Sam: Hello Anna."',
+      },
+      {
+        id: 'q-17-4',
+        type: 'fill-blank',
+        prompt: 'Complete the question about residence: "Where _______ you live?"',
+        expectedAnswer: 'do',
+        explanation: 'Present Simple question with "you" uses auxiliary "do": "Where do you live?"',
+      },
+      {
+        id: 'q-17-5',
+        type: 'multiple-choice',
+        prompt: 'Which question asks about someone\'s job?',
+        options: ['What is your job?', 'Where is your job?', 'Who is your job?', 'How is your job?'],
+        expectedAnswer: 'What is your job?',
+        explanation: 'We ask "What is your job?" or "What do you do?".',
+      },
+      {
+        id: 'q-17-6',
+        type: 'word-order',
+        prompt: 'Put words in order for an introduction: "is / Anna / this / Muhammed / ,"',
+        expectedAnswer: 'Anna, this is Muhammed.',
+        alternateAnswers: ['Anna this is Muhammed', 'Anna, this is Muhammed'],
+        words: ['Anna', ',', 'this', 'is', 'Muhammed', '.'],
+        explanation: 'Anna, this is Muhammed.',
+      },
+    ],
+  },
+
+  // ==========================================
+  // LESSON 18: Describing a Person's Appearance & Profile
+  // ==========================================
+  {
+    id: 'lesson-18',
+    number: 18,
+    title: 'Describing a Person\'s Appearance & Profile',
+    unit: 'Unit 1A & 2D',
+    category: 'Writing & Speaking',
+    estimatedMinutes: 20,
+    description: 'Learn how to write a short paragraph describing a person (age, height, hair, eyes, clothes).',
+    explanation:
+      'Macnaha Af-Soomaaliga:\nImtixaanka dhexdiisa, waxaa laga yaabaa in lagu weydiiyo inaad qorto qoraal gaaban oo tilmaamaya qof (Describing a person). Waa inaad ogaataa labada fal (verbs) ee ugu muhiimsan:\n\n1. TO BE (am, is, are) waxaa loo isticmaalaa Da\'da (Age) iyo Dhererka/Dhismaha (Height & Build):\n• "He is 30 years old."\n• "She is tall and slim."\n\n2. HAVE / HAS waxaa loo isticmaalaa Timaha (Hair), Indhaha (Eyes), iyo Sifooyinka wejiga (Beard, glasses):\n• "He has short dark hair."\n• "She has blue eyes."\n• "He has a beard and wears glasses."',
+    rules: [
+      { rule: 'Use BE for age and build: is 25, is tall.', example: 'She is young and slim.' },
+      { rule: 'Use HAVE for hair and eyes: has brown hair, has green eyes.', example: 'He has short blonde hair and blue eyes.' },
+      { rule: 'Use wear for clothes and glasses: wears glasses, wears a black jacket.', example: 'She wears a red jacket.' },
+    ],
+    examples: [
+      { id: 'ex-18-1', english: 'Mark is 35 years old. He is tall and has short dark hair and brown eyes.', german: 'Mark ist 35 Jahre alt. Er ist groß und hat kurze dunkle Haare und braune Augen.' },
+      { id: 'ex-18-2', english: 'Sara is slim with long blonde hair. She wears glasses.', german: 'Sara ist schlank mit langen blonden Haaren. Sie trägt eine Brille.' },
+    ],
+    keyVocabularyIds: ['v-tall', 'v-slim', 'v-beard', 'v-glasses'],
+    practiceQuestions: [
+      {
+        id: 'q-18-1',
+        type: 'multiple-choice',
+        prompt: 'Which verb is correct for age and height: "He _______ 28 years old and tall."',
+        options: ['is', 'has', 'have', 'does'],
+        expectedAnswer: 'is',
+        explanation: 'Age and height use the verb TO BE: "He is 28 years old."',
+      },
+      {
+        id: 'q-18-2',
+        type: 'fill-blank',
+        prompt: 'Complete the sentence for hair: "She _______ long brown hair."',
+        expectedAnswer: 'has',
+        explanation: 'Hair and eyes use HAVE/HAS: "She has long brown hair."',
+      },
+      {
+        id: 'q-18-3',
+        type: 'multiple-choice',
+        prompt: 'Which sentence correctly describes a beard?',
+        options: ['He has a beard.', 'He is a beard.', 'He does a beard.', 'He wears a beard.'],
+        expectedAnswer: 'He has a beard.',
+        explanation: 'We say "He has a beard" (or "He wears a beard", but "has a beard" is standard).',
+      },
+      {
+        id: 'q-18-4',
+        type: 'fill-blank',
+        prompt: 'Translate into English: "Sie ist klein und schlank." ➔ She _______ short and slim.',
+        expectedAnswer: 'is',
+        explanation: 'Height and build use "is": "She is short and slim."',
+      },
+      {
+        id: 'q-18-5',
+        type: 'multiple-choice',
+        prompt: 'What verb is used with glasses?',
+        options: ['wears (or has)', 'is', 'does', 'goes'],
+        expectedAnswer: 'wears (or has)',
+        explanation: 'We say "He wears glasses" or "He has glasses".',
+      },
+      {
+        id: 'q-18-6',
+        type: 'word-order',
+        prompt: 'Put words in order: "has / short / dark / hair / He"',
+        expectedAnswer: 'He has short dark hair.',
+        alternateAnswers: ['He has short dark hair'],
+        words: ['He', 'has', 'short', 'dark', 'hair', '.'],
+        explanation: 'He has short dark hair.',
+      },
+    ],
+  },
 ];
+
