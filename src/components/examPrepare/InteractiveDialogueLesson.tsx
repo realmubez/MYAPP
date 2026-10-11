@@ -83,6 +83,12 @@ const AI_CONVERSATION_STEPS = [
   { step: 11, prompt: "Goodbye! See you later.", expected: "Goodbye / Bye / See you", somaliHint: "Dheh nabadgelyo (tusaale: Goodbye! See you)." },
 ];
 
+const CHARACTER_VOICES: Record<'Anna' | 'Sam' | 'Muhammed', string> = {
+  Anna: 'en-US-JennyNeural',   // Female US Voice (Voice 1)
+  Sam: 'en-US-GuyNeural',      // Male US Voice (Voice 2)
+  Muhammed: 'en-GB-RyanNeural', // Male British Voice (Voice 3)
+};
+
 export const InteractiveDialogueLesson: React.FC = () => {
   const { play, stop, isSpeaking, activeSpeechId } = useEdgeTTS('en');
   const [activeStage, setActiveStage] = useState<'A' | 'B' | 'C' | 'D' | 'E'>('A');
@@ -114,7 +120,7 @@ export const InteractiveDialogueLesson: React.FC = () => {
   const [essaySubmitted, setEssaySubmitted] = useState<boolean>(false);
   const [essayFeedback, setEssayFeedback] = useState<string>('');
 
-  // Handle Play Full Dialogue sequential playback
+  // Handle Play Full Dialogue sequential playback with distinct speaker voices
   useEffect(() => {
     if (!playingFull) {
       if (fullPlayTimerRef.current) window.clearTimeout(fullPlayTimerRef.current);
@@ -123,7 +129,7 @@ export const InteractiveDialogueLesson: React.FC = () => {
 
     if (currentLineIndex >= 0 && currentLineIndex < DIALOGUE_LINES.length) {
       const line = DIALOGUE_LINES[currentLineIndex];
-      play(`dialogue-full-${line.id}`, line.english);
+      play(`dialogue-full-${line.id}`, line.english, { voice: CHARACTER_VOICES[line.speaker] });
       
       const delay = Math.max(3000, line.english.length * 90);
       fullPlayTimerRef.current = window.setTimeout(() => {
@@ -379,7 +385,7 @@ export const InteractiveDialogueLesson: React.FC = () => {
                       {/* Individual Audio Button */}
                       <button
                         type="button"
-                        onClick={() => play(`dialogue-line-${item.id}`, item.english)}
+                        onClick={() => play(`dialogue-line-${item.id}`, item.english, { voice: CHARACTER_VOICES[item.speaker] })}
                         className={`min-h-[36px] px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer shrink-0 ${
                           isAudioActive && isSpeaking
                             ? 'bg-amber-500 text-neutral-950 font-bold border-amber-400'
