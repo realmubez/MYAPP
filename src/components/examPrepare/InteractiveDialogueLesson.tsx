@@ -16,9 +16,11 @@ import {
   Send,
   User,
   Bot,
+  Globe,
 } from 'lucide-react';
 import { useEdgeTTS } from '../../hooks/useEdgeTTS';
 import { isAnswerAcceptable } from '../../utils/grammarValidation';
+import { getTTSUrl, fetchTTSAudioBlobUrl, cleanSpeechText } from '../../services/tts';
 
 interface DialogueLine {
   id: string;
@@ -93,10 +95,20 @@ export const InteractiveDialogueLesson: React.FC = () => {
   const { play, stop, isSpeaking, activeSpeechId } = useEdgeTTS('en');
   const [activeStage, setActiveStage] = useState<'A' | 'B' | 'C' | 'D' | 'E'>('A');
 
-  // Stage A state
-  const [playingFull, setPlayingFull] = useState<boolean>(false);
+  // Somali voice selection state (Muuse vs Ubax)
+  const [somaliVoice, setSomaliVoice] = useState<string>(() => {
+    try {
+      return localStorage.getItem('my-exam-somali-voice') || 'so-SO-MuuseNeural';
+    } catch {
+      return 'so-SO-MuuseNeural';
+    }
+  });
+
+  // Stage A playback state
+  const [playingMode, setPlayingMode] = useState<'none' | 'english' | 'bilingual'>('none');
   const [currentLineIndex, setCurrentLineIndex] = useState<number>(-1);
-  const fullPlayTimerRef = useRef<number | null>(null);
+  const [isTranslating, setIsTranslating] = useState<boolean>(false);
+  const playbackAbortRef = useRef<AbortController | null>(null);
 
   // Stage B state (Practice Dialogue line matching)
   const [bIndex, setBIndex] = useState<number>(0);
@@ -120,42 +132,103 @@ export const InteractiveDialogueLesson: React.FC = () => {
   const [essaySubmitted, setEssaySubmitted] = useState<boolean>(false);
   const [essayFeedback, setEssayFeedback] = useState<string>('');
 
-  // Handle Play Full Dialogue sequential playback with distinct speaker voices
-  useEffect(() => {
-    if (!playingFull) {
-      if (fullPlayTimerRef.current) window.clearTimeout(fullPlayTimerRef.current);
-      return;
+  // Helper to play an audio URL and wait until it finishes (onended)
+  const playAndWait = async (text: string, voice: string, signal: AbortSignal): Promise<void> => {
+    const cleaned = cleanSpeechText(text);
+    if (!cleaned) return;
+    const url = getTTSUrl({ text: cleaned, voice });
+    let blobUrl = url;
+    try {
+      blobUrl = await fetchTTSAudioBlobUrl(url, signal);
+    } catch {
+      // Fallback to direct url
     }
+    if (signal.aborted) return;
 
-    if (currentLineIndex >= 0 && currentLineIndex < DIALOGUE_LINES.length) {
-      const line = DIALOGUE_LINES[currentLineIndex];
-      play(`dialogue-full-${line.id}`, line.english, { voice: CHARACTER_VOICES[line.speaker] });
-      
-      const delay = Math.max(3000, line.english.length * 90);
-      fullPlayTimerRef.current = window.setTimeout(() => {
-        if (currentLineIndex < DIALOGUE_LINES.length - 1) {
-          setCurrentLineIndex(prev => prev + 1);
-        } else {
-          setPlayingFull(false);
-          setCurrentLineIndex(-1);
-        }
-      }, delay);
-    }
-
-    return () => {
-      if (fullPlayTimerRef.current) window.clearTimeout(fullPlayTimerRef.current);
-    };
-  }, [playingFull, currentLineIndex]);
-
-  const startFullDialogue = () => {
-    setCurrentLineIndex(0);
-    setPlayingFull(true);
+    return new Promise((resolve) => {
+      const audio = new Audio(blobUrl);
+      audio.onended = () => resolve();
+      audio.onerror = () => resolve(); // Prevent freezing queue on audio error
+      signal.addEventListener('abort', () => {
+        audio.pause();
+        resolve();
+      }, { once: true });
+      audio.play().catch(() => resolve());
+    });
   };
 
-  const stopFullDialogue = () => {
-    setPlayingFull(false);
+  const stopFullPlayback = () => {
+    if (playbackAbortRef.current) {
+      playbackAbortRef.current.abort();
+      playbackAbortRef.current = null;
+    }
+    setPlayingMode('none');
     setCurrentLineIndex(-1);
+    setIsTranslating(false);
     stop();
+  };
+
+  const startEnglishFullDialogue = async () => {
+    stopFullPlayback();
+    const controller = new AbortController();
+    playbackAbortRef.current = controller;
+    setPlayingMode('english');
+    setIsTranslating(false);
+
+    for (let i = 0; i < DIALOGUE_LINES.length; i++) {
+      if (controller.signal.aborted) break;
+      setCurrentLineIndex(i);
+      const line = DIALOGUE_LINES[i];
+      const voice = CHARACTER_VOICES[line.speaker];
+      try {
+        await playAndWait(line.english, voice, controller.signal);
+      } catch {
+        if (controller.signal.aborted) break;
+      }
+    }
+
+    if (!controller.signal.aborted) {
+      setPlayingMode('none');
+      setCurrentLineIndex(-1);
+    }
+  };
+
+  const startBilingualFullDialogue = async () => {
+    stopFullPlayback();
+    const controller = new AbortController();
+    playbackAbortRef.current = controller;
+    setPlayingMode('bilingual');
+
+    for (let i = 0; i < DIALOGUE_LINES.length; i++) {
+      if (controller.signal.aborted) break;
+      setCurrentLineIndex(i);
+      const line = DIALOGUE_LINES[i];
+      const englishVoice = CHARACTER_VOICES[line.speaker];
+
+      // 1. Play English sentence
+      setIsTranslating(false);
+      try {
+        await playAndWait(line.english, englishVoice, controller.signal);
+      } catch {
+        if (controller.signal.aborted) break;
+      }
+
+      if (controller.signal.aborted) break;
+
+      // 2. Play Somali translation immediately afterwards
+      setIsTranslating(true);
+      try {
+        await playAndWait(line.somali, somaliVoice, controller.signal);
+      } catch {
+        if (controller.signal.aborted) break;
+      }
+    }
+
+    if (!controller.signal.aborted) {
+      setPlayingMode('none');
+      setCurrentLineIndex(-1);
+      setIsTranslating(false);
+    }
   };
 
   // Handle Stage B check
@@ -311,28 +384,58 @@ export const InteractiveDialogueLesson: React.FC = () => {
                   <span>Stage A — Listen, Read & Understand (Anna, Sam & Muhammed)</span>
                 </h3>
                 <p className="text-xs text-neutral-300 mt-1">
-                  Dhageyso jumlad kasta oo Ingiriis ah oo akhri macnaha Soomaaliga ah ee hoos yaalla.
+                  Dhageyso jumlad kasta oo Ingiriis ah ama labada luqaad (Ingiriis iyo Soomaali).
                 </p>
               </div>
 
-              <div>
-                {!playingFull ? (
-                  <button
-                    type="button"
-                    onClick={startFullDialogue}
-                    className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-extrabold rounded-xl shadow flex items-center gap-2 transition-all cursor-pointer"
+              {/* Playback Controls & Somali Voice Selector */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Somali Voice Selector */}
+                <div className="flex items-center gap-2 bg-[#1b1713] px-3 py-1.5 rounded-xl border border-neutral-800">
+                  <Globe className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="text-[11px] font-mono text-amber-400 font-bold">Somali Voice:</span>
+                  <select
+                    value={somaliVoice}
+                    onChange={(e) => {
+                      setSomaliVoice(e.target.value);
+                      try {
+                        localStorage.setItem('my-exam-somali-voice', e.target.value);
+                      } catch {}
+                    }}
+                    className="bg-neutral-900 text-xs text-white font-medium rounded-lg px-2 py-1 border border-neutral-700 focus:outline-none focus:border-amber-400 cursor-pointer"
                   >
-                    <Play className="w-4 h-4 fill-current" />
-                    <span>▶ Play Full Dialogue</span>
-                  </button>
+                    <option value="so-SO-MuuseNeural">Muuse (Male)</option>
+                    <option value="so-SO-UbaxNeural">Ubax (Female)</option>
+                  </select>
+                </div>
+
+                {playingMode === 'none' ? (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={startEnglishFullDialogue}
+                      className="px-3 py-2 bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-bold rounded-xl shadow flex items-center gap-1.5 transition-all cursor-pointer border border-neutral-700"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-current text-amber-400" />
+                      <span>▶ Play Full Dialogue</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={startBilingualFullDialogue}
+                      className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-extrabold rounded-xl shadow flex items-center gap-2 transition-all cursor-pointer"
+                    >
+                      <Globe className="w-4 h-4" />
+                      <span>🌍 Play Full + Somali Translation</span>
+                    </button>
+                  </div>
                 ) : (
                   <button
                     type="button"
-                    onClick={stopFullDialogue}
-                    className="px-4 py-2 bg-rose-500 hover:bg-rose-400 text-white text-xs font-extrabold rounded-xl shadow flex items-center gap-2 transition-all cursor-pointer"
+                    onClick={stopFullPlayback}
+                    className="px-4 py-2 bg-rose-500 hover:bg-rose-400 text-white text-xs font-extrabold rounded-xl shadow flex items-center gap-2 transition-all cursor-pointer animate-pulse"
                   >
                     <Square className="w-4 h-4 fill-current" />
-                    <span>Stop Playback</span>
+                    <span>Stop Playback ({playingMode === 'bilingual' ? 'Bilingual' : 'English'})</span>
                   </button>
                 )}
               </div>
@@ -341,21 +444,26 @@ export const InteractiveDialogueLesson: React.FC = () => {
             {/* Dialogue Lines List */}
             <div className="space-y-3 pt-2">
               {DIALOGUE_LINES.map((item, idx) => {
-                const isCurrentPlaying = playingFull && currentLineIndex === idx;
-                const isAudioActive = activeSpeechId === `dialogue-full-${item.id}` || activeSpeechId === `dialogue-line-${item.id}`;
+                const isCurrentPlaying = playingMode !== 'none' && currentLineIndex === idx;
+                const isEnglishActive = activeSpeechId === `dialogue-line-en-${item.id}`;
+                const isSomaliActive = activeSpeechId === `dialogue-line-so-${item.id}`;
 
                 return (
                   <div
                     key={item.id}
                     className={`p-4 rounded-2xl border transition-all ${
-                      isCurrentPlaying || isAudioActive
-                        ? 'bg-amber-500/15 border-amber-400 shadow-md ring-1 ring-amber-400'
+                      isCurrentPlaying
+                        ? isTranslating
+                          ? 'bg-amber-500/20 border-amber-400 shadow-lg ring-2 ring-amber-400'
+                          : 'bg-amber-500/15 border-amber-400 shadow-md ring-1 ring-amber-400'
+                        : isEnglishActive || isSomaliActive
+                        ? 'bg-amber-500/10 border-amber-400/80 shadow'
                         : 'bg-[#181410] border-neutral-800 hover:border-neutral-700'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1.5 flex-1">
-                        <div className="flex items-center gap-2">
+                      <div className="space-y-2 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span
                             className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
                               item.speaker === 'Anna'
@@ -368,6 +476,12 @@ export const InteractiveDialogueLesson: React.FC = () => {
                             {item.speaker}
                           </span>
                           <span className="text-[11px] font-mono text-neutral-400">#{idx + 1}</span>
+
+                          {isCurrentPlaying && (
+                            <span className="ml-auto text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/40 animate-pulse">
+                              🔊 Playing: {isTranslating ? 'Somali Translation' : `${item.speaker} (English)`}
+                            </span>
+                          )}
                         </div>
 
                         {/* English Sentence */}
@@ -376,26 +490,48 @@ export const InteractiveDialogueLesson: React.FC = () => {
                         </p>
 
                         {/* Somali Translation underneath */}
-                        <p className="text-xs sm:text-sm text-amber-300/90 font-medium bg-amber-500/5 p-2 rounded-xl border border-amber-500/15">
-                          <span className="font-mono text-[10px] uppercase text-amber-400 font-bold block mb-0.5">Macnaha (Somali):</span>
-                          {item.somali}
-                        </p>
+                        <div className="bg-amber-500/5 p-2.5 rounded-xl border border-amber-500/15 space-y-1">
+                          <span className="font-mono text-[10px] uppercase text-amber-400 font-bold block">
+                            Macnaha (Somali):
+                          </span>
+                          <p className="text-xs sm:text-sm text-amber-300/95 font-medium">
+                            {item.somali}
+                          </p>
+                        </div>
                       </div>
 
-                      {/* Individual Audio Button */}
-                      <button
-                        type="button"
-                        onClick={() => play(`dialogue-line-${item.id}`, item.english, { voice: CHARACTER_VOICES[item.speaker] })}
-                        className={`min-h-[36px] px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer shrink-0 ${
-                          isAudioActive && isSpeaking
-                            ? 'bg-amber-500 text-neutral-950 font-bold border-amber-400'
-                            : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border-neutral-700'
-                        }`}
-                        title="Listen to sentence"
-                      >
-                        <Volume2 className="w-4 h-4" />
-                        <span className="hidden sm:inline">Audio</span>
-                      </button>
+                      {/* Individual Audio Buttons for English & Somali */}
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 shrink-0">
+                        {/* English Audio Button */}
+                        <button
+                          type="button"
+                          onClick={() => play(`dialogue-line-en-${item.id}`, item.english, { voice: CHARACTER_VOICES[item.speaker] })}
+                          className={`min-h-[36px] px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer ${
+                            isEnglishActive && isSpeaking
+                              ? 'bg-amber-500 text-neutral-950 font-bold border-amber-400'
+                              : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border-neutral-700'
+                          }`}
+                          title={`Listen to ${item.speaker}'s English sentence`}
+                        >
+                          <Volume2 className="w-4 h-4" />
+                          <span>English</span>
+                        </button>
+
+                        {/* Somali Audio Button */}
+                        <button
+                          type="button"
+                          onClick={() => play(`dialogue-line-so-${item.id}`, item.somali, { language: 'so', voice: somaliVoice })}
+                          className={`min-h-[36px] px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer ${
+                            isSomaliActive && isSpeaking
+                              ? 'bg-amber-500 text-neutral-950 font-bold border-amber-400'
+                              : 'bg-neutral-800 hover:bg-neutral-700 text-amber-300 border-neutral-700'
+                          }`}
+                          title="Listen to Somali translation"
+                        >
+                          <Globe className="w-4 h-4 text-amber-400" />
+                          <span>Somali</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
