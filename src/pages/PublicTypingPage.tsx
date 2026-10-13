@@ -1,493 +1,254 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Volume2,
-  VolumeX,
-  RotateCcw,
-  Clock,
-  Zap,
-  CheckCircle2,
-  ArrowRight,
-  ArrowLeft,
-  Lock,
-  Sparkles,
-  Trophy,
-  Gauge,
-  Target,
-  FileText,
-  Volume1,
-  Share2,
-  Check,
-  Flame,
-  ListOrdered,
   BookOpen,
-  FastForward,
-  Mic,
-  Loader2,
+  Keyboard,
+  Sun,
+  Moon,
   Play,
   Square,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
   Radio,
-  Bot,
-  Plus,
-  Languages,
-  UploadCloud,
-  FileUp,
+  Sparkles,
 } from 'lucide-react';
-import { typingSoundService } from '../services/typingSoundService';
-import { getTTSUrl, fetchTTSAudioBlobUrl, cleanSpeechText, TTSRate } from '../services/tts';
-import { AIChatDrawer } from '../components/ai/AIChatDrawer';
+import { AnimatePresence } from 'motion/react';
+import { getTTSUrl, fetchTTSAudioBlobUrl, cleanSpeechText } from '../services/tts';
 import { findVocabularyByWord, VocabularyEntry } from '../data/publicVocabulary';
 import { PublicVocabularyModal } from '../components/vocabulary/PublicVocabularyModal';
-import { PublicDocumentReader } from '../components/reader/PublicDocumentReader';
 
-export interface TrainingStep {
+interface Passage {
   id: string;
-  title: string;
-  chunk: string;
-  hint?: string;
+  name: string;
+  text: string;
+  // Discrete drill targets for "One-by-One" drill
+  drills: string[];
+  // Sentence drill targets for "Sentences" drill
+  sentences: string[];
 }
 
-export interface PassageItem {
-  id: string;
-  title: string;
-  subtitle: string;
-  tag: string;
-  gender: 'man' | 'woman' | 'custom';
-  fullText: string;
-  progressiveSteps: TrainingStep[];
-  sentenceSteps: TrainingStep[];
-}
-
-export const INITIAL_PUBLIC_PASSAGES: PassageItem[] = [
+const PASSAGES: Passage[] = [
   {
-    id: 'man-profile',
-    title: 'Passage 1 — The Man',
-    subtitle: 'Description: Tall, slim, dark hair, beard & glasses',
-    tag: 'First Subject',
-    gender: 'man',
-    fullText:
-      'The man is tall and slim, and he looks around 30 years old. He has short dark hair, a beard, and he wears glasses. He is wearing a dark T-shirt, pants, and black shoes.',
-    progressiveSteps: [
-      { id: 'm-1', title: 'Start: Subject', chunk: 'The man', hint: 'Start with the subject' },
-      { id: 'm-2', title: 'Physical Build', chunk: 'The man is tall', hint: 'Describe height' },
-      { id: 'm-3', title: 'Complete Clause 1', chunk: 'The man is tall and slim,', hint: 'Height and build with comma' },
-      { id: 'm-4', title: 'Age Clause', chunk: 'and he looks around 30 years old.', hint: 'Estimated age' },
-      {
-        id: 'm-5',
-        title: 'Master Sentence 1',
-        chunk: 'The man is tall and slim, and he looks around 30 years old.',
-        hint: 'Full first sentence',
-      },
-      { id: 'm-6', title: 'Hair Description', chunk: 'He has short dark hair,', hint: 'Short dark hair with comma' },
-      { id: 'm-7', title: 'Beard & Glasses', chunk: 'a beard, and he wears glasses.', hint: 'Facial details' },
-      {
-        id: 'm-8',
-        title: 'Master Sentence 2',
-        chunk: 'He has short dark hair, a beard, and he wears glasses.',
-        hint: 'Full second sentence',
-      },
-      { id: 'm-9', title: 'Clothing: Top', chunk: 'He is wearing a dark T-shirt,', hint: 'Shirt details (capital T)' },
-      { id: 'm-10', title: 'Pants & Shoes', chunk: 'pants, and black shoes.', hint: 'Bottom and footwear' },
-      {
-        id: 'm-11',
-        title: 'Master Sentence 3',
-        chunk: 'He is wearing a dark T-shirt, pants, and black shoes.',
-        hint: 'Full third sentence',
-      },
-      {
-        id: 'm-12',
-        title: 'Complete Passage Mastery',
-        chunk:
-          'The man is tall and slim, and he looks around 30 years old. He has short dark hair, a beard, and he wears glasses. He is wearing a dark T-shirt, pants, and black shoes.',
-        hint: 'Type the entire paragraph fluidly',
-      },
+    id: 'man',
+    name: 'The Man',
+    text: 'The man is tall and slim, and he looks around 30 years old. He has short dark hair, a beard, and he wears glasses. He is wearing a dark T-shirt, pants, and black shoes.',
+    drills: [
+      'The man is tall and slim,',
+      'and he looks around 30 years old.',
+      'He has short dark hair,',
+      'a beard, and he wears glasses.',
+      'He is wearing a dark T-shirt,',
+      'pants, and black shoes.',
     ],
-    sentenceSteps: [
-      {
-        id: 'm-s1',
-        title: 'Sentence 1: Appearance & Age',
-        chunk: 'The man is tall and slim, and he looks around 30 years old.',
-      },
-      {
-        id: 'm-s2',
-        title: 'Sentence 2: Facial Features',
-        chunk: 'He has short dark hair, a beard, and he wears glasses.',
-      },
-      {
-        id: 'm-s3',
-        title: 'Sentence 3: Outfit & Shoes',
-        chunk: 'He is wearing a dark T-shirt, pants, and black shoes.',
-      },
+    sentences: [
+      'The man is tall and slim, and he looks around 30 years old.',
+      'He has short dark hair, a beard, and he wears glasses.',
+      'He is wearing a dark T-shirt, pants, and black shoes.',
     ],
   },
   {
-    id: 'woman-profile',
-    title: 'Passage 2 — The Woman',
-    subtitle: 'Description: Short, heavy, brown hair & happy smile',
-    tag: 'Second Subject',
-    gender: 'woman',
-    fullText:
-      'The woman is short and a little heavy, and she is around 40 years old. She has brown hair and a happy smile. She is wearing a light tunic shirt, pants, and flat shoes.',
-    progressiveSteps: [
-      { id: 'w-1', title: 'Start: Subject', chunk: 'The woman', hint: 'Start with the subject' },
-      { id: 'w-2', title: 'Physical Build', chunk: 'The woman is short', hint: 'Describe height' },
-      {
-        id: 'w-3',
-        title: 'Complete Clause 1',
-        chunk: 'The woman is short and a little heavy,',
-        hint: 'Height and weight with comma',
-      },
-      { id: 'w-4', title: 'Age Clause', chunk: 'and she is around 40 years old.', hint: 'Estimated age' },
-      {
-        id: 'w-5',
-        title: 'Master Sentence 1',
-        chunk: 'The woman is short and a little heavy, and she is around 40 years old.',
-        hint: 'Full first sentence',
-      },
-      { id: 'w-6', title: 'Hair Description', chunk: 'She has brown hair', hint: 'Hair color' },
-      { id: 'w-7', title: 'Smile Expression', chunk: 'and a happy smile.', hint: 'Facial expression' },
-      {
-        id: 'w-8',
-        title: 'Master Sentence 2',
-        chunk: 'She has brown hair and a happy smile.',
-        hint: 'Full second sentence',
-      },
-      { id: 'w-9', title: 'Clothing: Top', chunk: 'She is wearing a light tunic shirt,', hint: 'Tunic shirt with comma' },
-      { id: 'w-10', title: 'Pants & Shoes', chunk: 'pants, and flat shoes.', hint: 'Bottom and flat shoes' },
-      {
-        id: 'w-11',
-        title: 'Master Sentence 3',
-        chunk: 'She is wearing a light tunic shirt, pants, and flat shoes.',
-        hint: 'Full third sentence',
-      },
-      {
-        id: 'w-12',
-        title: 'Complete Passage Mastery',
-        chunk:
-          'The woman is short and a little heavy, and she is around 40 years old. She has brown hair and a happy smile. She is wearing a light tunic shirt, pants, and flat shoes.',
-        hint: 'Type the entire paragraph fluidly',
-      },
+    id: 'woman',
+    name: 'The Woman',
+    text: 'The woman is short and a little heavy, and she is around 40 years old. She has brown hair and a happy smile. She is wearing a light tunic shirt, pants, and flat shoes.',
+    drills: [
+      'The woman is short and a little heavy,',
+      'and she is around 40 years old.',
+      'She has brown hair and a happy smile.',
+      'She is wearing a light tunic shirt,',
+      'pants, and flat shoes.',
     ],
-    sentenceSteps: [
-      {
-        id: 'w-s1',
-        title: 'Sentence 1: Appearance & Age',
-        chunk: 'The woman is short and a little heavy, and she is around 40 years old.',
-      },
-      {
-        id: 'w-s2',
-        title: 'Sentence 2: Hair & Smile',
-        chunk: 'She has brown hair and a happy smile.',
-      },
-      {
-        id: 'w-s3',
-        title: 'Sentence 3: Outfit & Footwear',
-        chunk: 'She is wearing a light tunic shirt, pants, and flat shoes.',
-      },
+    sentences: [
+      'The woman is short and a little heavy, and she is around 40 years old.',
+      'She has brown hair and a happy smile.',
+      'She is wearing a light tunic shirt, pants, and flat shoes.',
     ],
   },
 ];
 
-export function generateStepsFromText(text: string, title = 'Custom Document Passage'): PassageItem {
-  const clean = text.trim();
-  const sentenceMatches = clean.match(/[^.!?]+[.!?]+(\s|$)|[^.!?]+$/g) || [clean];
-  const sentences = sentenceMatches.map((s) => s.trim()).filter(Boolean);
-
-  const progressiveSteps: TrainingStep[] = [];
-  let progressiveIndex = 1;
-
-  sentences.forEach((sentence, sIdx) => {
-    const clauses = sentence.split(/,\s*/).map((c, i, arr) => (i < arr.length - 1 ? `${c},` : c));
-    if (clauses.length > 1) {
-      clauses.forEach((clause, cIdx) => {
-        progressiveSteps.push({
-          id: `custom-p-${progressiveIndex++}`,
-          title: `Clause ${sIdx + 1}.${cIdx + 1}`,
-          chunk: clause.trim(),
-        });
-      });
-    }
-    progressiveSteps.push({
-      id: `custom-s-${progressiveIndex++}`,
-      title: `Sentence ${sIdx + 1} Mastery`,
-      chunk: sentence,
-    });
-  });
-
-  progressiveSteps.push({
-    id: `custom-full-${progressiveIndex}`,
-    title: 'Complete Passage Mastery',
-    chunk: clean,
-  });
-
-  const sentenceSteps: TrainingStep[] = sentences.map((s, idx) => ({
-    id: `custom-sent-${idx + 1}`,
-    title: `Sentence ${idx + 1}`,
-    chunk: s,
-  }));
-
-  return {
-    id: `custom-${Date.now()}`,
-    title,
-    subtitle: 'Uploaded Document / File Practice',
-    tag: 'Custom File',
-    gender: 'custom',
-    fullText: clean,
-    progressiveSteps,
-    sentenceSteps,
-  };
-}
-
-type PracticeMode = 'progressive' | 'sentence' | 'full';
-type TimerOption = 0 | 15 | 30 | 60 | 90;
-type MainTab = 'reader' | 'trainer';
-
-const RYAN_VOICE_ID = 'en-GB-RyanNeural';
+type TextSize = 'sm' | 'base' | 'lg';
+type DrillMode = 'drill' | 'sentence' | 'full';
 
 export function PublicTypingPage() {
   const location = useLocation();
-  const [activeMainTab, setActiveMainTab] = useState<MainTab>('reader');
-  const [passages, setPassages] = useState<PassageItem[]>(INITIAL_PUBLIC_PASSAGES);
+  const navigate = useNavigate();
+
+  // Tab: 'reader' or 'trainer'
+  const isReaderRoute =
+    location.pathname.includes('/read') ||
+    location.pathname.includes('/lesen') ||
+    location.pathname.includes('/file-reader');
+
+  const [activeTab, setActiveTab] = useState<'reader' | 'trainer'>(
+    isReaderRoute ? 'reader' : 'trainer'
+  );
+
+  useEffect(() => {
+    if (isReaderRoute) {
+      setActiveTab('reader');
+    } else {
+      setActiveTab('trainer');
+    }
+  }, [isReaderRoute]);
+
+  // Passage: 0 = The Man, 1 = The Woman
   const [selectedPassageIndex, setSelectedPassageIndex] = useState<number>(0);
-  const [practiceMode, setPracticeMode] = useState<PracticeMode>('progressive');
-  const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
-  const [timerMode, setTimerMode] = useState<TimerOption>(0);
-  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
-  const [autoAdvance, setAutoAdvance] = useState<boolean>(true);
-  const [autoplayVoice, setAutoplayVoice] = useState<boolean>(true);
-  const [speechRate, setSpeechRate] = useState<TTSRate>('0%');
-  const [isAIChatOpen, setIsAIChatOpen] = useState<boolean>(false);
-  const [aiCustomPrompt, setAiCustomPrompt] = useState<string>('');
+  const currentPassage = PASSAGES[selectedPassageIndex];
+
+  // Reader Text Size: A- ('sm'), A ('base'), A+ ('lg')
+  const [textSize, setTextSize] = useState<TextSize>('base');
+
+  // Typing Trainer Mode: One-by-One ('drill'), Sentences ('sentence'), Full Text ('full')
+  const [drillMode, setDrillMode] = useState<DrillMode>('drill');
+  const [drillIndex, setDrillIndex] = useState<number>(0);
+
+  // Theme state: dark / light
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('mylearning_theme');
+      if (saved === 'light' || saved === 'dark') return saved;
+      if (document.documentElement.getAttribute('data-theme') === 'light') return 'light';
+    }
+    return 'dark';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    try {
+      localStorage.setItem('mylearning_theme', theme);
+    } catch {
+      // ignore
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
+  // Trilingual vocabulary modal
   const [selectedVocabEntry, setSelectedVocabEntry] = useState<VocabularyEntry | null>(null);
 
-  const [inputVal, setInputVal] = useState<string>('');
-  const [startTime, setStartTime] = useState<number | null>(null);
-  const [endTime, setEndTime] = useState<number | null>(null);
-  const [timeLeft, setTimeLeft] = useState<number | null>(null);
-  const [mistakesCount, setMistakesCount] = useState<number>(0);
-  const [isCompleted, setIsCompleted] = useState<boolean>(false);
-  const [isTimeUp, setIsTimeUp] = useState<boolean>(false);
-  const [copied, setCopied] = useState<boolean>(false);
-
-  const [isAudioLoading, setIsAudioLoading] = useState<boolean>(false);
-  const [isAudioPlaying, setIsAudioPlaying] = useState<boolean>(false);
-  const [completedStepIds, setCompletedStepIds] = useState<Set<string>>(new Set());
-
-  const inputRef = useRef<HTMLInputElement>(null);
-  const timerIntervalRef = useRef<number | null>(null);
-  const mistakeSetRef = useRef<Set<number>>(new Set());
-  const autoAdvanceTimeoutRef = useRef<number | null>(null);
-  const activeAudioRef = useRef<HTMLAudioElement | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
-
-  // Check router state or query param for tab / custom text
-  useEffect(() => {
-    const customText = (location.state as { customText?: string; tab?: MainTab })?.customText;
-    const targetTab = (location.state as { tab?: MainTab })?.tab;
-
-    if (targetTab) {
-      setActiveMainTab(targetTab);
-    }
-    if (customText && customText.trim()) {
-      const newPassage = generateStepsFromText(customText, 'Custom Practice');
-      setPassages((prev) => [newPassage, ...prev]);
-      setSelectedPassageIndex(0);
-      setActiveMainTab('trainer');
-    }
-  }, [location.state]);
-
-  const currentPassage = passages[selectedPassageIndex] || passages[0];
-
-  const currentStepsList: TrainingStep[] =
-    practiceMode === 'progressive'
-      ? currentPassage.progressiveSteps
-      : practiceMode === 'sentence'
-      ? currentPassage.sentenceSteps
-      : [
-          {
-            id: `${currentPassage.id}-full`,
-            title: 'Full Passage',
-            chunk: currentPassage.fullText,
-          },
-        ];
-
-  const currentStep =
-    currentStepsList[Math.min(currentStepIndex, currentStepsList.length - 1)] ||
-    currentStepsList[0];
-  const targetText = currentStep.chunk;
+  // Audio Playback (Ryan UK)
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const stopAudio = useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
     }
-    if (activeAudioRef.current) {
-      try {
-        activeAudioRef.current.pause();
-        activeAudioRef.current.currentTime = 0;
-        activeAudioRef.current.removeAttribute('src');
-      } catch {
-        // ignore
-      }
-      activeAudioRef.current = null;
-    }
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
-    setIsAudioLoading(false);
-    setIsAudioPlaying(false);
+    setIsPlayingAudio(false);
+    setIsLoadingAudio(false);
   }, []);
 
   const playRyanAudio = useCallback(
-    async (textToPlay: string) => {
-      const clean = cleanSpeechText(textToPlay);
-      if (!clean) return;
-
+    async (textToSpeak: string) => {
       stopAudio();
-      setIsAudioLoading(true);
+      setIsLoadingAudio(true);
 
-      const abortController = new AbortController();
-      abortControllerRef.current = abortController;
-
-      const targetUrl = getTTSUrl({
-        text: clean,
-        voice: RYAN_VOICE_ID,
-        rate: speechRate,
+      const cleaned = cleanSpeechText(textToSpeak);
+      const audioUrl = getTTSUrl({
+        text: cleaned,
+        voice: 'en-GB-RyanNeural',
+        rate: '0%',
       });
+      const url = await fetchTTSAudioBlobUrl(audioUrl);
+
+      if (!url) {
+        setIsLoadingAudio(false);
+        return;
+      }
+
+      const audio = new Audio(url);
+      audioRef.current = audio;
+
+      audio.onplay = () => {
+        setIsLoadingAudio(false);
+        setIsPlayingAudio(true);
+      };
+
+      audio.onended = () => {
+        setIsPlayingAudio(false);
+        audioRef.current = null;
+      };
+
+      audio.onerror = () => {
+        setIsLoadingAudio(false);
+        setIsPlayingAudio(false);
+        audioRef.current = null;
+      };
 
       try {
-        let resolvedSrc = targetUrl;
-        try {
-          resolvedSrc = await fetchTTSAudioBlobUrl(targetUrl, abortController.signal);
-        } catch {
-          // fallback to direct targetUrl
-        }
-
-        if (abortController.signal.aborted) return;
-
-        const audio = new Audio();
-        audio.preload = 'auto';
-        audio.src = resolvedSrc;
-        activeAudioRef.current = audio;
-
-        audio.onplaying = () => {
-          setIsAudioLoading(false);
-          setIsAudioPlaying(true);
-        };
-
-        audio.onended = () => {
-          setIsAudioLoading(false);
-          setIsAudioPlaying(false);
-          activeAudioRef.current = null;
-        };
-
-        audio.onerror = () => {
-          setIsAudioLoading(false);
-          if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-            const utterance = new SpeechSynthesisUtterance(clean);
-            utterance.lang = 'en-GB';
-            utterance.rate = speechRate === '-10%' ? 0.85 : 0.95;
-            utterance.onstart = () => setIsAudioPlaying(true);
-            utterance.onend = () => setIsAudioPlaying(false);
-            utterance.onerror = () => setIsAudioPlaying(false);
-            window.speechSynthesis.speak(utterance);
-          } else {
-            setIsAudioPlaying(false);
-          }
-        };
-
         await audio.play();
       } catch {
-        if (abortController.signal.aborted) return;
-        setIsAudioLoading(false);
-        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-          const utterance = new SpeechSynthesisUtterance(clean);
-          utterance.lang = 'en-GB';
-          utterance.rate = 0.95;
-          utterance.onstart = () => setIsAudioPlaying(true);
-          utterance.onend = () => setIsAudioPlaying(false);
-          utterance.onerror = () => setIsAudioPlaying(false);
-          window.speechSynthesis.speak(utterance);
-        } else {
-          setIsAudioPlaying(false);
-        }
+        setIsLoadingAudio(false);
+        setIsPlayingAudio(false);
       }
     },
-    [speechRate, stopAudio]
+    [stopAudio]
   );
 
-  const resetSession = useCallback(() => {
-    if (autoAdvanceTimeoutRef.current) {
-      clearTimeout(autoAdvanceTimeoutRef.current);
-      autoAdvanceTimeoutRef.current = null;
+  useEffect(() => {
+    return () => {
+      stopAudio();
+    };
+  }, [stopAudio]);
+
+  // Current Target Drill Text depending on drillMode & drillIndex
+  const activeTargetsList = useMemo(() => {
+    if (drillMode === 'drill') return currentPassage.drills;
+    if (drillMode === 'sentence') return currentPassage.sentences;
+    return [currentPassage.text];
+  }, [drillMode, currentPassage]);
+
+  // Keep drillIndex in range
+  useEffect(() => {
+    if (drillIndex >= activeTargetsList.length) {
+      setDrillIndex(0);
     }
+  }, [activeTargetsList, drillIndex]);
+
+  const activeTargetString = activeTargetsList[drillIndex] || activeTargetsList[0] || '';
+
+  // ==========================================
+  // TYPING TRAINER ENGINE (Monkeytype Inline Stealth)
+  // ==========================================
+  const [inputVal, setInputVal] = useState<string>('');
+  const [startTime, setStartTime] = useState<number | null>(null);
+  const [endTime, setEndTime] = useState<number | null>(null);
+  const [mistakesCount, setMistakesCount] = useState<number>(0);
+  const [isCompleted, setIsCompleted] = useState<boolean>(false);
+  const mistakesSetRef = useRef<Set<number>>(new Set());
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const resetTrainer = useCallback(() => {
     setInputVal('');
     setStartTime(null);
     setEndTime(null);
-    setTimeLeft(timerMode > 0 ? timerMode : null);
     setMistakesCount(0);
     setIsCompleted(false);
-    setIsTimeUp(false);
-    mistakeSetRef.current.clear();
-    if (timerIntervalRef.current) {
-      clearInterval(timerIntervalRef.current);
-      timerIntervalRef.current = null;
-    }
+    mistakesSetRef.current.clear();
     stopAudio();
     setTimeout(() => {
       inputRef.current?.focus();
-    }, 40);
-  }, [timerMode, stopAudio]);
+    }, 50);
+  }, [stopAudio]);
 
+  // Reset when passage or drill changes
   useEffect(() => {
-    setCurrentStepIndex(0);
-    resetSession();
-  }, [selectedPassageIndex, practiceMode, resetSession]);
-
-  useEffect(() => {
-    resetSession();
-    if (autoplayVoice && targetText && activeMainTab === 'trainer') {
-      const timer = setTimeout(() => {
-        playRyanAudio(targetText);
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [currentStepIndex, resetSession, autoplayVoice, targetText, playRyanAudio, activeMainTab]);
-
-  useEffect(() => {
-    if (startTime && !endTime && !isCompleted && !isTimeUp) {
-      timerIntervalRef.current = window.setInterval(() => {
-        if (timerMode > 0) {
-          const elapsedSec = Math.floor((Date.now() - startTime) / 1000);
-          const remaining = Math.max(0, timerMode - elapsedSec);
-          setTimeLeft(remaining);
-          if (remaining <= 0) {
-            setIsTimeUp(true);
-            setEndTime(Date.now());
-            if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-          }
-        }
-      }, 1000);
-    }
-    return () => {
-      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-    };
-  }, [startTime, endTime, isCompleted, isTimeUp, timerMode]);
-
-  const goToNextStep = useCallback(() => {
-    if (currentStepIndex < currentStepsList.length - 1) {
-      setCurrentStepIndex((prev) => prev + 1);
-    }
-  }, [currentStepIndex, currentStepsList.length]);
-
-  const goToPrevStep = useCallback(() => {
-    if (currentStepIndex > 0) {
-      setCurrentStepIndex((prev) => prev - 1);
-    }
-  }, [currentStepIndex]);
+    resetTrainer();
+  }, [selectedPassageIndex, drillMode, drillIndex, resetTrainer]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (isCompleted || isTimeUp) return;
+    if (isCompleted) return;
 
     const val = e.target.value;
 
@@ -496,16 +257,13 @@ export function PublicTypingPage() {
     }
 
     if (val.length > inputVal.length) {
-      const charIndex = val.length - 1;
-      const targetChar = targetText[charIndex];
-      const lastChar = val[charIndex];
+      const idx = val.length - 1;
+      const targetChar = activeTargetString[idx];
+      const typedChar = val[idx];
 
-      if (lastChar === targetChar) {
-        typingSoundService.playCorrectKey();
-      } else {
-        typingSoundService.playIncorrectKey();
-        if (!mistakeSetRef.current.has(charIndex)) {
-          mistakeSetRef.current.add(charIndex);
+      if (typedChar !== targetChar) {
+        if (!mistakesSetRef.current.has(idx)) {
+          mistakesSetRef.current.add(idx);
           setMistakesCount((prev) => prev + 1);
         }
       }
@@ -513,715 +271,670 @@ export function PublicTypingPage() {
 
     setInputVal(val);
 
-    if (val === targetText) {
+    if (val === activeTargetString) {
       setEndTime(Date.now());
       setIsCompleted(true);
-      typingSoundService.playCompletion();
-
-      setCompletedStepIds((prev) => {
-        const next = new Set(prev);
-        next.add(currentStep.id);
-        return next;
-      });
-
-      if (autoAdvance && currentStepIndex < currentStepsList.length - 1) {
-        autoAdvanceTimeoutRef.current = window.setTimeout(() => {
-          goToNextStep();
-        }, 800);
-      }
     }
   };
 
-  const calculateStats = () => {
+  // Stats calculation
+  const stats = useMemo(() => {
     const currentTime = endTime || (startTime ? Date.now() : Date.now());
-    const durationSec = startTime ? Math.max(1, (currentTime - startTime) / 1000) : 1;
-    const minutes = durationSec / 60;
+    const durationSec = startTime ? Math.max(1, (currentTime - startTime) / 1000) : 0;
+    const minutes = durationSec > 0 ? durationSec / 60 : 0;
 
     let correctChars = 0;
     for (let i = 0; i < inputVal.length; i++) {
-      if (i < targetText.length && inputVal[i] === targetText[i]) {
+      if (i < activeTargetString.length && inputVal[i] === activeTargetString[i]) {
         correctChars++;
       }
     }
 
-    const wpm = minutes > 0 ? Math.round(correctChars / 5 / minutes) : 0;
+    const words = correctChars / 5;
+    const wpm = minutes > 0 ? Math.round(words / minutes) : 0;
+
     const totalTyped = inputVal.length;
     const accuracy =
       totalTyped > 0 ? Math.max(0, Math.round(((totalTyped - mistakesCount) / totalTyped) * 100)) : 100;
 
     return {
-      wpm,
+      wpm: Math.min(220, wpm),
       accuracy,
-      durationSec: Math.round(durationSec * 10) / 10,
-      correctChars,
-      totalTyped,
+      time: Math.round(durationSec),
       mistakes: mistakesCount,
     };
+  }, [inputVal, activeTargetString, startTime, endTime, mistakesCount]);
+
+  const handleFocusInput = () => {
+    inputRef.current?.focus();
   };
 
-  const stats = calculateStats();
+  // ==========================================
+  // VOCABULARY WORD RENDERING (with subtle dashed underline)
+  // ==========================================
+  const renderReadableTextWithVocab = (passageText: string) => {
+    const tokens = passageText.split(/(\s+|[.,;!?]+)/);
 
-  const handleShareResults = () => {
-    const textToCopy = `⌨️ My Learning Audio Typing Practice:
-${currentPassage.title} — ${currentStep.title}
-Voice: Ryan (Neural) (UK)
-Speed: ${stats.wpm} WPM | Accuracy: ${stats.accuracy}% | Time: ${stats.durationSec}s`;
-    navigator.clipboard.writeText(textToCopy);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handlePracticeFileText = (text: string, title: string) => {
-    const newPassage = generateStepsFromText(text, title);
-    setPassages((prev) => [newPassage, ...prev.filter((p) => p.id !== newPassage.id)]);
-    setSelectedPassageIndex(0);
-    setCurrentStepIndex(0);
-    setActiveMainTab('trainer');
-    resetSession();
-  };
-
-  const handleOpenAIChatWithPrompt = (prompt: string) => {
-    setAiCustomPrompt(prompt);
-    setIsAIChatOpen(true);
-  };
-
-  const completedCount = currentStepsList.filter((s) => completedStepIds.has(s.id)).length;
-  const progressPercent = Math.round((completedCount / currentStepsList.length) * 100);
-
-  // Extract interactive vocabulary items present in the current target text
-  const activeStepVocab = React.useMemo(() => {
-    if (!targetText) return [];
-    const words = targetText.split(/\s+/);
-    const set = new Map<string, VocabularyEntry>();
-    for (const w of words) {
-      const match = findVocabularyByWord(w);
-      if (match && !set.has(match.id)) {
-        set.set(match.id, match);
+    return tokens.map((token, idx) => {
+      if (!token || /^\s+$/.test(token) || /^[.,;!?]+$/.test(token)) {
+        return <span key={idx}>{token}</span>;
       }
+
+      const cleanWord = token.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const match = findVocabularyByWord(cleanWord);
+
+      if (match) {
+        return (
+          <span
+            key={idx}
+            onClick={() => setSelectedVocabEntry(match)}
+            title="Tap for German & Somali translations with Ryan UK audio"
+            className="border-b border-dashed border-[#f59e0b] text-[#fbbf24] hover:text-[#f59e0b] hover:bg-[#f59e0b]/10 rounded-xs cursor-pointer transition-colors px-0.5"
+          >
+            {token}
+          </span>
+        );
+      }
+
+      return <span key={idx}>{token}</span>;
+    });
+  };
+
+  const handlePrevDrill = () => {
+    if (drillIndex > 0) {
+      setDrillIndex((prev) => prev - 1);
     }
-    return Array.from(set.values());
-  }, [targetText]);
+  };
+
+  const handleNextDrill = () => {
+    if (drillIndex < activeTargetsList.length - 1) {
+      setDrillIndex((prev) => prev + 1);
+    }
+  };
 
   return (
-    <div className="min-h-screen w-full bg-[#0a0908] text-neutral-100 flex flex-col justify-between selection:bg-amber-500/30 selection:text-amber-200">
-      {/* Top Navigation Bar */}
-      <header className="w-full border-b border-neutral-800/80 bg-[#120f0c]/90 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-3.5 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
+    <div
+      className="min-h-screen w-full flex justify-center py-3 sm:py-6 px-3 sm:px-4 antialiased transition-colors duration-200"
+      style={{
+        backgroundColor: 'var(--bg, #090705)',
+        color: 'var(--text, #f3ece4)',
+      }}
+    >
+      {/* APP CONTAINER (Matches 480px mobile card hierarchy & scalable desktop) */}
+      <div className="w-full max-w-[480px] flex flex-col gap-3">
+        
+        {/* ========================================================
+            1. HEADER (Both Views)
+            Left: Avatar + MY LEARNING + Online badge
+            Right: Sun/Moon button + AI button
+            ======================================================== */}
+        <header
+          className="flex items-center justify-between rounded-2xl px-3.5 py-2.5 shadow-sm transition-all"
+          style={{
+            backgroundColor: 'var(--card-bg, #140e09)',
+            border: '1px solid var(--border, #2c1d12)',
+          }}
+        >
+          {/* Left: Avatar + Title + Online Badge */}
           <div className="flex items-center gap-2.5">
-            <span className="text-xl sm:text-2xl select-none">📖</span>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm sm:text-base font-bold text-white tracking-tight">
-                  MY LEARNING
-                </span>
-                <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  Public Hub
-                </span>
-              </div>
-              <p className="text-[10px] sm:text-[11px] text-neutral-400 hidden sm:block">
-                Powered by <strong className="text-amber-400 font-semibold">Ryan (Neural) UK</strong> & <strong className="text-amber-400 font-semibold">Groq (14.4k/day)</strong>
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 sm:gap-2.5">
-            {/* AI Assistant Button */}
-            <button
-              onClick={() => {
-                setAiCustomPrompt('');
-                setIsAIChatOpen(true);
+            <img
+              src="https://i.postimg.cc/MTGJ6zYs/18275-modified.png"
+              alt="MY LEARNING"
+              className="w-8 h-8 rounded-full object-cover border-2 shrink-0"
+              style={{
+                borderColor: 'var(--primary, #f59e0b)',
+                boxShadow: '0 0 10px rgba(245, 158, 11, 0.35)',
               }}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-xs font-semibold text-amber-300 transition-all cursor-pointer shadow-xs active:scale-95"
-              title="Open AI Messages & Tutor (Groq 14.4k/day)"
-            >
-              <Zap className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
-              <span>AI Tutor</span>
-            </button>
-
-            {/* Sound Effects Toggle */}
-            <button
-              onClick={() => {
-                const nextState = !soundEnabled;
-                setSoundEnabled(nextState);
-                typingSoundService.setEnabled(nextState);
-                if (nextState) typingSoundService.playCorrectKey();
-              }}
-              title={soundEnabled ? 'Mute typing sounds' : 'Enable typing sounds'}
-              className="p-1.5 sm:p-2 rounded-xl bg-neutral-900 border border-neutral-800 text-neutral-300 hover:text-amber-400 hover:border-amber-500/30 transition-all cursor-pointer"
-            >
-              {soundEnabled ? <Volume2 className="w-4 h-4 text-amber-400" /> : <VolumeX className="w-4 h-4 text-neutral-500" />}
-            </button>
-
-            {/* Login Link */}
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-xs font-semibold text-neutral-300 hover:text-white transition-all cursor-pointer"
-            >
-              <Lock className="w-3.5 h-3.5 text-amber-400" />
-              <span>Sign In</span>
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      {/* Primary Tab Navigation Strip (Reader / Trainer) */}
-      <div className="w-full bg-[#120f0c] border-b border-neutral-800/80 sticky top-14 sm:top-16 z-30">
-        <div className="max-w-6xl mx-auto px-3 sm:px-6 py-2 flex items-center justify-between gap-2 overflow-x-auto scrollbar-none">
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <button
-              onClick={() => setActiveMainTab('reader')}
-              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeMainTab === 'reader'
-                  ? 'bg-amber-500 text-neutral-950 shadow-xs'
-                  : 'bg-neutral-900/90 text-neutral-400 hover:text-white border border-neutral-800'
-              }`}
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>📖 Reader & Audio</span>
-              <span className="text-[10px] font-mono opacity-80">(Files & Words)</span>
-            </button>
-
-            <button
-              onClick={() => setActiveMainTab('trainer')}
-              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeMainTab === 'trainer'
-                  ? 'bg-amber-500 text-neutral-950 shadow-xs'
-                  : 'bg-neutral-900/90 text-neutral-400 hover:text-white border border-neutral-800'
-              }`}
-            >
-              <ListOrdered className="w-3.5 h-3.5" />
-              <span>🎯 Typing Trainer</span>
-              <span className="hidden sm:inline">(Ryan UK)</span>
-            </button>
-          </div>
-
-          <div className="hidden lg:flex items-center gap-2 text-[11px] text-neutral-400 font-mono">
-            <span className="px-2.5 py-1 rounded-lg bg-neutral-900 border border-neutral-800 text-amber-400">
-              🇬🇧 Ryan UK • 🇩🇪 Killian DE • 🇸🇴 Muuse SO
+            />
+            <span className="text-[13px] font-black tracking-wider text-white">
+              MY LEARNING
+            </span>
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Online</span>
             </span>
           </div>
-        </div>
-      </div>
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 flex flex-col justify-start gap-4 sm:gap-6">
-        {/* VIEW 1: Document Reader & File Study Hub */}
-        {activeMainTab === 'reader' && (
-          <div className="space-y-4 sm:space-y-6">
-            <PublicDocumentReader
-              onPracticeFileText={handlePracticeFileText}
-              onOpenAIChatWithPrompt={handleOpenAIChatWithPrompt}
-            />
+          {/* Right: Theme Toggle + AI Button */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              className="w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer text-amber-400 hover:text-amber-300"
+              style={{
+                backgroundColor: 'var(--surface, #1b130c)',
+                border: '1px solid var(--border, #2c1d12)',
+              }}
+            >
+              {theme === 'dark' ? (
+                <Sun className="w-4 h-4 text-amber-400" />
+              ) : (
+                <Moon className="w-4 h-4 text-amber-500" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                // Focus / trigger learning helper
+                if (activeTab === 'reader') {
+                  playRyanAudio(currentPassage.text);
+                } else {
+                  playRyanAudio(activeTargetString);
+                }
+              }}
+              title="Ryan UK Speech AI"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-amber-400 hover:text-amber-300"
+              style={{
+                backgroundColor: 'var(--surface, #1b130c)',
+                border: '1px solid var(--border, #2c1d12)',
+              }}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-[#f59e0b]" />
+              <span className="font-mono text-[11px] font-semibold">AI</span>
+            </button>
+          </div>
+        </header>
+
+        {/* ========================================================
+            2. NAVIGATION ROW 1 (MAIN TABS)
+            2-Button Grid: [📖 Reader & Audio] vs [⌨️ Typing Trainer]
+            Active tab has amber background (#f59e0b) with dark text
+            ======================================================== */}
+        <div
+          className="grid grid-cols-2 gap-1.5 p-1 rounded-2xl"
+          style={{
+            backgroundColor: 'var(--card-bg, #140e09)',
+            border: '1px solid var(--border, #2c1d12)',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('reader');
+              navigate('/read', { replace: true });
+            }}
+            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'reader'
+                ? 'bg-[#f59e0b] text-neutral-950 shadow-sm font-extrabold'
+                : 'text-[#8e7d70] hover:text-[#f3ece4]'
+            }`}
+            style={{
+              backgroundColor: activeTab === 'reader' ? '#f59e0b' : 'transparent',
+            }}
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>Reader & Audio</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('trainer');
+              navigate('/practice', { replace: true });
+            }}
+            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'trainer'
+                ? 'bg-[#f59e0b] text-neutral-950 shadow-sm font-extrabold'
+                : 'text-[#8e7d70] hover:text-[#f3ece4]'
+            }`}
+            style={{
+              backgroundColor: activeTab === 'trainer' ? '#f59e0b' : 'transparent',
+            }}
+          >
+            <Keyboard className="w-3.5 h-3.5" />
+            <span>Typing Trainer</span>
+          </button>
+        </div>
+
+        {/* ========================================================
+            3. NAVIGATION ROW 2 (SUBJECT PILLS)
+            2-Column Grid: [👤 The Man] vs [👗 The Woman]
+            Active subject gets amber border and subtle amber background tint
+            ======================================================== */}
+        <div className="grid grid-cols-2 gap-2">
+          {PASSAGES.map((p, idx) => {
+            const isSelected = selectedPassageIndex === idx;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setSelectedPassageIndex(idx)}
+                className="py-2.5 px-3 rounded-2xl text-center text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                style={{
+                  backgroundColor: isSelected
+                    ? 'rgba(245, 158, 11, 0.12)'
+                    : 'var(--card-bg, #140e09)',
+                  border: isSelected
+                    ? '1.5px solid #f59e0b'
+                    : '1px solid var(--border, #2c1d12)',
+                  color: isSelected ? '#ffffff' : '#8e7d70',
+                }}
+              >
+                <span>{idx === 0 ? '👤' : '👗'}</span>
+                <span>{p.name}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ========================================================
+            VIEW 1: READER & AUDIO (Match 18769_2.jpg exactly)
+            - Toolbar Strip: [A-] [A] [A+] on left | [((•)) Ryan (UK)] badge + [▶ Read Aloud] button on right
+            - Reader Body: Single continuous prose paragraph with amber dotted underlines on vocab
+            - Bottom Card Strip: "Translations: 🇩🇪 German & 🇸🇴 Somali"
+            - Footer: Centered italic quote '"I learn by reading and typing."'
+            ======================================================== */}
+        {activeTab === 'reader' && (
+          <div className="flex flex-col gap-3">
+            {/* TOOLBAR STRIP */}
+            <div
+              className="flex items-center justify-between rounded-2xl p-2.5 transition-all"
+              style={{
+                backgroundColor: 'var(--card-bg, #140e09)',
+                border: '1px solid var(--border, #2c1d12)',
+              }}
+            >
+              {/* Size chips [A-] [A] [A+] */}
+              <div className="flex items-center gap-1">
+                {(['sm', 'base', 'lg'] as TextSize[]).map((size) => {
+                  const label = size === 'sm' ? 'A-' : size === 'base' ? 'A' : 'A+';
+                  const isActive = textSize === size;
+                  return (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => setTextSize(size)}
+                      className="w-7 h-7 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center"
+                      style={{
+                        backgroundColor: isActive
+                          ? 'var(--surface-hover, #261b11)'
+                          : 'transparent',
+                        color: isActive ? '#f59e0b' : '#8e7d70',
+                        border: isActive ? '1px solid #f59e0b' : 'none',
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Right: [((•)) Ryan (UK)] badge + [▶ Read Aloud] button */}
+              <div className="flex items-center gap-2">
+                <span
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-mono font-medium"
+                  style={{
+                    backgroundColor: 'var(--surface, #1b130c)',
+                    border: '1px solid var(--border, #2c1d12)',
+                    color: '#8e7d70',
+                  }}
+                >
+                  <Radio className="w-3 h-3 text-[#f59e0b]" />
+                  <span>Ryan (UK)</span>
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isPlayingAudio) {
+                      stopAudio();
+                    } else {
+                      playRyanAudio(currentPassage.text);
+                    }
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95"
+                  style={{
+                    backgroundColor: isPlayingAudio ? '#f43f5e' : '#f59e0b',
+                    color: isPlayingAudio ? '#ffffff' : '#090705',
+                  }}
+                >
+                  {isLoadingAudio ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : isPlayingAudio ? (
+                    <Square className="w-3 h-3 fill-current" />
+                  ) : (
+                    <Play className="w-3 h-3 fill-current" />
+                  )}
+                  <span>{isPlayingAudio ? 'Stop' : 'Read Aloud'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* READER BODY: ONE SINGLE CONTINUOUS PROSE PARAGRAPH */}
+            <div
+              className="rounded-2xl p-4 sm:p-5 transition-all"
+              style={{
+                backgroundColor: 'var(--card-bg, #140e09)',
+                border: '1px solid var(--border, #2c1d12)',
+              }}
+            >
+              <p
+                className={`leading-relaxed font-sans ${
+                  textSize === 'sm'
+                    ? 'text-sm'
+                    : textSize === 'lg'
+                    ? 'text-lg sm:text-xl'
+                    : 'text-base sm:text-lg'
+                }`}
+                style={{ color: 'var(--text, #f3ece4)' }}
+              >
+                {renderReadableTextWithVocab(currentPassage.text)}
+              </p>
+            </div>
+
+            {/* BOTTOM CARD STRIP: Translations: 🇩🇪 German & 🇸🇴 Somali */}
+            <div
+              className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-medium text-center"
+              style={{
+                backgroundColor: 'var(--card-bg, #140e09)',
+                border: '1px solid var(--border, #2c1d12)',
+                color: '#8e7d70',
+              }}
+            >
+              <span>Translations: 🇩🇪 German & 🇸🇴 Somali</span>
+            </div>
+
+            {/* FOOTER: Centered italic quote */}
+            <footer className="text-center py-2">
+              <p className="text-xs italic" style={{ color: '#8e7d70' }}>
+                "I learn by reading and typing."
+              </p>
+            </footer>
           </div>
         )}
 
-        {/* VIEW 2: Step-by-Step Progressive Typing Trainer */}
-        {activeMainTab === 'trainer' && (
-          <div className="space-y-4 sm:space-y-5">
-            {/* 1. Passage Selector Tabs (Man vs Woman vs AI Generated / Uploaded) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3">
-              {passages.map((passage, idx) => {
-                const isSelected = selectedPassageIndex === idx;
+        {/* ========================================================
+            VIEW 2: TYPING TRAINER (Match 18778.jpg exactly)
+            - Row 1: Mode chips [One-by-One] [Sentences] [Full Text]
+            - Row 2: 1-Row Compact Stats HUD: SPEED (0 wpm) | ACCURACY (100%) | TIME (0s) | MISTAKES (0)
+            - Typing Stage Card:
+              * Header: "WORD / PHRASE DRILL" (amber) on left, [Listen (Ryan)] button on right
+              * Typing Box: Centered box with glowing amber border (#f59e0b) and large monospace text
+              * Amber cursor/caret highlight; stealth input capturing keystrokes
+              * Footer navigation: [← Prev] on left, "1 of 6" in center, [Next →] on right
+            - Footer: Centered italic quote '"I learn by reading and typing."'
+            ======================================================== */}
+        {activeTab === 'trainer' && (
+          <div className="flex flex-col gap-3">
+            
+            {/* ROW 1: MODE CHIPS [One-by-One] [Sentences] [Full Text] */}
+            <div className="grid grid-cols-3 gap-1.5">
+              {[
+                { id: 'drill', label: 'One-by-One' },
+                { id: 'sentence', label: 'Sentences' },
+                { id: 'full', label: 'Full Text' },
+              ].map((m) => {
+                const isActive = drillMode === m.id;
                 return (
                   <button
-                    key={passage.id}
-                    onClick={() => setSelectedPassageIndex(idx)}
-                    className={`relative flex items-start gap-2.5 sm:gap-3 p-3 sm:p-4 rounded-xl sm:rounded-2xl text-left border transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-amber-950/20 border-amber-500/60 ring-1 ring-amber-500/30 shadow-xs'
-                        : 'bg-[#14110e] border-neutral-800/80 hover:border-neutral-700 opacity-75 hover:opacity-100'
-                    }`}
+                    key={m.id}
+                    type="button"
+                    onClick={() => {
+                      setDrillMode(m.id as DrillMode);
+                      setDrillIndex(0);
+                    }}
+                    className="py-1.5 px-2 rounded-xl text-xs font-bold text-center transition-all cursor-pointer"
+                    style={{
+                      backgroundColor: isActive
+                        ? 'var(--surface-hover, #261b11)'
+                        : 'var(--card-bg, #140e09)',
+                      border: isActive
+                        ? '1px solid #f59e0b'
+                        : '1px solid var(--border, #2c1d12)',
+                      color: isActive ? '#f59e0b' : '#8e7d70',
+                    }}
                   >
-                    <div
-                      className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center text-sm sm:text-base shrink-0 font-bold ${
-                        isSelected ? 'bg-amber-500/20 text-amber-400' : 'bg-neutral-900 text-neutral-500'
-                      }`}
-                    >
-                      {idx + 1}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-400">
-                          {passage.tag}
-                        </span>
-                        {isSelected && (
-                          <span className="flex h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-                        )}
-                      </div>
-                      <div className="text-xs sm:text-sm font-semibold text-neutral-100 truncate mt-0.5">
-                        {passage.title}
-                      </div>
-                      <div className="text-[11px] text-neutral-400 truncate">
-                        {passage.subtitle}
-                      </div>
-                    </div>
+                    {m.label}
                   </button>
                 );
               })}
             </div>
 
-            {/* 2. Practice Mode & Neural Audio Controls Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-[#14110e] border border-neutral-800/80">
-              <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
-                <span className="text-xs font-semibold text-neutral-400 hidden sm:flex items-center gap-1 mr-1">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Mode:</span>
-                </span>
-                <button
-                  onClick={() => setPracticeMode('progressive')}
-                  className={`px-2.5 py-1.5 rounded-lg sm:rounded-xl text-xs font-medium transition-all flex items-center gap-1 cursor-pointer ${
-                    practiceMode === 'progressive'
-                      ? 'bg-amber-500 text-neutral-950 font-bold shadow-xs'
-                      : 'bg-neutral-900/90 text-neutral-400 hover:text-neutral-200'
-                  }`}
-                >
-                  <ListOrdered className="w-3.5 h-3.5" />
-                  <span>🎯 One-by-One</span>
-                </button>
-
-                <button
-                  onClick={() => setPracticeMode('sentence')}
-                  className={`px-2.5 py-1.5 rounded-lg sm:rounded-xl text-xs font-medium transition-all flex items-center gap-1 cursor-pointer ${
-                    practiceMode === 'sentence'
-                      ? 'bg-amber-500 text-neutral-950 font-bold shadow-xs'
-                      : 'bg-neutral-900/90 text-neutral-400 hover:text-neutral-200'
-                  }`}
-                >
-                  <BookOpen className="w-3.5 h-3.5" />
-                  <span>Sentences</span>
-                </button>
-
-                <button
-                  onClick={() => setPracticeMode('full')}
-                  className={`px-2.5 py-1.5 rounded-lg sm:rounded-xl text-xs font-medium transition-all flex items-center gap-1 cursor-pointer ${
-                    practiceMode === 'full'
-                      ? 'bg-amber-500 text-neutral-950 font-bold shadow-xs'
-                      : 'bg-neutral-900/90 text-neutral-400 hover:text-neutral-200'
-                  }`}
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>Full</span>
-                </button>
-              </div>
-
-              {/* Voice & Auto-play options */}
-              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-neutral-900 border border-neutral-800 text-[10px] sm:text-[11px] text-amber-400">
-                  <Radio className="w-2.5 h-2.5 text-amber-400 animate-pulse" />
-                  <span className="font-semibold">Ryan UK</span>
-                </div>
-
-                <label className="flex items-center gap-1.5 text-xs text-neutral-300 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={autoplayVoice}
-                    onChange={(e) => setAutoplayVoice(e.target.checked)}
-                    className="rounded border-neutral-700 text-amber-500 focus:ring-amber-500 bg-neutral-900"
-                  />
-                  <span className="text-[11px]">Auto-read</span>
-                </label>
-
-                <label className="flex items-center gap-1.5 text-xs text-neutral-300 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={autoAdvance}
-                    onChange={(e) => setAutoAdvance(e.target.checked)}
-                    className="rounded border-neutral-700 text-amber-500 focus:ring-amber-500 bg-neutral-900"
-                  />
-                  <span className="text-[11px]">Auto-advance</span>
-                </label>
-              </div>
-            </div>
-
-            {/* 3. Step Progression Stepper Strip (One-by-One visual track) */}
-            <div className="p-4 rounded-2xl bg-[#14110e] border border-neutral-800/80 space-y-3">
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-white">
-                    Step {currentStepIndex + 1} of {currentStepsList.length}:
-                  </span>
-                  <span className="text-amber-400 font-semibold">{currentStep.title}</span>
-                  {currentStep.hint && (
-                    <span className="text-neutral-400 hidden sm:inline">({currentStep.hint})</span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-[11px] text-neutral-400">
-                    Progress: {progressPercent}%
-                  </span>
-                  <div className="w-20 h-1.5 rounded-full bg-neutral-800 overflow-hidden">
-                    <div
-                      className="h-full bg-amber-500 transition-all duration-300"
-                      style={{ width: `${progressPercent}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Numbered Step Badges Strip */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-                {currentStepsList.map((step, idx) => {
-                  const isCurrent = currentStepIndex === idx;
-                  const isDone = completedStepIds.has(step.id);
-                  return (
-                    <button
-                      key={step.id}
-                      onClick={() => setCurrentStepIndex(idx)}
-                      className={`group shrink-0 h-8 px-2.5 rounded-xl font-mono text-xs flex items-center gap-1.5 border transition-all cursor-pointer ${
-                        isCurrent
-                          ? 'bg-amber-500 border-amber-400 text-neutral-950 font-bold shadow-md shadow-amber-500/20'
-                          : isDone
-                          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 font-medium'
-                          : 'bg-neutral-900/90 border-neutral-800 text-neutral-400 hover:border-neutral-700 hover:text-neutral-200'
-                      }`}
-                      title={`${step.title}: "${step.chunk}"`}
-                    >
-                      {isDone ? (
-                        <Check className="w-3.5 h-3.5 text-emerald-400" />
-                      ) : (
-                        <span>{idx + 1}</span>
-                      )}
-                      <span className="truncate max-w-[90px] sm:max-w-[120px] text-[11px]">
-                        {step.chunk}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 4. Real-time Live HUD Metrics */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-              <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#14110e] border border-neutral-800 flex items-center gap-2.5 sm:gap-3">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
-                  <Gauge className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-[9px] sm:text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                    Speed (WPM)
-                  </div>
-                  <div className="text-lg sm:text-xl font-black font-mono text-white">{stats.wpm}</div>
-                </div>
-              </div>
-
-              <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#14110e] border border-neutral-800 flex items-center gap-2.5 sm:gap-3">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
-                  <Target className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-[9px] sm:text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                    Accuracy
-                  </div>
-                  <div className="text-lg sm:text-xl font-black font-mono text-emerald-400">
-                    {stats.accuracy}%
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#14110e] border border-neutral-800 flex items-center gap-2.5 sm:gap-3">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0">
-                  <Clock className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-[9px] sm:text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                    Time
-                  </div>
-                  <div className="text-lg sm:text-xl font-black font-mono text-blue-400">
-                    {timeLeft !== null ? `${timeLeft}s` : `${stats.durationSec}s`}
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#14110e] border border-neutral-800 flex items-center gap-2.5 sm:gap-3">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center shrink-0">
-                  <Flame className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-[9px] sm:text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                    Mistakes
-                  </div>
-                  <div className="text-lg sm:text-xl font-black font-mono text-rose-400">
-                    {stats.mistakes}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 5. Main Active Typing Engine Box */}
+            {/* ROW 2: 1-ROW COMPACT STATS HUD */}
             <div
-              onClick={() => inputRef.current?.focus()}
-              className="relative p-4 sm:p-7 rounded-2xl sm:rounded-3xl bg-[#14110e] border border-neutral-800 hover:border-amber-500/40 transition-all shadow-lg space-y-4 sm:space-y-6 cursor-text"
+              className="grid grid-cols-4 rounded-2xl py-2 px-1 transition-all"
+              style={{
+                backgroundColor: 'var(--card-bg, #140e09)',
+                border: '1px solid var(--border, #2c1d12)',
+              }}
             >
-              {/* Header inside typing box with Listen Audio button */}
-              <div className="flex items-center justify-between gap-2 border-b border-neutral-800/80 pb-2.5">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-amber-400 font-mono shrink-0">
-                    Target:
-                  </span>
-                  <span className="text-xs text-neutral-300 font-medium truncate">
-                    {currentStep.title}
-                  </span>
-                </div>
-
-                {/* Audio Listen Ryan UK Button */}
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (isAudioPlaying) {
-                        stopAudio();
-                      } else {
-                        playRyanAudio(targetText);
-                      }
-                    }}
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl text-xs font-semibold transition-all cursor-pointer shadow-xs ${
-                      isAudioPlaying
-                        ? 'bg-rose-500 text-white animate-pulse'
-                        : 'bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300'
-                    }`}
-                  >
-                    {isAudioLoading ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : isAudioPlaying ? (
-                      <Square className="w-3.5 h-3.5 fill-current" />
-                    ) : (
-                      <Volume2 className="w-3.5 h-3.5" />
-                    )}
-                    <span>{isAudioPlaying ? 'Stop' : 'Listen (Ryan UK)'}</span>
-                  </button>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      resetSession();
-                    }}
-                    className="p-1 rounded-lg bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-white"
-                    title="Reset chunk"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+              {/* SPEED */}
+              <div className="flex flex-col items-center justify-center text-center">
+                <span className="text-[10px] font-mono font-medium" style={{ color: '#8e7d70' }}>
+                  SPEED
+                </span>
+                <span className="text-sm sm:text-base font-black font-mono text-white">
+                  {stats.wpm} <span className="text-[10px] font-normal font-mono" style={{ color: '#8e7d70' }}>wpm</span>
+                </span>
               </div>
 
-              {/* Character by character rendering */}
-              <div className="text-base sm:text-2xl font-mono leading-relaxed select-none tracking-normal min-h-[50px] sm:min-h-[70px]">
-                {targetText.split('').map((char, index) => {
-                  let statusColor = 'text-neutral-500';
-                  let bgHighlight = '';
+              {/* ACCURACY */}
+              <div
+                className="flex flex-col items-center justify-center text-center"
+                style={{ borderLeft: '1px solid var(--border, #2c1d12)' }}
+              >
+                <span className="text-[10px] font-mono font-medium" style={{ color: '#8e7d70' }}>
+                  ACCURACY
+                </span>
+                <span className="text-sm sm:text-base font-black font-mono text-emerald-400">
+                  {stats.accuracy}%
+                </span>
+              </div>
 
-                  if (index < inputVal.length) {
-                    if (inputVal[index] === char) {
-                      statusColor = 'text-emerald-400 font-bold';
+              {/* TIME */}
+              <div
+                className="flex flex-col items-center justify-center text-center"
+                style={{ borderLeft: '1px solid var(--border, #2c1d12)' }}
+              >
+                <span className="text-[10px] font-mono font-medium" style={{ color: '#8e7d70' }}>
+                  TIME
+                </span>
+                <span className="text-sm sm:text-base font-black font-mono text-amber-400">
+                  {stats.time}s
+                </span>
+              </div>
+
+              {/* MISTAKES */}
+              <div
+                className="flex flex-col items-center justify-center text-center"
+                style={{ borderLeft: '1px solid var(--border, #2c1d12)' }}
+              >
+                <span className="text-[10px] font-mono font-medium" style={{ color: '#8e7d70' }}>
+                  MISTAKES
+                </span>
+                <span
+                  className="text-sm sm:text-base font-black font-mono"
+                  style={{ color: stats.mistakes > 0 ? '#f43f5e' : '#8e7d70' }}
+                >
+                  {stats.mistakes}
+                </span>
+              </div>
+            </div>
+
+            {/* TYPING STAGE CARD */}
+            <div
+              onClick={handleFocusInput}
+              className="rounded-2xl p-4 sm:p-5 flex flex-col gap-4 transition-all cursor-text relative"
+              style={{
+                backgroundColor: 'var(--card-bg, #140e09)',
+                border: '1px solid var(--border, #2c1d12)',
+              }}
+            >
+              {/* Card Header: "WORD / PHRASE DRILL" + [Listen (Ryan)] */}
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono font-bold tracking-wider text-[#f59e0b] uppercase">
+                  {drillMode === 'drill'
+                    ? 'WORD / PHRASE DRILL'
+                    : drillMode === 'sentence'
+                    ? 'SENTENCE DRILL'
+                    : 'FULL TEXT DRILL'}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isPlayingAudio) {
+                      stopAudio();
                     } else {
-                      statusColor = 'text-rose-400 font-black bg-rose-950/50 rounded-xs';
+                      playRyanAudio(activeTargetString);
                     }
-                  } else if (index === inputVal.length) {
-                    bgHighlight = 'bg-amber-500/20 border-b-2 border-amber-400 animate-pulse text-amber-200';
-                  }
-
-                  return (
-                    <span
-                      key={index}
-                      className={`relative inline-block transition-colors duration-75 ${statusColor} ${bgHighlight}`}
-                    >
-                      {char === ' ' ? '\u00A0' : char}
-                    </span>
-                  );
-                })}
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95"
+                  style={{
+                    backgroundColor: isPlayingAudio
+                      ? '#f43f5e'
+                      : 'var(--surface, #1b130c)',
+                    border: '1px solid var(--border, #2c1d12)',
+                    color: isPlayingAudio ? '#ffffff' : '#f59e0b',
+                  }}
+                >
+                  {isLoadingAudio ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : isPlayingAudio ? (
+                    <Square className="w-3 h-3 fill-current" />
+                  ) : (
+                    <Volume2 className="w-3 h-3" />
+                  )}
+                  <span>Listen (Ryan)</span>
+                </button>
               </div>
 
-              {/* Hidden text input for hardware keyboard input capture */}
+              {/* Stealth input capturing keystrokes */}
               <input
                 ref={inputRef}
                 type="text"
                 value={inputVal}
                 onChange={handleInputChange}
-                className="opacity-0 absolute inset-0 w-full h-full cursor-default"
                 autoFocus
                 autoComplete="off"
                 autoCorrect="off"
                 autoCapitalize="off"
-                spellCheck="false"
+                spellCheck={false}
+                className="absolute inset-0 opacity-0 cursor-default"
+                aria-label="Stealth typing input"
               />
 
-              {/* Active Step Interactive Yellow Vocabulary Chips */}
-              {activeStepVocab.length > 0 && (
-                <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-neutral-800/60">
-                  <span className="text-[11px] font-mono text-neutral-400">
-                    Interactive Words (Tap for 3-Language Audio Card):
-                  </span>
-                  {activeStepVocab.map((vocab) => (
-                    <button
-                      key={vocab.id}
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedVocabEntry(vocab);
-                      }}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-400/20 hover:bg-amber-400/35 border border-amber-400/50 text-amber-300 hover:text-amber-200 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-xs"
-                      title={`"${vocab.word}" • German: ${vocab.germanWord} • Somali: ${vocab.somaliWord}`}
-                    >
-                      <span>{vocab.word}</span>
-                      <Volume2 className="w-3 h-3 text-amber-400" />
-                    </button>
-                  ))}
-                </div>
-              )}
+              {/* TYPING BOX: CENTERED BOX WITH GLOWING AMBER BORDER (#f59e0b) */}
+              <div
+                className="rounded-xl p-4 min-h-[90px] flex items-center justify-center text-center transition-all"
+                style={{
+                  backgroundColor: 'var(--surface, #1b130c)',
+                  border: '1.5px solid #f59e0b',
+                  boxShadow: '0 0 16px rgba(245, 158, 11, 0.22)',
+                }}
+              >
+                <div className="font-mono text-base sm:text-lg leading-relaxed select-none tracking-normal">
+                  {activeTargetString.split('').map((char, idx) => {
+                    const isTyped = idx < inputVal.length;
+                    const isCurrent = idx === inputVal.length;
+                    const isCorrect = isTyped && inputVal[idx] === char;
+                    const isError = isTyped && inputVal[idx] !== char;
 
-              {/* Bottom Step Navigation Buttons */}
-              <div className="flex items-center justify-between pt-3 border-t border-neutral-800/80">
+                    return (
+                      <span key={idx} className="relative inline">
+                        {/* Amber Cursor / Caret highlight */}
+                        {isCurrent && !isCompleted && (
+                          <span
+                            className="inline-block w-[2px] h-[1.15em] align-middle animate-pulse -mr-[2px]"
+                            style={{
+                              backgroundColor: '#f59e0b',
+                              boxShadow: '0 0 8px #f59e0b',
+                            }}
+                          />
+                        )}
+
+                        <span
+                          className={
+                            isCorrect
+                              ? 'text-white font-semibold'
+                              : isError
+                              ? 'text-white bg-rose-600/90 rounded-xs'
+                              : 'opacity-40'
+                          }
+                          style={{
+                            color: !isTyped ? '#8e7d70' : undefined,
+                          }}
+                        >
+                          {char}
+                        </span>
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* FOOTER NAVIGATION: [← Prev] | "1 of 6" | [Next →] */}
+              <div className="flex items-center justify-between pt-1">
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    goToPrevStep();
+                    handlePrevDrill();
                   }}
-                  disabled={currentStepIndex === 0}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 disabled:opacity-40 disabled:pointer-events-none text-xs text-neutral-300 font-medium transition-colors cursor-pointer"
+                  disabled={drillIndex === 0}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{
+                    backgroundColor: 'var(--surface, #1b130c)',
+                    border: '1px solid var(--border, #2c1d12)',
+                    color: '#8e7d70',
+                  }}
                 >
-                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <ChevronLeft className="w-3.5 h-3.5" />
                   <span>Prev</span>
                 </button>
 
-                <div className="text-[10px] sm:text-[11px] text-neutral-400 hidden sm:block">
-                  Press <kbd className="px-1 py-0.5 rounded bg-neutral-900 border border-neutral-800 text-neutral-300 font-mono">Esc</kbd> to restart
-                </div>
+                <span className="text-xs font-mono font-medium" style={{ color: '#8e7d70' }}>
+                  {drillIndex + 1} of {activeTargetsList.length}
+                </span>
 
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    goToNextStep();
+                    handleNextDrill();
                   }}
-                  disabled={currentStepIndex === currentStepsList.length - 1}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 disabled:opacity-40 disabled:pointer-events-none text-xs text-neutral-300 font-medium transition-colors cursor-pointer"
+                  disabled={drillIndex >= activeTargetsList.length - 1}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{
+                    backgroundColor: 'var(--surface, #1b130c)',
+                    border: '1px solid var(--border, #2c1d12)',
+                    color: '#8e7d70',
+                  }}
                 >
                   <span>Next</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
 
-            {/* 7. Completion Scorecard Card */}
-            {(isCompleted || isTimeUp) && (
-              <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-[#16120e] border border-amber-500/50 shadow-xl shadow-amber-500/10 animate-in fade-in zoom-in-95 duration-200">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pb-3 border-b border-neutral-800">
-                  <div className="flex items-center gap-2.5 text-center sm:text-left">
-                    <div className="w-10 h-10 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center text-xl font-black shrink-0">
-                      <Trophy className="w-5 h-5 text-amber-400" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-bold text-white">
-                        {isCompleted ? '🎉 Step Mastered!' : '⏱️ Time’s Up!'}
-                      </h3>
-                      <p className="text-xs text-neutral-400">
-                        {currentStep.title} — {stats.wpm} WPM • {stats.accuracy}% Accuracy
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleShareResults}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-xs font-semibold text-neutral-200 transition-all cursor-pointer"
-                    >
-                      {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5 text-neutral-400" />}
-                      <span>{copied ? 'Copied!' : 'Copy Stats'}</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 my-4 sm:my-6">
-                  <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#0e0c0a] border border-neutral-800 text-center">
-                    <div className="text-xl sm:text-2xl font-black font-mono text-amber-400">
-                      {stats.wpm}
-                    </div>
-                    <div className="text-[10px] font-bold text-neutral-400 uppercase mt-0.5">
-                      Speed (WPM)
-                    </div>
-                  </div>
-
-                  <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#0e0c0a] border border-neutral-800 text-center">
-                    <div className="text-xl sm:text-2xl font-black font-mono text-emerald-400">
-                      {stats.accuracy}%
-                    </div>
-                    <div className="text-[10px] font-bold text-neutral-400 uppercase mt-0.5">
-                      Accuracy
-                    </div>
-                  </div>
-
-                  <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#0e0c0a] border border-neutral-800 text-center">
-                    <div className="text-xl sm:text-2xl font-black font-mono text-blue-400">
-                      {stats.durationSec}s
-                    </div>
-                    <div className="text-[10px] font-bold text-neutral-400 uppercase mt-0.5">
-                      Duration
-                    </div>
-                  </div>
-
-                  <div className="p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#0e0c0a] border border-neutral-800 text-center">
-                    <div className="text-xl sm:text-2xl font-black font-mono text-rose-400">
-                      {stats.mistakes}
-                    </div>
-                    <div className="text-[10px] font-bold text-neutral-400 uppercase mt-0.5">
-                      Mistakes
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-1">
-                  <button
-                    onClick={resetSession}
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Repeat Step</span>
-                  </button>
-
-                  {currentStepIndex < currentStepsList.length - 1 ? (
-                    <button
-                      onClick={goToNextStep}
-                      className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-bold uppercase tracking-wider transition-all shadow-md shadow-amber-500/20 cursor-pointer"
-                    >
-                      <span>Next: {currentStepsList[currentStepIndex + 1]?.title}</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        setSelectedPassageIndex((prev) => (prev + 1) % passages.length);
-                      }}
-                      className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 text-xs font-bold uppercase tracking-wider transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
-                    >
-                      <span>🎉 Mastered! Next Passage</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
+            {/* FOOTER: Centered italic quote */}
+            <footer className="text-center py-2">
+              <p className="text-xs italic" style={{ color: '#8e7d70' }}>
+                "I learn by reading and typing."
+              </p>
+            </footer>
           </div>
         )}
-      </main>
 
-      {/* AI Chat Drawer */}
-      <AIChatDrawer
-        isOpen={isAIChatOpen}
-        onClose={() => setIsAIChatOpen(false)}
-        onSelectTypingText={(txt) => handlePracticeFileText(txt, 'AI Generated Practice')}
-        initialPrompt={aiCustomPrompt}
-      />
-
-      {/* Tri-Lingual Interactive Vocabulary Modal */}
-      <PublicVocabularyModal
-        entry={selectedVocabEntry}
-        onClose={() => setSelectedVocabEntry(null)}
-        onPracticeText={(txt) => handlePracticeFileText(txt, 'Vocabulary Practice')}
-      />
-
-      {/* Footer */}
-      <footer className="w-full border-t border-neutral-900 bg-[#0c0a09] py-4 text-center text-xs text-neutral-500">
-        <p className="font-mono">“I learn by reading and typing.”</p>
-      </footer>
+        {/* TRILINGUAL VOCABULARY MODAL */}
+        <AnimatePresence>
+          {selectedVocabEntry && (
+            <PublicVocabularyModal
+              entry={selectedVocabEntry}
+              onClose={() => setSelectedVocabEntry(null)}
+              onPracticeText={() => {
+                setSelectedVocabEntry(null);
+                setActiveTab('trainer');
+              }}
+            />
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
+
+export default PublicTypingPage;

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Layers, Zap } from 'lucide-react';
+import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom';
+import { ArrowLeft, BookOpen, Layers, Zap, Settings } from 'lucide-react';
 import { BottomNav } from './BottomNav';
 import { Sidebar } from './Sidebar';
 import { DesktopTopBar } from './DesktopTopBar';
@@ -8,10 +8,12 @@ import { SettingsModal } from '../common/SettingsModal';
 import { PwaUpdatePrompt } from '../common/PwaUpdatePrompt';
 import { AIChatDrawer } from '../ai/AIChatDrawer';
 import { storageService } from '../../services/storage';
+import { useProgress } from '../../hooks/useProgress';
 
 export function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { stats } = useProgress();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() =>
@@ -95,9 +97,13 @@ export function Layout() {
               </button>
             ) : (
               <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500/10 text-amber-400 font-mono text-xs font-bold border border-amber-500/30">
-                  &gt;_
-                </span>
+                <div className="flex h-7 w-7 items-center justify-center rounded-full overflow-hidden border border-amber-500/50 bg-neutral-900 shadow-sm">
+                  <img
+                    src="https://i.postimg.cc/MTGJ6zYs/18275-modified.png"
+                    alt="MY LEARNING"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
                 <span className="text-xs font-bold tracking-wider text-white uppercase font-mono">
                   MY LEARNING
                 </span>
@@ -108,14 +114,23 @@ export function Layout() {
               {getPageTitle()}
             </h1>
 
-            <button
-              type="button"
-              onClick={() => navigate('/profile')}
-              className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#18130f] border border-neutral-800 text-amber-400 text-xs font-bold"
-              aria-label="Profile"
-            >
-              👤
-            </button>
+            <div className="flex items-center gap-2">
+              <Link
+                to="/progress"
+                className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[11px] font-bold"
+              >
+                <span>⚡</span>
+                <span>{stats?.streakDays || 5}d</span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => setIsSettingsOpen(true)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#18130f] border border-neutral-800 text-neutral-400 hover:text-white"
+                aria-label="Settings"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </header>
 

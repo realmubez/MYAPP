@@ -138,23 +138,43 @@ export const InteractiveDialogueLesson: React.FC = () => {
     if (!cleaned) return;
     const url = getTTSUrl({ text: cleaned, voice });
     let blobUrl = url;
+    let fetchFailed = false;
     try {
       blobUrl = await fetchTTSAudioBlobUrl(url, signal);
     } catch {
-      // Fallback to direct url
+      fetchFailed = true;
     }
     if (signal.aborted) return;
 
-    return new Promise((resolve) => {
-      const audio = new Audio(blobUrl);
-      audio.onended = () => resolve();
-      audio.onerror = () => resolve(); // Prevent freezing queue on audio error
-      signal.addEventListener('abort', () => {
-        audio.pause();
-        resolve();
-      }, { once: true });
-      audio.play().catch(() => resolve());
-    });
+    if (!fetchFailed) {
+      const playedSuccessfully = await new Promise<boolean>((resolve) => {
+        const audio = new Audio(blobUrl);
+        audio.onended = () => resolve(true);
+        audio.onerror = () => resolve(false);
+        signal.addEventListener('abort', () => {
+          audio.pause();
+          resolve(true);
+        }, { once: true });
+        audio.play().catch(() => resolve(false));
+      });
+      if (playedSuccessfully) return;
+    }
+
+    // Fallback to Web Speech API
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      return new Promise((resolve) => {
+        const utterance = new SpeechSynthesisUtterance(cleaned);
+        utterance.rate = 1.0;
+        utterance.lang = voice.startsWith('so') ? 'so-SO' : 'en-US';
+        utterance.onend = () => resolve();
+        utterance.onerror = () => resolve();
+        signal.addEventListener('abort', () => {
+          window.speechSynthesis.cancel();
+          resolve();
+        }, { once: true });
+        window.speechSynthesis.speak(utterance);
+      });
+    }
   };
 
   const stopFullPlayback = () => {

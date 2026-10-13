@@ -42,9 +42,13 @@ export function Dashboard() {
     <div id="dashboard-view" className="w-full space-y-5 sm:space-y-6 lg:space-y-8 text-neutral-100">
       {/* 1. Mobile-Only Header (< 1024px) */}
       <header className="flex lg:hidden items-center justify-between pt-0.5 pb-0.5">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-xs font-bold">
-            &gt;_
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full overflow-hidden border-2 border-amber-500/50 shadow-lg shadow-amber-500/20 bg-neutral-900">
+            <img
+              src="https://i.postimg.cc/MTGJ6zYs/18275-modified.png"
+              alt="MY LEARNING"
+              className="w-full h-full object-cover"
+            />
           </div>
           <div>
             <h1 className="text-sm sm:text-base font-bold tracking-wider text-white leading-tight">
@@ -57,6 +61,16 @@ export function Dashboard() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Streak Badge */}
+          <Link
+            to="/progress"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold shadow-sm hover:bg-amber-500/20 transition-all cursor-pointer"
+            title="Current Streak"
+          >
+            <span>⚡</span>
+            <span>{stats?.streakDays || 5}d</span>
+          </Link>
+
           {/* Settings Button */}
           <button
             type="button"

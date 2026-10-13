@@ -33,9 +33,13 @@ export function Navbar() {
             onClick={() => setIsMobileMenuOpen(false)}
           >
             <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded bg-amber-500/20 text-amber-400 font-mono text-xs font-bold border border-amber-500/30">
-                &gt;_
-              </span>
+              <div className="flex h-7 w-7 items-center justify-center rounded-full overflow-hidden border border-amber-500/40 bg-neutral-900 shadow-sm">
+                <img
+                  src="https://i.postimg.cc/MTGJ6zYs/18275-modified.png"
+                  alt="MY LEARNING"
+                  className="w-full h-full object-cover"
+                />
+              </div>
               <span className="text-sm sm:text-base font-semibold tracking-wider text-neutral-100 group-hover:text-white transition-colors">
                 MY LEARNING
               </span>

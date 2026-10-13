@@ -365,24 +365,13 @@ class LessonSpeechManager {
     this.activeAbortController = abortController;
 
     try {
-      let resolvedSrc = targetUrl;
-      try {
-        resolvedSrc = await fetchTTSAudioBlobUrl(targetUrl, abortController.signal);
-      } catch (fetchErr) {
-        if (abortController.signal.aborted) return;
-        console.warn('[TTS_ERROR] blob fetch fallback to direct URL:', {
-          name: fetchErr instanceof Error ? fetchErr.name : 'FetchError',
-          message: fetchErr instanceof Error ? fetchErr.message : String(fetchErr),
-        });
-      }
-
       if (abortController.signal.aborted) return;
 
       const audio = new Audio();
       audio.preload = 'auto';
       audio.volume = 1;
       audio.muted = false;
-      audio.src = resolvedSrc;
+      audio.src = targetUrl;
       this.activeAudio = audio;
 
       audio.onplaying = () => {
@@ -414,17 +403,14 @@ class LessonSpeechManager {
         if (this.activeAudio !== audio) return;
         if (audio.error && audio.error.code === MediaError.MEDIA_ERR_ABORTED) return;
 
-        console.error('[TTS_ERROR]', {
-          name: 'AudioElementPlaybackError',
-          message: audio.error ? `Code ${audio.error.code}: ${audio.error.message || 'Media playback error'}` : 'Audio element error',
-        });
-
+        console.warn('Edge TTS audio playback error from Hugging Face Space:', audio.error?.message);
         this.activeAudio = null;
+
         this.state = {
           playingKey: null,
           loadingKey: null,
           errorKey: key,
-          errorMessage: 'Audio unavailable',
+          errorMessage: 'Edge TTS server waking up or unavailable. Please retry.',
         };
         this.notify();
       };
@@ -438,17 +424,12 @@ class LessonSpeechManager {
       const playErr = err as { name?: string; message?: string };
       if (playErr?.name === 'AbortError') return;
 
-      console.error('[TTS_ERROR]', {
-        name: playErr?.name || 'PlaySpeechException',
-        message: playErr?.message || String(err),
-      });
-
       this.activeAudio = null;
       this.state = {
         playingKey: null,
         loadingKey: null,
         errorKey: key,
-        errorMessage: 'Audio unavailable',
+        errorMessage: 'Edge TTS connection error',
       };
       this.notify();
     }

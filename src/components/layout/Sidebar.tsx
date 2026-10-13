@@ -136,8 +136,12 @@ export function Sidebar({
             aria-label="MY LEARNING OS"
             className="group flex items-center gap-3 px-1 py-1 min-w-0"
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-sm font-bold shadow-sm shadow-amber-500/10 group-hover:border-amber-400 transition-colors">
-              &gt;_
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden border border-amber-500/40 shadow-sm shadow-amber-500/10 group-hover:border-amber-400 transition-colors bg-neutral-900">
+              <img
+                src="https://i.postimg.cc/MTGJ6zYs/18275-modified.png"
+                alt="MY LEARNING"
+                className="w-full h-full object-cover"
+              />
             </div>
             {!isCollapsed && (
               <div className="min-w-0 animate-in fade-in duration-150">

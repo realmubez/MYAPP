@@ -170,36 +170,36 @@ export function PublicVocabularyModal({ entry, onClose, onPracticeText }: Public
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200"
       onClick={() => {
         stopAudio();
         onClose();
       }}
     >
       <div
-        className="relative w-full max-w-lg max-h-[90vh] sm:max-h-[85vh] flex flex-col bg-[#14110e] border border-amber-500/40 rounded-t-3xl sm:rounded-3xl shadow-2xl shadow-amber-500/15 animate-in slide-in-from-bottom-6 sm:zoom-in-95 duration-200 text-neutral-100 overflow-hidden"
+        className="relative w-full max-w-lg max-h-[90vh] sm:max-h-[85vh] flex flex-col bg-[var(--card-bg)] border border-[var(--border)] rounded-t-3xl sm:rounded-3xl shadow-2xl shadow-black/60 animate-in slide-in-from-bottom-6 sm:zoom-in-95 duration-200 text-[var(--text)] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Top Drag Handle on Mobile */}
         <div className="sm:hidden w-full flex items-center justify-center pt-2 pb-1">
-          <div className="w-10 h-1 rounded-full bg-neutral-700" />
+          <div className="w-10 h-1 rounded-full bg-[var(--border)]" />
         </div>
 
         {/* Header */}
-        <div className="flex items-start justify-between px-5 sm:px-6 pt-3 sm:pt-5 pb-3.5 border-b border-neutral-800/80 bg-[#17130f]">
+        <div className="flex items-start justify-between px-5 sm:px-6 pt-3 sm:pt-5 pb-3.5 border-b border-[var(--border)] bg-[var(--surface)]">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] sm:text-xs font-mono font-bold uppercase tracking-wider text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded-md border border-amber-500/30 flex items-center gap-1">
+              <span className="text-[10px] sm:text-xs font-mono font-bold uppercase tracking-wider text-[var(--primary)] bg-[var(--primary-alpha)] px-2 py-0.5 rounded-md border border-[var(--primary)]/30 flex items-center gap-1">
                 <Languages className="w-3 h-3" />
                 <span>Tri-Lingual Vocabulary</span>
               </span>
-              <span className="text-[11px] text-neutral-400 italic">
+              <span className="text-[11px] text-[var(--text-muted)] italic">
                 {entry.partOfSpeech}
               </span>
             </div>
 
             <div className="flex items-center gap-3 mt-1">
-              <h2 className="text-2xl sm:text-3xl font-black font-mono text-white tracking-tight">
+              <h2 className="text-2xl sm:text-3xl font-black font-mono text-[var(--text-heading)] tracking-tight">
                 {entry.word}
               </h2>
               {/* English Ryan Audio button for the headword */}
@@ -208,7 +208,7 @@ export function PublicVocabularyModal({ entry, onClose, onPracticeText }: Public
                 'en',
                 'word',
                 'Ryan (UK)',
-                'text-amber-300 bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/40 text-xs'
+                'text-[var(--primary)] bg-[var(--primary-alpha)] hover:bg-[var(--primary)]/20 border-[var(--primary)]/40 text-xs'
               )}
             </div>
           </div>
@@ -218,7 +218,7 @@ export function PublicVocabularyModal({ entry, onClose, onPracticeText }: Public
               stopAudio();
               onClose();
             }}
-            className="p-2 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 text-neutral-400 hover:text-white border border-neutral-800 transition-all cursor-pointer active:scale-95"
+            className="p-2 rounded-xl bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-[var(--text-muted)] hover:text-[var(--text)] border border-[var(--border)] transition-all cursor-pointer active:scale-95"
             aria-label="Close"
           >
             <X className="w-4 h-4" />
@@ -354,14 +354,14 @@ export function PublicVocabularyModal({ entry, onClose, onPracticeText }: Public
 
         {/* Footer with Practice in Typing Trainer button */}
         {onPracticeText && (
-          <div className="p-4 sm:p-5 border-t border-neutral-800/80 bg-[#120f0c]">
+          <div className="p-4 sm:p-5 border-t border-[var(--border)] bg-[var(--surface)]">
             <button
               onClick={() => {
                 stopAudio();
                 onPracticeText(entry.englishExample);
                 onClose();
               }}
-              className="w-full h-11 flex items-center justify-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold text-xs uppercase tracking-wider transition-all shadow-md shadow-amber-500/20 active:scale-98 cursor-pointer"
+              className="w-full h-11 flex items-center justify-center gap-2 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-neutral-950 font-bold text-xs uppercase tracking-wider transition-all shadow-md shadow-[var(--primary)]/20 active:scale-98 cursor-pointer"
             >
               <Keyboard className="w-4 h-4" />
               <span>Practice "{entry.word}" in Typing Engine</span>
