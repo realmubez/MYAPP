@@ -71,6 +71,15 @@ export function Layout() {
 
   const isHomeOrHub = location.pathname === '/' || location.pathname === '/home';
 
+  if (isHomeOrHub) {
+    return (
+      <div className="min-h-screen bg-[#090705] text-[#f3ece4] flex justify-center antialiased">
+        <Outlet />
+        <PwaUpdatePrompt />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#0a0806] text-neutral-100 flex flex-col lg:flex-row antialiased selection:bg-amber-500/30 selection:text-white">
       {/* Desktop Left Sidebar (Visible at >= 1024px) */}

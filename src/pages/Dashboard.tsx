@@ -1,62 +1,50 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Settings, Menu, X, ChevronRight, BookOpen, Clock, BarChart2 } from 'lucide-react';
-import { StatsRow } from '../components/common/StatsRow';
-import { ContinueCard } from '../components/common/ContinueCard';
-import { SubjectCard } from '../components/common/SubjectCard';
-import { QuickActions } from '../components/common/QuickActions';
-import { ReviewSummaryCard } from '../components/common/ReviewSummaryCard';
-import { SettingsModal } from '../components/common/SettingsModal';
-import { DashboardHero } from '../components/dashboard/DashboardHero';
-import { RecentActivity } from '../components/dashboard/RecentActivity';
-import { KeepGoing } from '../components/dashboard/KeepGoing';
-import { OfflineBanner } from '../components/common/OfflineBanner';
-import { SUBJECTS } from '../data/mockData';
-import { SubjectId } from '../types';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  Settings,
+  Zap,
+  Play,
+  BarChart2,
+  ChevronRight,
+  Clock,
+  BookOpen,
+  Target,
+  ArrowUp,
+  Home,
+  Folder,
+  MoreHorizontal,
+} from 'lucide-react';
 import { useProgress } from '../hooks/useProgress';
-import { useProfile } from '../hooks/useProfile';
+import { SettingsModal } from '../components/common/SettingsModal';
+import { MoreDrawer } from '../components/layout/MoreDrawer';
 
 export function Dashboard() {
-  const { progress, stats } = useProgress();
-  const { profile, isAdmin } = useProfile();
+  const navigate = useNavigate();
+  const { stats } = useProgress();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  const assignedSubjects = (profile.assignedSubjects && profile.assignedSubjects.length > 0)
-    ? profile.assignedSubjects
-    : (['swedish', 'english', 'german', 'mathematics', 'python', 'typing'] as SubjectId[]);
-
-  const activeSubjectCards = assignedSubjects
-    .map((subId) => {
-      const subject = (SUBJECTS as any)[subId];
-      if (!subject) return null;
-      return {
-        key: subId,
-        subject,
-        progressData: progress?.subjects?.[subId],
-      };
-    })
-    .filter(Boolean) as { key: string; subject: any; progressData: any }[];
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
 
   return (
-    <div id="dashboard-view" className="w-full space-y-5 sm:space-y-6 lg:space-y-8 text-neutral-100">
-      {/* 1. Mobile-Only Header (< 1024px) */}
-      <header className="flex lg:hidden items-center justify-between pt-0.5 pb-0.5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full overflow-hidden border-2 border-amber-500/50 shadow-lg shadow-amber-500/20 bg-neutral-900">
-            <img
-              src="https://i.postimg.cc/MTGJ6zYs/18275-modified.png"
-              alt="MY LEARNING"
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <div>
-            <h1 className="text-sm sm:text-base font-bold tracking-wider text-white leading-tight">
+    <div className="w-full max-w-[420px] mx-auto min-h-screen px-4 pt-4 pb-24 flex flex-col gap-4 relative text-[#f3ece4] select-none font-sans">
+      {/* 1. UNIFIED SINGLE HEADER */}
+      <header className="flex items-center justify-between py-1">
+        <div className="flex items-center gap-2.5">
+          <img
+            src="https://i.postimg.cc/MTGJ6zYs/18275-modified.png"
+            alt="MY LEARNING"
+            className="w-[38px] h-[38px] rounded-full border-[1.5px] border-[#f59e0b] object-cover shadow-[0_0_10px_rgba(245,158,11,0.25)] shrink-0"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src =
+                'https://api.iconify.design/bi:robot.svg?color=%23f59e0b';
+            }}
+          />
+          <div className="flex flex-col">
+            <h1 className="text-[14px] font-bold text-white leading-tight tracking-wide">
               MY LEARNING
             </h1>
-            <p className="text-[11px] text-neutral-400 font-normal">
-              “I learn by typing.”
-            </p>
+            <span className="text-[10px] text-[#8e7d70] italic leading-tight">
+              "I learn by typing."
+            </span>
           </div>
         </div>
 
@@ -64,283 +52,210 @@ export function Dashboard() {
           {/* Streak Badge */}
           <Link
             to="/progress"
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold shadow-sm hover:bg-amber-500/20 transition-all cursor-pointer"
-            title="Current Streak"
+            className="bg-[rgba(245,158,11,0.12)] border border-[rgba(245,158,11,0.3)] text-[#f59e0b] text-[11px] font-bold px-2 py-1 rounded-full flex items-center gap-1 hover:bg-amber-500/20 transition-all cursor-pointer"
+            title="Streak"
           >
-            <span>⚡</span>
+            <Zap className="w-3 h-3 fill-current text-[#f59e0b]" />
             <span>{stats?.streakDays || 5}d</span>
           </Link>
 
           {/* Settings Button */}
           <button
             type="button"
-            id="dashboard-header-settings-btn"
             onClick={() => setIsSettingsOpen(true)}
-            aria-label="Settings"
+            className="bg-[#1a120a] border border-[#2b1d12] text-[#8e7d70] hover:text-[#f3ece4] w-[34px] h-[34px] rounded-[10px] flex items-center justify-center cursor-pointer transition-colors active:scale-95"
             title="Settings"
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900/80 text-neutral-400 hover:text-white hover:border-neutral-700 active:scale-95 transition-all cursor-pointer"
+            aria-label="Settings"
           >
             <Settings className="w-4 h-4" />
-          </button>
-
-          {/* Menu Button */}
-          <button
-            type="button"
-            id="dashboard-header-menu-btn"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            aria-label="Navigation Menu"
-            title="Navigation Menu"
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900/80 text-neutral-400 hover:text-white hover:border-neutral-700 active:scale-95 transition-all cursor-pointer"
-          >
-            {isMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
           </button>
         </div>
       </header>
 
-      {/* Mobile Slide-down Menu Drawer (< 1024px) */}
-      {isMenuOpen && (
-        <div
-          id="dashboard-mobile-menu"
-          className="lg:hidden rounded-2xl border border-neutral-800 bg-neutral-900 p-3 space-y-1 animate-in fade-in slide-in-from-top-2 shadow-xl"
+      {/* 2. HERO BANNER */}
+      <section
+        className="rounded-[18px] border border-[#2b1d12] p-[18px] flex flex-col gap-3 shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+        style={{
+          background: 'radial-gradient(circle at top right, #382210 0%, #150f09 70%)',
+        }}
+      >
+        <div>
+          <div className="text-[20px] font-extrabold text-white leading-tight">
+            Welcome <span className="text-[#f59e0b]">back!</span>
+          </div>
+          <p className="text-[12px] text-[#8e7d70] leading-[1.4] mt-0.5">
+            Small steps every day make a big difference.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-[1.6fr_1fr] gap-2 mt-1">
+          <button
+            type="button"
+            onClick={() => navigate('/learn')}
+            className="bg-[#f59e0b] hover:bg-[#fbbf24] text-[#0c0805] text-[12px] font-bold rounded-[10px] py-2.5 px-3.5 flex items-center justify-center gap-1.5 transition-colors cursor-pointer active:scale-[0.98]"
+          >
+            <Play className="w-3.5 h-3.5 fill-current" />
+            <span>Continue Learning</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/progress')}
+            className="bg-[#1a120a] hover:bg-[#261b11] border border-[#2b1d12] text-[#f3ece4] text-[12px] font-semibold rounded-[10px] p-2.5 flex items-center justify-center gap-1.5 transition-colors cursor-pointer active:scale-[0.98]"
+          >
+            <BarChart2 className="w-3.5 h-3.5" />
+            <span>Progress</span>
+          </button>
+        </div>
+      </section>
+
+      {/* 3. TODAY'S OVERVIEW HEADER */}
+      <div className="flex items-center justify-between mt-1">
+        <h2 className="text-[13px] font-bold text-[#f3ece4] flex items-center gap-1.5">
+          <BarChart2 className="w-4 h-4 text-[#f59e0b]" />
+          <span>Today's Overview</span>
+        </h2>
+        <Link
+          to="/progress"
+          className="text-[11px] text-[#8e7d70] hover:text-[#f3ece4] flex items-center gap-0.5 transition-colors"
         >
-          <div className="text-[10px] font-semibold text-neutral-500 px-3 py-1 uppercase tracking-wider">
-            Switch Track
-          </div>
-          <Link
-            to="/swedish"
-            onClick={() => setIsMenuOpen(false)}
-            className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-neutral-300 hover:text-white hover:bg-neutral-800/60"
-          >
-            <span className="flex items-center gap-2">
-              <span>🇸🇪</span>
-              <span>Swedish Course</span>
-            </span>
-            <ChevronRight className="w-3.5 h-3.5 text-neutral-500" />
-          </Link>
-          <Link
-            to="/english"
-            onClick={() => setIsMenuOpen(false)}
-            className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-neutral-300 hover:text-white hover:bg-neutral-800/60"
-          >
-            <span className="flex items-center gap-2">
-              <span>🇬🇧</span>
-              <span>English Course</span>
-            </span>
-            <ChevronRight className="w-3.5 h-3.5 text-neutral-500" />
-          </Link>
-          <Link
-            to="/german"
-            onClick={() => setIsMenuOpen(false)}
-            className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-neutral-300 hover:text-white hover:bg-neutral-800/60"
-          >
-            <span className="flex items-center gap-2">
-              <span>🇩🇪</span>
-              <span>German Course</span>
-            </span>
-            <ChevronRight className="w-3.5 h-3.5 text-neutral-500" />
-          </Link>
-          <Link
-            to="/mathematics"
-            onClick={() => setIsMenuOpen(false)}
-            className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-neutral-300 hover:text-white hover:bg-neutral-800/60"
-          >
-            <span className="flex items-center gap-2">
-              <span className="font-serif font-bold text-amber-400">∑</span>
-              <span>Mathematics</span>
-            </span>
-            <ChevronRight className="w-3.5 h-3.5 text-neutral-500" />
-          </Link>
-          <Link
-            to="/python"
-            onClick={() => setIsMenuOpen(false)}
-            className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-neutral-300 hover:text-white hover:bg-neutral-800/60"
-          >
-            <span className="flex items-center gap-2">
-              <span>🐍</span>
-              <span>Python Course</span>
-            </span>
-            <ChevronRight className="w-3.5 h-3.5 text-neutral-500" />
-          </Link>
-          <Link
-            to="/typing"
-            onClick={() => setIsMenuOpen(false)}
-            className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-neutral-300 hover:text-white hover:bg-neutral-800/60"
-          >
-            <span className="flex items-center gap-2">
-              <span>⌨️</span>
-              <span>Typing Practice</span>
-            </span>
-            <ChevronRight className="w-3.5 h-3.5 text-neutral-500" />
-          </Link>
-          <Link
-            to="/typing/day-1"
-            onClick={() => setIsMenuOpen(false)}
-            className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-amber-300/90 hover:text-amber-200 hover:bg-amber-500/10"
-          >
-            <span className="flex items-center gap-2">
-              <span>⌨️</span>
-              <span>Touch Typing · Day 1</span>
-            </span>
-            <ChevronRight className="w-3.5 h-3.5 text-amber-400" />
-          </Link>
-          <Link
-            to="/review"
-            onClick={() => setIsMenuOpen(false)}
-            className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-neutral-300 hover:text-white hover:bg-neutral-800/60"
-          >
-            <span className="flex items-center gap-2">
-              <span>✨</span>
-              <span>Difficult Words & Review</span>
-            </span>
-            <ChevronRight className="w-3.5 h-3.5 text-neutral-500" />
-          </Link>
-          <Link
-            to="/progress"
-            onClick={() => setIsMenuOpen(false)}
-            className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-neutral-300 hover:text-white hover:bg-neutral-800/60"
-          >
-            <span className="flex items-center gap-2">
-              <span>📊</span>
-              <span>Detailed Progress</span>
-            </span>
-            <ChevronRight className="w-3.5 h-3.5 text-neutral-500" />
-          </Link>
-          <Link
-            to="/profile"
-            onClick={() => setIsMenuOpen(false)}
-            className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-neutral-300 hover:text-white hover:bg-neutral-800/60"
-          >
-            <span className="flex items-center gap-2">
-              <span>👤</span>
-              <span>Profile & Account</span>
-            </span>
-            <ChevronRight className="w-3.5 h-3.5 text-neutral-500" />
-          </Link>
-        </div>
-      )}
-
-      {/* 2. Hero Banner (Responsive for both Mobile & Desktop) */}
-      <DashboardHero />
-
-      {/* Offline Alert (Displays only when device is disconnected) */}
-      <OfflineBanner />
-
-      {/* 3. Today's Overview / Stats Row */}
-      <section className="space-y-2.5 sm:space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <BarChart2 className="w-4 h-4 text-amber-400" />
-            <h2 className="text-sm sm:text-base font-bold text-white">Today's Overview</h2>
-          </div>
-          <Link
-            to="/progress"
-            className="text-xs font-medium text-neutral-400 hover:text-amber-400 transition-colors flex items-center gap-1"
-          >
-            <span>See details</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-
-        <StatsRow stats={stats} />
-      </section>
-
-      {/* 4. Continue Learning & Mistake Review Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-5 items-stretch">
-        {/* Continue Learning (58% / col-span-7 on Desktop) */}
-        <section className="lg:col-span-7 flex flex-col space-y-2.5 sm:space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm sm:text-base font-bold text-white">Continue Learning</h2>
-            <Link
-              to="/swedish"
-              className="text-xs font-medium text-neutral-400 hover:text-amber-400 transition-colors flex items-center gap-1"
-            >
-              <span>View all</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          <div className="flex-1">
-            <ContinueCard />
-          </div>
-        </section>
-
-        {/* Mistake Review (42% / col-span-5 on Desktop) */}
-        <section className="lg:col-span-5 flex flex-col space-y-2.5 sm:space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm sm:text-base font-bold text-white">Mistake Review</h2>
-            <Link
-              to="/review"
-              className="text-xs font-medium text-neutral-400 hover:text-amber-400 transition-colors flex items-center gap-1"
-            >
-              <span>Manage items</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          <div className="flex-1">
-            <ReviewSummaryCard />
-          </div>
-        </section>
+          <span>See details</span>
+          <ChevronRight className="w-3 h-3" />
+        </Link>
       </div>
 
-      {/* 5. Your Subjects Section (Filtered by User Assignments) */}
-      <section className="space-y-2.5 sm:space-y-3.5">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-amber-400" />
-              <h2 className="text-sm sm:text-base font-bold text-white">Your Subjects</h2>
-              <span className="text-xs text-neutral-400 font-mono ml-1">· {activeSubjectCards.length} active</span>
+      {/* 4. 2x2 STATS GRID */}
+      <div className="grid grid-cols-2 gap-2.5">
+        {/* Study Time */}
+        <div className="bg-[#140e09] border border-[#2b1d12] rounded-[14px] p-3 flex flex-col gap-2 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center bg-[rgba(34,197,94,0.1)] text-[#22c55e] border border-[rgba(34,197,94,0.2)]">
+              <Clock className="w-4 h-4" />
             </div>
-            <p className="text-xs text-neutral-400 mt-0.5">
-              Pick a subject to continue learning.
-            </p>
+            <span className="text-[9.5px] text-[#8e7d70] font-semibold">Today</span>
           </div>
-
-          <Link
-            to={activeSubjectCards[0] ? `/${activeSubjectCards[0].key}` : '/swedish'}
-            className="text-xs font-medium text-neutral-400 hover:text-amber-400 transition-colors hidden sm:flex items-center gap-1"
-          >
-            <span>View all courses</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </Link>
+          <div className="text-[20px] font-extrabold text-white font-mono tracking-tight leading-none">
+            {stats?.todayLearningMinutes || 32}{' '}
+            <small className="text-[12px] text-[#8e7d70] font-medium ml-0.5 font-sans">
+              min
+            </small>
+          </div>
+          <div className="text-[11px] text-[#8e7d70]">Study Time</div>
         </div>
 
-        {/* Responsive Grid: 1 col on mobile, 2 or 3 cols on tablet/desktop */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4 lg:gap-5">
-          {activeSubjectCards.map((card) => (
-            <SubjectCard
-              key={card.key}
-              subject={card.subject}
-              progressData={card.progressData}
-            />
-          ))}
-        </div>
-      </section>
-
-      {/* 6. Lower Dashboard: Recent Activity & Keep Going Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-5 pt-0.5 sm:pt-2">
-        {/* Recent Activity (col-span-7) */}
-        <div className="lg:col-span-7">
-          <RecentActivity />
+        {/* Lessons Done */}
+        <div className="bg-[#140e09] border border-[#2b1d12] rounded-[14px] p-3 flex flex-col gap-2 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center bg-[rgba(245,158,11,0.1)] text-[#f59e0b] border border-[rgba(245,158,11,0.2)]">
+              <BookOpen className="w-4 h-4" />
+            </div>
+            <span className="text-[9.5px] text-[#8e7d70] font-semibold">Today</span>
+          </div>
+          <div className="text-[20px] font-extrabold text-white font-mono tracking-tight leading-none">
+            {stats?.lessonsCompletedToday ?? 0}
+          </div>
+          <div className="text-[11px] text-[#8e7d70]">Lessons Done</div>
         </div>
 
-        {/* Keep Going (col-span-5) */}
-        <div className="lg:col-span-5">
-          <KeepGoing />
+        {/* Accuracy */}
+        <div className="bg-[#140e09] border border-[#2b1d12] rounded-[14px] p-3 flex flex-col gap-2 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center bg-[rgba(244,63,94,0.1)] text-[#f43f5e] border border-[rgba(244,63,94,0.2)]">
+              <Target className="w-4 h-4" />
+            </div>
+            <span className="text-[9.5px] text-[#22c55e] font-semibold flex items-center">
+              <ArrowUp className="w-2.5 h-2.5" />
+              4%
+            </span>
+          </div>
+          <div className="text-[20px] font-extrabold text-white font-mono tracking-tight leading-none">
+            {stats?.averageAccuracy ? `${Math.round(stats.averageAccuracy)}%` : '96%'}
+          </div>
+          <div className="text-[11px] text-[#8e7d70]">Accuracy</div>
+        </div>
+
+        {/* Current Streak */}
+        <div className="bg-[#140e09] border border-[#2b1d12] rounded-[14px] p-3 flex flex-col gap-2 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center bg-[rgba(245,158,11,0.1)] text-[#fbbf24] border border-[rgba(245,158,11,0.2)]">
+              <Zap className="w-4 h-4 fill-current" />
+            </div>
+            <span className="text-[9.5px] text-[#8e7d70] font-semibold">Keep going!</span>
+          </div>
+          <div className="text-[20px] font-extrabold text-white font-mono tracking-tight leading-none">
+            {stats?.streakDays || 5}{' '}
+            <small className="text-[12px] text-[#8e7d70] font-medium ml-0.5 font-sans">
+              days
+            </small>
+          </div>
+          <div className="text-[11px] text-[#8e7d70]">Current Streak</div>
         </div>
       </div>
 
-      {/* 7. Quick Actions Row */}
-      <section className="pt-0.5 sm:pt-2">
-        <QuickActions />
-      </section>
+      {/* 5. FIXED BOTTOM NAVIGATION BAR */}
+      <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[420px] bg-[#0e0a07]/95 backdrop-blur-md border-t border-[#2b1d12] flex justify-around pt-2.5 pb-3.5 z-50">
+        <button
+          type="button"
+          onClick={() => navigate('/')}
+          className="flex flex-col items-center gap-[3px] text-[#f59e0b] text-[10px] font-semibold transition-colors cursor-pointer"
+        >
+          <Home className="w-4 h-4 fill-current" />
+          <span>Home</span>
+        </button>
 
-      {/* Settings Modal */}
+        <button
+          type="button"
+          onClick={() => navigate('/learn')}
+          className="flex flex-col items-center gap-[3px] text-[#8e7d70] hover:text-[#f3ece4] text-[10px] font-semibold transition-colors cursor-pointer"
+        >
+          <BookOpen className="w-4 h-4" />
+          <span>Learn</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate('/library')}
+          className="flex flex-col items-center gap-[3px] text-[#8e7d70] hover:text-[#f3ece4] text-[10px] font-semibold transition-colors cursor-pointer"
+        >
+          <Folder className="w-4 h-4" />
+          <span>Library</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate('/progress')}
+          className="flex flex-col items-center gap-[3px] text-[#8e7d70] hover:text-[#f3ece4] text-[10px] font-semibold transition-colors cursor-pointer"
+        >
+          <BarChart2 className="w-4 h-4" />
+          <span>Progress</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setIsMoreOpen(true)}
+          className="flex flex-col items-center gap-[3px] text-[#8e7d70] hover:text-[#f3ece4] text-[10px] font-semibold transition-colors cursor-pointer"
+        >
+          <MoreHorizontal className="w-4 h-4" />
+          <span>More</span>
+        </button>
+      </nav>
+
+      {/* Global Settings Modal */}
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
       />
+
+      {/* More Drawer */}
+      <MoreDrawer
+        isOpen={isMoreOpen}
+        onClose={() => setIsMoreOpen(false)}
+        onOpenSettings={() => {
+          setIsMoreOpen(false);
+          setIsSettingsOpen(true);
+        }}
+      />
     </div>
   );
 }
+
+export default Dashboard;

@@ -61,9 +61,8 @@ export function BottomNav({ onOpenSettings }: BottomNavProps) {
       <nav
         id="mobile-bottom-nav"
         aria-label="Mobile Bottom Navigation"
-        className="fixed bottom-0 left-0 right-0 z-40 bg-[#0d0a08]/95 backdrop-blur-lg border-t border-[#261f18] px-2 py-1.5"
+        className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[420px] z-40 bg-[#0e0a07]/95 backdrop-blur-md border-t border-[#2b1d12] px-2 py-2 flex justify-around items-center"
       >
-        <div className="max-w-md mx-auto flex items-center justify-around">
           {primaryNavItems.map((item) => {
             const isActive = isItemActive(item);
             return (
@@ -98,7 +97,6 @@ export function BottomNav({ onOpenSettings }: BottomNavProps) {
             <MoreHorizontal className="w-5 h-5 mb-0.5" />
             <span className="text-[10px] tracking-tight">More</span>
           </button>
-        </div>
       </nav>
 
       {/* Mobile More Bottom Sheet Drawer */}
