@@ -73,7 +73,7 @@ export function Layout() {
 
   if (isHomeOrHub) {
     return (
-      <div className="min-h-screen bg-[#090705] text-[#f3ece4] flex justify-center antialiased">
+      <div className="min-h-screen w-full bg-[#090705] text-[#f3ece4] flex justify-center antialiased">
         <Outlet />
         <PwaUpdatePrompt />
       </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import {
   Volume2,
   BookOpen,
@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Radio,
   Sparkles,
+  Home,
 } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { getTTSUrl, fetchTTSAudioBlobUrl, cleanSpeechText } from '../services/tts';
@@ -386,12 +387,12 @@ export function PublicTypingPage() {
         color: 'var(--text)',
       }}
     >
-      {/* APP CONTAINER (Matches 480px mobile card hierarchy & scalable desktop) */}
-      <div className="w-full max-w-[480px] flex flex-col gap-3">
+      {/* APP CONTAINER (Matches 480px mobile card hierarchy & scalable tablet/desktop) */}
+      <div className="w-full max-w-[480px] md:max-w-2xl lg:max-w-4xl flex flex-col gap-3 md:gap-4 transition-all duration-200">
         {/* ========================================================
             1. HEADER (Both Views)
             Left: Avatar + MY LEARNING + Online badge
-            Right: Sun/Moon button + AI button
+            Right: Dashboard link (tablet/desktop) + Sun/Moon button + AI button
             ======================================================== */}
         <header className="flex items-center justify-between rounded-2xl px-3.5 py-2.5 shadow-sm transition-all bg-[var(--card-bg)] border border-[var(--border)]">
           {/* Left: Avatar + Title + Online Badge */}
@@ -410,8 +411,17 @@ export function PublicTypingPage() {
             </span>
           </div>
 
-          {/* Right: Theme Toggle + AI Button */}
+          {/* Right: Dashboard link + Theme Toggle + AI Button */}
           <div className="flex items-center gap-2">
+            <Link
+              to="/"
+              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-[var(--surface)] hover:bg-[var(--surface-hover)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)] transition-all cursor-pointer"
+              title="Back to Dashboard"
+            >
+              <Home className="w-3.5 h-3.5 text-[#f59e0b]" />
+              <span>Dashboard</span>
+            </Link>
+
             <button
               type="button"
               onClick={toggleTheme}
@@ -425,21 +435,14 @@ export function PublicTypingPage() {
               )}
             </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                if (activeTab === 'reader') {
-                  playRyanAudio(currentPassage.text);
-                } else {
-                  playRyanAudio(activeTargetString);
-                }
-              }}
-              title="Ryan UK Speech AI"
+            <Link
+              to="/tutor"
+              title="AI Multimodal Voice Tutor"
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer bg-[var(--surface)] hover:bg-[var(--surface-hover)] border border-[var(--border)] text-amber-600 dark:text-amber-400"
             >
               <Sparkles className="w-3.5 h-3.5 text-[#f59e0b]" />
-              <span className="font-mono text-[11px] font-semibold">AI</span>
-            </button>
+              <span className="font-mono text-[11px] font-semibold">⚡ AI</span>
+            </Link>
           </div>
         </header>
 
@@ -576,14 +579,14 @@ export function PublicTypingPage() {
             </div>
 
             {/* READER BODY: ONE SINGLE CONTINUOUS PROSE PARAGRAPH */}
-            <div className="rounded-2xl p-4 sm:p-5 transition-all bg-[var(--card-bg)] border border-[var(--border)] shadow-xs">
+            <div className="rounded-2xl p-4 sm:p-5 md:p-6 transition-all bg-[var(--card-bg)] border border-[var(--border)] shadow-xs">
               <p
-                className={`leading-relaxed font-sans text-[var(--text-heading)] ${
+                className={`leading-relaxed md:leading-loose font-sans text-[var(--text-heading)] ${
                   textSize === 'sm'
-                    ? 'text-sm'
+                    ? 'text-sm md:text-base'
                     : textSize === 'lg'
-                    ? 'text-lg sm:text-xl'
-                    : 'text-base sm:text-lg'
+                    ? 'text-lg sm:text-xl md:text-2xl'
+                    : 'text-base sm:text-lg md:text-xl'
                 }`}
               >
                 {renderReadableTextWithVocab(currentPassage.text)}
@@ -755,8 +758,8 @@ export function PublicTypingPage() {
               />
 
               {/* TYPING BOX: CENTERED BOX WITH GLOWING AMBER BORDER (#f59e0b) */}
-              <div className="rounded-xl p-4 min-h-[90px] flex items-center justify-center text-center transition-all bg-[var(--surface)] border-2 border-[#f59e0b] shadow-[0_0_16px_rgba(245,158,11,0.22)]">
-                <div className="font-mono text-base sm:text-lg leading-relaxed select-none tracking-normal">
+              <div className="rounded-xl p-4 md:p-6 min-h-[90px] md:min-h-[120px] flex items-center justify-center text-center transition-all bg-[var(--surface)] border-2 border-[#f59e0b] shadow-[0_0_16px_rgba(245,158,11,0.22)]">
+                <div className="font-mono text-base sm:text-lg md:text-xl lg:text-2xl leading-relaxed select-none tracking-normal">
                   {activeTargetString.split('').map((char, idx) => {
                     const isTyped = idx < inputVal.length;
                     const isCurrent = idx === inputVal.length;

@@ -27,8 +27,8 @@ import { AdminProtectedRoute } from './components/auth/AdminProtectedRoute';
 import { SubjectProtectedRoute } from './components/auth/SubjectProtectedRoute';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { PublicTypingPage } from './pages/PublicTypingPage';
-
 import { ExamPreparePage } from './pages/ExamPreparePage';
+import { AITutorPage } from './pages/AITutorPage';
 
 export default function App() {
   return (
@@ -38,6 +38,9 @@ export default function App() {
           <Routes>
             {/* Public Routes (No Login Required) */}
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/tutor" element={<AITutorPage />} />
+            <Route path="/ai-tutor" element={<AITutorPage />} />
+            <Route path="/voice" element={<AITutorPage />} />
             <Route path="/exam-prepare" element={<ExamPreparePage />} />
             <Route path="/exam-prep" element={<ExamPreparePage />} />
             <Route path="/exam" element={<ExamPreparePage />} />
@@ -56,6 +59,7 @@ export default function App() {
             {/* Protected Private Routes */}
             <Route element={<ProtectedRoute />}>
               <Route element={<Layout />}>
+                <Route path="/tutor" element={<AITutorPage />} />
                 {/* Personal Learning OS Core Hubs */}
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/home" element={<Dashboard />} />

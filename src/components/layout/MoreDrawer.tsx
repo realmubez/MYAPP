@@ -107,6 +107,29 @@ export function MoreDrawer({ isOpen, onClose, onOpenSettings }: MoreDrawerProps)
           </button>
         </div>
 
+        {/* AI Tutor & Voice Studio Featured Quick Action */}
+        <button
+          type="button"
+          onClick={() => handleItemClick('/tutor')}
+          className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/20 to-amber-600/10 border border-amber-500/40 text-amber-300 hover:bg-amber-500/25 transition-all text-left shadow-xs"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40">
+              <Sparkles className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-bold text-white">AI Tutor • Voice Studio</p>
+                <span className="text-[9px] uppercase px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
+                  Live
+                </span>
+              </div>
+              <p className="text-[10px] text-amber-300/80">Hands-free voice & multimodal chat (Somali, EN, DE)</p>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-amber-400" />
+        </button>
+
         {/* Exam Prepare Featured Quick Action */}
         <button
           type="button"

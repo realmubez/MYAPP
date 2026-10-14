@@ -18,6 +18,8 @@ export async function generateAIResponse(options: {
   systemPrompt?: string;
   temperature?: number;
   maxTokens?: number;
+  image?: string;
+  imageType?: string;
 }): Promise<{ ok: boolean; provider: string; model: string; message: string; error?: string }> {
   const {
     messages = [],
@@ -25,12 +27,52 @@ export async function generateAIResponse(options: {
     systemPrompt = DEFAULT_SYSTEM_PROMPT,
     temperature = 0.7,
     maxTokens = 1500,
+    image,
+    imageType = 'image/jpeg',
   } = options;
 
+  const geminiApiKey = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)?.trim();
   const groqApiKey = process.env.GROQ_API_KEY?.trim();
 
-  // 1. Try Groq API first
-  if (groqApiKey) {
+  // 1. If an image is provided, prefer Gemini multimodal vision
+  if (image && geminiApiKey) {
+    try {
+      const ai = new GoogleGenAI({ apiKey: geminiApiKey });
+      const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')?.content || 'Please analyze this image and assist me.';
+      const cleanBase64 = image.includes(',') ? image.split(',')[1] : image;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [
+          {
+            parts: [
+              {
+                inlineData: {
+                  data: cleanBase64,
+                  mimeType: imageType,
+                },
+              },
+              {
+                text: `${systemPrompt}\n\nUser Question about image: ${lastUserMessage}`,
+              },
+            ],
+          },
+        ],
+      });
+
+      return {
+        ok: true,
+        provider: 'gemini-multimodal',
+        model: 'gemini-2.5-flash',
+        message: response.text || 'I analyzed the image.',
+      };
+    } catch (imgErr) {
+      console.warn('[GEMINI_IMAGE_ERROR] Falling back to text-only:', imgErr);
+    }
+  }
+
+  // 2. Try Groq API first for fast text responses
+  if (groqApiKey && !image) {
     const candidateModels = [
       model,
       'llama-3.3-70b-versatile',
@@ -83,8 +125,7 @@ export async function generateAIResponse(options: {
     }
   }
 
-  // 2. Fallback to Gemini if GEMINI_API_KEY is present
-  const geminiApiKey = process.env.GEMINI_API_KEY?.trim();
+  // 3. Fallback to Gemini if GEMINI_API_KEY is present
   if (geminiApiKey) {
     try {
       const ai = new GoogleGenAI({ apiKey: geminiApiKey });
@@ -106,13 +147,13 @@ export async function generateAIResponse(options: {
     }
   }
 
-  // 3. Fallback message if no keys are present
+  // 4. Fallback message if no keys are present
   const lastMsg = messages[messages.length - 1]?.content || '';
   return {
     ok: true,
     provider: 'local-assistant',
     model: 'demo-mode',
-    message: `🤖 **AI Tutor Response**\n\nQuery: "${lastMsg}"\n\n💡 Tip: Configure GROQ_API_KEY in your environment for live Groq Llama 3.3 (14.4k/day) responses.`,
+    message: `🤖 **AI Tutor Response**\n\nQuery: "${lastMsg}"\n\n💡 Tip: Configure GROQ_API_KEY or GEMINI_API_KEY in your environment for live responses.`,
   };
 }
 
@@ -129,8 +170,7 @@ aiRouter.get('/status', (_req: Request, res: Response) => {
     availableModels: [
       { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B (Versatile)', provider: 'groq', speed: 'Ultra Fast' },
       { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B (Instant)', provider: 'groq', speed: 'Sub-second' },
-      { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B', provider: 'groq', speed: 'Fast' },
-      { id: 'gemma2-9b-it', name: 'Gemma 2 9B', provider: 'groq', speed: 'Fast' },
+      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (Vision & Audio)', provider: 'gemini', speed: 'Fast' },
     ],
   });
 });
@@ -143,6 +183,8 @@ aiRouter.post('/chat', async (req: Request, res: Response): Promise<void> => {
       systemPrompt = DEFAULT_SYSTEM_PROMPT,
       temperature = 0.7,
       maxTokens = 1500,
+      image,
+      imageType,
     } = req.body;
 
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -156,6 +198,8 @@ aiRouter.post('/chat', async (req: Request, res: Response): Promise<void> => {
       systemPrompt,
       temperature,
       maxTokens,
+      image,
+      imageType,
     });
 
     res.json(result);

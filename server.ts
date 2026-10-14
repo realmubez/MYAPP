@@ -8,15 +8,22 @@ import { adminRouter } from './server/adminRouter.ts';
 import { aiRouter } from './server/aiRouter.ts';
 import { isAuthenticatedRequest } from './server/auth.ts';
 
+import http from 'http';
+import { setupLiveWebSocket } from './server/liveSocket.ts';
+
 // Load local environment variables if available
 dotenv.config();
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
+  const server = http.createServer(app);
 
-  // Parse JSON request bodies
-  app.use(express.json());
+  // Initialize Gemini Live WebSocket
+  setupLiveWebSocket(server);
+
+  // Parse JSON request bodies (increased limit for base64 images)
+  app.use(express.json({ limit: '20mb' }));
 
   // API routes FIRST
   app.get('/api/health', (_req, res) => {
@@ -60,9 +67,10 @@ async function startServer() {
     app.get('*', (req, res) => {
       // If requesting a page (not an asset) while unauthenticated, redirect to login
       const isAsset = req.path.startsWith('/assets') || req.path.includes('.');
-      const isLogin = req.path === '/login';
+      const publicPaths = ['/login', '/read', '/practice', '/tutor', '/exam-prepare', '/exam-prep', '/exam', '/math', '/mathe', '/study', '/public'];
+      const isPublic = publicPaths.some(p => req.path === p || req.path.startsWith(p + '/'));
 
-      if (!isAsset && !isLogin && !isAuthenticatedRequest(req)) {
+      if (!isAsset && !isPublic && !isAuthenticatedRequest(req)) {
         const returnUrl = req.originalUrl && req.originalUrl !== '/' ? `?redirect=${encodeURIComponent(req.originalUrl)}` : '';
         return res.redirect(`/login${returnUrl}`);
       }
@@ -71,7 +79,7 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`[MY LEARNING Server] running on http://localhost:${PORT}`);
   });
 }

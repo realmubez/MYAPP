@@ -61,7 +61,7 @@ export function BottomNav({ onOpenSettings }: BottomNavProps) {
       <nav
         id="mobile-bottom-nav"
         aria-label="Mobile Bottom Navigation"
-        className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[420px] z-40 bg-[#0e0a07]/95 backdrop-blur-md border-t border-[#2b1d12] px-2 py-2 flex justify-around items-center"
+        className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[420px] md:max-w-3xl lg:hidden z-40 bg-[#0e0a07]/95 backdrop-blur-md border-t border-[#2b1d12] px-2 md:px-6 py-2 flex justify-around items-center"
       >
           {primaryNavItems.map((item) => {
             const isActive = isItemActive(item);
