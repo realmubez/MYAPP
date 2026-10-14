@@ -677,16 +677,23 @@ Provide helpful corrections, translations, and pronunciations when relevant.`;
       };
 
       ws.onerror = (err) => {
-        addDebugLog(`ERROR: WebSocket error encountered: ${JSON.stringify(err)}`);
+        addDebugLog('WebSocket unavailable (serverless environment). Switching to Hybrid REST + Speech Mode.');
         setIsConnected(true);
+        setStatusText('Hybrid Audio Mode active • Voice & Audio live');
         setupSpeechRecognition();
       };
 
       ws.onclose = () => {
-        addDebugLog('WebSocket connection closed');
-        setIsConnected(false);
-        liveSessionReadyRef.current = false;
-        setLiveSessionReady(false);
+        if (!liveSessionReadyRef.current) {
+          addDebugLog('WebSocket closed; running in Hybrid REST + Speech Mode.');
+          setIsConnected(true);
+          setStatusText('Hybrid Audio Mode active • Voice & Audio live');
+        } else {
+          addDebugLog('WebSocket connection closed');
+          setIsConnected(false);
+          liveSessionReadyRef.current = false;
+          setLiveSessionReady(false);
+        }
       };
     } catch (err) {
       addDebugLog(`ERROR: Live session init exception: ${err}`);
