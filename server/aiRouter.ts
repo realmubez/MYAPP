@@ -20,6 +20,7 @@ export async function generateAIResponse(options: {
   maxTokens?: number;
   image?: string;
   imageType?: string;
+  customApiKey?: string;
 }): Promise<{ ok: boolean; provider: string; model: string; message: string; error?: string }> {
   const {
     messages = [],
@@ -29,9 +30,11 @@ export async function generateAIResponse(options: {
     maxTokens = 1500,
     image,
     imageType = 'image/jpeg',
+    customApiKey,
   } = options;
 
   const geminiApiKey = (
+    customApiKey ||
     process.env.MY_REALTIME_GEMINI_KEY ||
     process.env.VITE_MY_REALTIME_GEMINI_KEY ||
     process.env.NEXT_PUBLIC_MY_REALTIME_GEMINI_KEY ||
@@ -191,12 +194,21 @@ aiRouter.post('/chat', async (req: Request, res: Response): Promise<void> => {
       maxTokens = 1500,
       image,
       imageType,
+      customApiKey,
     } = req.body;
 
     if (!Array.isArray(messages) || messages.length === 0) {
       res.status(400).json({ error: 'Messages array is required' });
       return;
     }
+
+    const clientProvidedKey =
+      (typeof req.body?.customApiKey === 'string' && req.body.customApiKey.trim().length > 5
+        ? req.body.customApiKey.trim()
+        : null) ||
+      (typeof req.headers['x-gemini-key'] === 'string' && req.headers['x-gemini-key'].trim().length > 5
+        ? req.headers['x-gemini-key'].trim()
+        : null);
 
     const result = await generateAIResponse({
       messages,
@@ -206,6 +218,7 @@ aiRouter.post('/chat', async (req: Request, res: Response): Promise<void> => {
       maxTokens,
       image,
       imageType,
+      customApiKey: clientProvidedKey || undefined,
     });
 
     res.json(result);

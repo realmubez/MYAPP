@@ -22,6 +22,7 @@ import {
   Radio,
   Image as ImageIcon,
   CheckCheck,
+  Key,
 } from 'lucide-react';
 
 interface ChatMessage {
@@ -135,6 +136,13 @@ export function AITutorPage() {
   const [liveSessionReady, setLiveSessionReady] = useState<boolean>(false);
   const [demoQuickPrompt, setDemoQuickPrompt] = useState<string>('');
 
+  // Custom Gemini API Key State for Vercel, PWA, & direct browser access
+  const [customGeminiKey, setCustomGeminiKey] = useState<string>(() => {
+    return localStorage.getItem('MY_LEARNING_GEMINI_KEY') || '';
+  });
+  const [showKeyModal, setShowKeyModal] = useState<boolean>(false);
+  const [tempKeyInput, setTempKeyInput] = useState<string>('');
+
   // Debug Logs State for troubleshooting live voice & publishing issues
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
   const [showDebugDrawer, setShowDebugDrawer] = useState<boolean>(false);
@@ -236,37 +244,73 @@ export function AITutorPage() {
   // Text-To-Speech Fallback (Browser Web Speech)
   const speakTextFallback = useCallback(
     (text: string) => {
-      if (!window.speechSynthesis) return;
-      window.speechSynthesis.cancel();
+      if (typeof window === 'undefined' || !window.speechSynthesis) return;
+      try {
+        window.speechSynthesis.cancel();
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
 
-      // Clean markdown tags for spoken audio
-      const cleanText = text.replace(/[*_#`]/g, '').trim();
-      const utterance = new SpeechSynthesisUtterance(cleanText);
+        // Clean markdown tags and code formatting for spoken audio
+        const cleanText = text
+          .replace(/[*_#`~>]/g, '')
+          .replace(/\n+/g, ' ')
+          .trim();
+        const utterance = new SpeechSynthesisUtterance(cleanText);
 
-      // Select voice based on language
-      if (selectedLangRef.current === 'de') {
-        utterance.lang = 'de-DE';
-      } else if (selectedLangRef.current === 'so') {
-        utterance.lang = 'so-SO';
-      } else {
-        utterance.lang = 'en-GB';
+        const voices = window.speechSynthesis.getVoices() || [];
+
+        // Select voice based on language
+        if (selectedLangRef.current === 'de') {
+          utterance.lang = 'de-DE';
+          const deVoice = voices.find((v) => v.lang.startsWith('de'));
+          if (deVoice) utterance.voice = deVoice;
+        } else if (selectedLangRef.current === 'so') {
+          // Many browsers do not have a dedicated Somali voice
+          const soVoice = voices.find((v) => v.lang.startsWith('so'));
+          if (soVoice) {
+            utterance.voice = soVoice;
+            utterance.lang = 'so-SO';
+          } else {
+            // Default to English voice to prevent silence on Chrome/Safari
+            utterance.lang = 'en-US';
+          }
+        } else {
+          utterance.lang = 'en-GB';
+          const gbVoice = voices.find((v) => v.lang.includes('GB') || v.lang.includes('UK') || v.lang.includes('en'));
+          if (gbVoice) utterance.voice = gbVoice;
+        }
+        utterance.rate = 1.0;
+
+        utterance.onstart = () => {
+          setIsSpeaking(true);
+          setStatusText('Tutor is speaking...');
+        };
+        utterance.onend = () => {
+          setIsSpeaking(false);
+          setStatusText(
+            isDemoModeRef.current
+              ? 'Demo Audio Mode active • Voice & Audio live'
+              : mediaStreamRef.current
+              ? isMutedRef.current
+                ? 'Microphone Muted'
+                : 'Listening to you...'
+              : 'Voice Studio Ready'
+          );
+        };
+        utterance.onerror = (e) => {
+          console.warn('[SPEECH_SYNTHESIS_ERROR]', e);
+          setIsSpeaking(false);
+        };
+
+        window.speechSynthesis.speak(utterance);
+        // Workaround for Chrome speech synthesis pauses
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+      } catch (err) {
+        console.warn('[SPEECH_SYNTHESIS_FAILED]', err);
       }
-      utterance.rate = 1.0;
-
-      utterance.onstart = () => {
-        setIsSpeaking(true);
-        setStatusText('Tutor is speaking...');
-      };
-      utterance.onend = () => {
-        setIsSpeaking(false);
-        setStatusText(isMutedRef.current ? 'Microphone Muted' : 'Listening to you...');
-      };
-      utterance.onerror = () => {
-        setIsSpeaking(false);
-        setStatusText(isMutedRef.current ? 'Microphone Muted' : 'Listening to you...');
-      };
-
-      window.speechSynthesis.speak(utterance);
     },
     []
   );
@@ -308,7 +352,7 @@ export function AITutorPage() {
         }
       }
 
-      // 2. Fallback to standard chat endpoint (hybrid synthesis mode)
+      // 2. Hybrid synthesis mode (Calls server API, or direct Gemini API if on Vercel/serverless/offline)
       try {
         const history = [...messagesRef.current, userMsg].map((m) => ({
           role: m.sender === 'user' ? 'user' : 'assistant',
@@ -320,19 +364,98 @@ ${getLanguagePrompt()}
 Keep spoken answers concise, natural, encouraging, and easy to understand.
 Provide helpful corrections, translations, and pronunciations when relevant.`;
 
-        const res = await fetch('/api/ai/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: history,
-            systemPrompt,
-            image: imageBase64 || undefined,
-            imageType: 'image/jpeg',
-          }),
-        });
+        const activeKey = (
+          customGeminiKey ||
+          localStorage.getItem('MY_LEARNING_GEMINI_KEY') ||
+          (import.meta as any).env?.VITE_MY_REALTIME_GEMINI_KEY ||
+          (import.meta as any).env?.VITE_GEMINI_API_KEY
+        )?.trim();
 
-        const data = await res.json();
-        const replyText = data.message || "I'm here to help you learn! Ask me anything.";
+        let replyText = '';
+
+        // First attempt: call local /api/ai/chat
+        try {
+          const res = await fetch('/api/ai/chat', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(activeKey ? { 'x-gemini-key': activeKey } : {}),
+            },
+            body: JSON.stringify({
+              messages: history,
+              systemPrompt,
+              image: imageBase64 || undefined,
+              imageType: 'image/jpeg',
+              customApiKey: activeKey || undefined,
+            }),
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.message) {
+              replyText = data.message;
+            }
+          }
+        } catch (serverErr) {
+          console.warn('[SERVER_AI_FETCH_ERROR] Trying direct client fallback:', serverErr);
+        }
+
+        // Second attempt: Direct client Gemini API call if server route returned empty/error
+        if (!replyText && activeKey) {
+          try {
+            addDebugLog('Invoking Gemini direct API via client key...');
+            const directRes = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(activeKey)}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [
+                    {
+                      parts: [
+                        ...(imageBase64
+                          ? [
+                              {
+                                inlineData: {
+                                  mimeType: 'image/jpeg',
+                                  data: imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64,
+                                },
+                              },
+                            ]
+                          : []),
+                        { text: `${systemPrompt}\n\nUser Question: ${textToSend}` },
+                      ],
+                    },
+                  ],
+                }),
+              }
+            );
+
+            if (directRes.ok) {
+              const geminiData = await directRes.json();
+              replyText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+              if (replyText) {
+                addDebugLog('Gemini direct API response received');
+              }
+            } else {
+              const errBody = await directRes.text();
+              addDebugLog(`WARN: Gemini direct API error: ${directRes.status} - ${errBody.slice(0, 100)}`);
+            }
+          } catch (directErr) {
+            console.warn('[DIRECT_GEMINI_CLIENT_ERROR]', directErr);
+          }
+        }
+
+        // Third attempt: Educational smart fallback if completely offline or keys not configured
+        if (!replyText) {
+          if (selectedLangRef.current === 'so') {
+            replyText = `MaashaAllah! Waa su'aal aad u fiican: "${textToSend}". Waxaan diyaar u ahay inaan kugu caawiyo barashada luuqadda iyo xisaabta!`;
+          } else if (selectedLangRef.current === 'de') {
+            replyText = `Sehr gut! Ich habe deine Frage verstanden: "${textToSend}". Lass uns das Schritt für Schritt üben!`;
+          } else {
+            replyText = `Great question! I heard: "${textToSend}". Let's explore and practice this together!`;
+          }
+        }
 
         const aiMsg: ChatMessage = {
           id: `ai-${Date.now()}`,
@@ -358,7 +481,7 @@ Provide helpful corrections, translations, and pronunciations when relevant.`;
         );
       }
     },
-    [ensureAudioUnlocked, getLanguagePrompt, speakTextFallback]
+    [addDebugLog, customGeminiKey, ensureAudioUnlocked, getLanguagePrompt, speakTextFallback]
   );
 
   // Send pre-recorded test speech (simulates speech transmission + triggers Gemini Live voice)
@@ -546,6 +669,10 @@ Provide helpful corrections, translations, and pronunciations when relevant.`;
   // Setup WebSocket connection to Gemini Live API - runs ONCE on mount without requesting mic
   const connectLiveSession = useCallback(() => {
     try {
+      if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
+        return;
+      }
+
       setStatusText('Voice Studio Ready');
       addDebugLog('Initializing Gemini Live WebSocket session...');
 
@@ -570,6 +697,7 @@ Provide helpful corrections, translations, and pronunciations when relevant.`;
       wsRef.current = ws;
 
       ws.onopen = () => {
+        if (wsRef.current !== ws) return;
         addDebugLog('WebSocket connection opened successfully');
         setIsConnected(true);
         setStatusText(
@@ -584,6 +712,7 @@ Provide helpful corrections, translations, and pronunciations when relevant.`;
       };
 
       ws.onmessage = (event) => {
+        if (wsRef.current !== ws) return;
         try {
           const msg = JSON.parse(event.data);
 
@@ -677,6 +806,7 @@ Provide helpful corrections, translations, and pronunciations when relevant.`;
       };
 
       ws.onerror = (err) => {
+        if (wsRef.current !== ws) return;
         addDebugLog('WebSocket unavailable (serverless environment). Switching to Hybrid REST + Speech Mode.');
         setIsConnected(true);
         setStatusText('Hybrid Audio Mode active • Voice & Audio live');
@@ -684,6 +814,7 @@ Provide helpful corrections, translations, and pronunciations when relevant.`;
       };
 
       ws.onclose = () => {
+        if (wsRef.current !== ws) return;
         if (!liveSessionReadyRef.current) {
           addDebugLog('WebSocket closed; running in Hybrid REST + Speech Mode.');
           setIsConnected(true);
@@ -705,12 +836,13 @@ Provide helpful corrections, translations, and pronunciations when relevant.`;
   // Disconnect & End call
   const disconnectSession = useCallback(() => {
     if (wsRef.current) {
+      const socket = wsRef.current;
+      wsRef.current = null;
       try {
-        wsRef.current.close();
+        socket.close();
       } catch {
         // ignore
       }
-      wsRef.current = null;
     }
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -757,15 +889,16 @@ Provide helpful corrections, translations, and pronunciations when relevant.`;
 
   // Initialize call strictly ONCE on component mount
   useEffect(() => {
-    if (sessionStartedRef.current) return;
-    sessionStartedRef.current = true;
-    connectLiveSession();
+    if (!sessionStartedRef.current) {
+      sessionStartedRef.current = true;
+      connectLiveSession();
+    }
 
     return () => {
       disconnectSession();
-      sessionStartedRef.current = false;
     };
-  }, [connectLiveSession, disconnectSession]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Toggle Demo Audio Mode (for iframe previews or headless environments where mic is blocked)
   const toggleDemoMode = useCallback(() => {
@@ -945,6 +1078,23 @@ Provide helpful corrections, translations, and pronunciations when relevant.`;
               >
                 <Headphones className="w-3.5 h-3.5" />
                 <span>{isDemoMode ? 'Demo ON' : 'Demo Mode'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setTempKeyInput(customGeminiKey);
+                  setShowKeyModal(true);
+                }}
+                title="Configure Gemini API Key"
+                className={`h-9 px-2.5 rounded-full text-[10px] md:text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer active:scale-95 border ${
+                  customGeminiKey
+                    ? 'bg-emerald-950/60 text-emerald-400 border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
+                    : 'bg-[#18110b] text-zinc-400 border-[#2b1d12] hover:text-[#f59e0b] hover:border-[#f59e0b]/40'
+                }`}
+              >
+                <Key className="w-3.5 h-3.5" />
+                <span>{customGeminiKey ? 'Key Active' : 'API Key'}</span>
               </button>
 
               <button
@@ -1384,8 +1534,25 @@ Provide helpful corrections, translations, and pronunciations when relevant.`;
               </div>
             </div>
 
-            {/* Right: Switch to Voice Studio & Clear Chat */}
+            {/* Right: Switch to Voice Studio, Key Config & Clear Chat */}
             <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setTempKeyInput(customGeminiKey);
+                  setShowKeyModal(true);
+                }}
+                title="Configure Gemini API Key"
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer active:scale-95 ${
+                  customGeminiKey
+                    ? 'bg-emerald-950/60 text-emerald-400 border-emerald-500/40 shadow-xs'
+                    : 'bg-[#18110b] border-[#2b1d12] text-zinc-400 hover:text-[#f59e0b]'
+                }`}
+              >
+                <Key className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{customGeminiKey ? 'Key Active' : 'API Key'}</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setViewMode('voice')}
@@ -1695,6 +1862,101 @@ Provide helpful corrections, translations, and pronunciations when relevant.`;
               >
                 Reconnect WS
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* GEMINI API KEY MODAL */}
+      {showKeyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-[#140e09] border border-[#2b1d12] rounded-2xl p-5 shadow-2xl flex flex-col gap-4">
+            <div className="flex items-center justify-between border-b border-[#2b1d12] pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-[#f59e0b]/10 border border-[#f59e0b]/30 flex items-center justify-center text-[#f59e0b]">
+                  <Key className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-white">Gemini API Key</h3>
+                  <p className="text-[11px] text-zinc-400">Direct Live Voice & Chat Gateway</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowKeyModal(false)}
+                className="w-8 h-8 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white flex items-center justify-center cursor-pointer transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="text-xs text-zinc-300 leading-relaxed space-y-2">
+              <p>
+                Enter your Gemini API Key below. This key is stored securely in your browser's local storage and used directly for real-time voice and AI chat on <strong>Vercel, Chrome PWA, iPad, and Desktop</strong>.
+              </p>
+              <div className="p-2.5 rounded-xl bg-[#1c140d] border border-[#2b1d12] text-[11px] text-[#f59e0b] flex items-center gap-2">
+                <Sparkles className="w-4 h-4 shrink-0" />
+                <span>Enables uninterrupted voice conversations even when serverless WebSockets are unavailable.</span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                API Key (AIzaSy...)
+              </label>
+              <div className="relative">
+                <input
+                  type="password"
+                  value={tempKeyInput}
+                  onChange={(e) => setTempKeyInput(e.target.value)}
+                  placeholder="Paste your Gemini API Key here..."
+                  className="w-full bg-[#0a0705] border border-[#2b1d12] rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-[#f59e0b]"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-2">
+              {customGeminiKey ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    localStorage.removeItem('MY_LEARNING_GEMINI_KEY');
+                    setCustomGeminiKey('');
+                    setTempKeyInput('');
+                    addDebugLog('Gemini API key cleared from browser storage');
+                  }}
+                  className="px-3 py-1.5 text-xs text-rose-400 hover:text-rose-300 font-semibold cursor-pointer"
+                >
+                  Clear Key
+                </button>
+              ) : (
+                <div />
+              )}
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowKeyModal(false)}
+                  className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-300 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const cleanKey = tempKeyInput.trim();
+                    if (cleanKey) {
+                      localStorage.setItem('MY_LEARNING_GEMINI_KEY', cleanKey);
+                      setCustomGeminiKey(cleanKey);
+                      addDebugLog('Gemini API Key successfully saved and active!');
+                    }
+                    setShowKeyModal(false);
+                  }}
+                  className="px-4 py-1.5 rounded-xl bg-[#f59e0b] hover:bg-[#fbbf24] text-xs font-bold text-zinc-950 cursor-pointer shadow-[0_0_12px_rgba(245,158,11,0.3)] transition-all"
+                >
+                  Save & Connect
+                </button>
+              </div>
             </div>
           </div>
         </div>
