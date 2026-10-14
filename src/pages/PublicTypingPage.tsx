@@ -109,6 +109,9 @@ export function PublicTypingPage() {
       const saved = localStorage.getItem('mylearning_theme');
       if (saved === 'light' || saved === 'dark') return saved;
       if (document.documentElement.getAttribute('data-theme') === 'light') return 'light';
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        return 'light';
+      }
     }
     return 'dark';
   });
@@ -329,7 +332,7 @@ export function PublicTypingPage() {
             key={idx}
             onClick={() => setSelectedVocabEntry(match)}
             title="Tap for German & Somali translations with Ryan UK audio"
-            className="border-b border-dashed border-[#f59e0b] text-[#fbbf24] hover:text-[#f59e0b] hover:bg-[#f59e0b]/10 rounded-xs cursor-pointer transition-colors px-0.5"
+            className="border-b-2 border-dashed border-[#f59e0b] text-amber-600 dark:text-amber-400 font-bold hover:bg-amber-500/10 rounded-xs cursor-pointer transition-colors px-0.5"
           >
             {token}
           </span>
@@ -352,45 +355,57 @@ export function PublicTypingPage() {
     }
   };
 
+  // Handler when user clicks "PRACTICE [WORD] IN TYPING ENGINE →" from the modal
+  const handlePracticeWordFromModal = (word: string) => {
+    setSelectedVocabEntry(null);
+    setActiveTab('trainer');
+    navigate('/practice', { replace: true });
+
+    // Determine whether Word is in "The Man" or "The Woman"
+    const manHasWord = PASSAGES[0].text.toLowerCase().includes(word.toLowerCase());
+    const womanHasWord = PASSAGES[1].text.toLowerCase().includes(word.toLowerCase());
+
+    const targetPassageIdx = manHasWord ? 0 : womanHasWord ? 1 : selectedPassageIndex;
+    setSelectedPassageIndex(targetPassageIdx);
+    setDrillMode('drill');
+
+    const p = PASSAGES[targetPassageIdx];
+    const matchIdx = p.drills.findIndex((d) => d.toLowerCase().includes(word.toLowerCase()));
+    if (matchIdx !== -1) {
+      setDrillIndex(matchIdx);
+    } else {
+      setDrillIndex(0);
+    }
+  };
+
   return (
     <div
       className="min-h-screen w-full flex justify-center py-3 sm:py-6 px-3 sm:px-4 antialiased transition-colors duration-200"
       style={{
-        backgroundColor: 'var(--bg, #090705)',
-        color: 'var(--text, #f3ece4)',
+        backgroundColor: 'var(--bg)',
+        color: 'var(--text)',
       }}
     >
       {/* APP CONTAINER (Matches 480px mobile card hierarchy & scalable desktop) */}
       <div className="w-full max-w-[480px] flex flex-col gap-3">
-        
         {/* ========================================================
             1. HEADER (Both Views)
             Left: Avatar + MY LEARNING + Online badge
             Right: Sun/Moon button + AI button
             ======================================================== */}
-        <header
-          className="flex items-center justify-between rounded-2xl px-3.5 py-2.5 shadow-sm transition-all"
-          style={{
-            backgroundColor: 'var(--card-bg, #140e09)',
-            border: '1px solid var(--border, #2c1d12)',
-          }}
-        >
+        <header className="flex items-center justify-between rounded-2xl px-3.5 py-2.5 shadow-sm transition-all bg-[var(--card-bg)] border border-[var(--border)]">
           {/* Left: Avatar + Title + Online Badge */}
           <div className="flex items-center gap-2.5">
             <img
               src="https://i.postimg.cc/MTGJ6zYs/18275-modified.png"
               alt="MY LEARNING"
-              className="w-8 h-8 rounded-full object-cover border-2 shrink-0"
-              style={{
-                borderColor: 'var(--primary, #f59e0b)',
-                boxShadow: '0 0 10px rgba(245, 158, 11, 0.35)',
-              }}
+              className="w-8 h-8 rounded-full object-cover border-2 shrink-0 border-[#f59e0b] shadow-[0_0_10px_rgba(245,158,11,0.35)]"
             />
-            <span className="text-[13px] font-black tracking-wider text-white">
+            <span className="text-[13px] font-black tracking-wider text-[var(--text-heading)]">
               MY LEARNING
             </span>
-            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/25">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <span>Online</span>
             </span>
           </div>
@@ -401,23 +416,18 @@ export function PublicTypingPage() {
               type="button"
               onClick={toggleTheme}
               aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              className="w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer text-amber-400 hover:text-amber-300"
-              style={{
-                backgroundColor: 'var(--surface, #1b130c)',
-                border: '1px solid var(--border, #2c1d12)',
-              }}
+              className="w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer bg-[var(--surface)] hover:bg-[var(--surface-hover)] border border-[var(--border)]"
             >
               {theme === 'dark' ? (
                 <Sun className="w-4 h-4 text-amber-400" />
               ) : (
-                <Moon className="w-4 h-4 text-amber-500" />
+                <Moon className="w-4 h-4 text-amber-600" />
               )}
             </button>
 
             <button
               type="button"
               onClick={() => {
-                // Focus / trigger learning helper
                 if (activeTab === 'reader') {
                   playRyanAudio(currentPassage.text);
                 } else {
@@ -425,11 +435,7 @@ export function PublicTypingPage() {
                 }
               }}
               title="Ryan UK Speech AI"
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-amber-400 hover:text-amber-300"
-              style={{
-                backgroundColor: 'var(--surface, #1b130c)',
-                border: '1px solid var(--border, #2c1d12)',
-              }}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer bg-[var(--surface)] hover:bg-[var(--surface-hover)] border border-[var(--border)] text-amber-600 dark:text-amber-400"
             >
               <Sparkles className="w-3.5 h-3.5 text-[#f59e0b]" />
               <span className="font-mono text-[11px] font-semibold">AI</span>
@@ -442,13 +448,7 @@ export function PublicTypingPage() {
             2-Button Grid: [📖 Reader & Audio] vs [⌨️ Typing Trainer]
             Active tab has amber background (#f59e0b) with dark text
             ======================================================== */}
-        <div
-          className="grid grid-cols-2 gap-1.5 p-1 rounded-2xl"
-          style={{
-            backgroundColor: 'var(--card-bg, #140e09)',
-            border: '1px solid var(--border, #2c1d12)',
-          }}
-        >
+        <div className="grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)]">
           <button
             type="button"
             onClick={() => {
@@ -457,12 +457,9 @@ export function PublicTypingPage() {
             }}
             className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'reader'
-                ? 'bg-[#f59e0b] text-neutral-950 shadow-sm font-extrabold'
-                : 'text-[#8e7d70] hover:text-[#f3ece4]'
+                ? 'bg-[#f59e0b] text-neutral-950 shadow-sm font-black'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-heading)]'
             }`}
-            style={{
-              backgroundColor: activeTab === 'reader' ? '#f59e0b' : 'transparent',
-            }}
           >
             <BookOpen className="w-3.5 h-3.5" />
             <span>Reader & Audio</span>
@@ -476,12 +473,9 @@ export function PublicTypingPage() {
             }}
             className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'trainer'
-                ? 'bg-[#f59e0b] text-neutral-950 shadow-sm font-extrabold'
-                : 'text-[#8e7d70] hover:text-[#f3ece4]'
+                ? 'bg-[#f59e0b] text-neutral-950 shadow-sm font-black'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-heading)]'
             }`}
-            style={{
-              backgroundColor: activeTab === 'trainer' ? '#f59e0b' : 'transparent',
-            }}
           >
             <Keyboard className="w-3.5 h-3.5" />
             <span>Typing Trainer</span>
@@ -501,16 +495,11 @@ export function PublicTypingPage() {
                 key={p.id}
                 type="button"
                 onClick={() => setSelectedPassageIndex(idx)}
-                className="py-2.5 px-3 rounded-2xl text-center text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                style={{
-                  backgroundColor: isSelected
-                    ? 'rgba(245, 158, 11, 0.12)'
-                    : 'var(--card-bg, #140e09)',
-                  border: isSelected
-                    ? '1.5px solid #f59e0b'
-                    : '1px solid var(--border, #2c1d12)',
-                  color: isSelected ? '#ffffff' : '#8e7d70',
-                }}
+                className={`py-2.5 px-3 rounded-2xl text-center text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  isSelected
+                    ? 'border-2 border-[#f59e0b] bg-amber-500/12 text-[var(--text-heading)] font-black'
+                    : 'bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-heading)]'
+                }`}
               >
                 <span>{idx === 0 ? '👤' : '👗'}</span>
                 <span>{p.name}</span>
@@ -520,22 +509,16 @@ export function PublicTypingPage() {
         </div>
 
         {/* ========================================================
-            VIEW 1: READER & AUDIO (Match 18769_2.jpg exactly)
+            VIEW 1: READER & AUDIO (Matches 18769_2.jpg & Light Mode screenshot)
             - Toolbar Strip: [A-] [A] [A+] on left | [((•)) Ryan (UK)] badge + [▶ Read Aloud] button on right
             - Reader Body: Single continuous prose paragraph with amber dotted underlines on vocab
-            - Bottom Card Strip: "Translations: 🇩🇪 German & 🇸🇴 Somali"
+            - Bottom Card Strip: "Translations: 🇩🇪 German & 🇸🇴 Somali" on soft surface
             - Footer: Centered italic quote '"I learn by reading and typing."'
             ======================================================== */}
         {activeTab === 'reader' && (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 animate-in fade-in duration-200">
             {/* TOOLBAR STRIP */}
-            <div
-              className="flex items-center justify-between rounded-2xl p-2.5 transition-all"
-              style={{
-                backgroundColor: 'var(--card-bg, #140e09)',
-                border: '1px solid var(--border, #2c1d12)',
-              }}
-            >
+            <div className="flex items-center justify-between rounded-2xl p-2.5 transition-all bg-[var(--card-bg)] border border-[var(--border)] shadow-xs">
               {/* Size chips [A-] [A] [A+] */}
               <div className="flex items-center gap-1">
                 {(['sm', 'base', 'lg'] as TextSize[]).map((size) => {
@@ -546,14 +529,11 @@ export function PublicTypingPage() {
                       key={size}
                       type="button"
                       onClick={() => setTextSize(size)}
-                      className="w-7 h-7 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center"
-                      style={{
-                        backgroundColor: isActive
-                          ? 'var(--surface-hover, #261b11)'
-                          : 'transparent',
-                        color: isActive ? '#f59e0b' : '#8e7d70',
-                        border: isActive ? '1px solid #f59e0b' : 'none',
-                      }}
+                      className={`w-7 h-7 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
+                        isActive
+                          ? 'bg-[var(--surface-hover)] border border-[#f59e0b] text-amber-600 dark:text-amber-400'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text-heading)] hover:bg-[var(--surface)]'
+                      }`}
                     >
                       {label}
                     </button>
@@ -563,14 +543,7 @@ export function PublicTypingPage() {
 
               {/* Right: [((•)) Ryan (UK)] badge + [▶ Read Aloud] button */}
               <div className="flex items-center gap-2">
-                <span
-                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-mono font-medium"
-                  style={{
-                    backgroundColor: 'var(--surface, #1b130c)',
-                    border: '1px solid var(--border, #2c1d12)',
-                    color: '#8e7d70',
-                  }}
-                >
+                <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-mono font-medium bg-[var(--surface)] border border-[var(--border)] text-[var(--text-muted)]">
                   <Radio className="w-3 h-3 text-[#f59e0b]" />
                   <span>Ryan (UK)</span>
                 </span>
@@ -584,11 +557,11 @@ export function PublicTypingPage() {
                       playRyanAudio(currentPassage.text);
                     }
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95"
-                  style={{
-                    backgroundColor: isPlayingAudio ? '#f43f5e' : '#f59e0b',
-                    color: isPlayingAudio ? '#ffffff' : '#090705',
-                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95 shadow-xs ${
+                    isPlayingAudio
+                      ? 'bg-rose-500 text-white font-black'
+                      : 'bg-[#f59e0b] hover:bg-[#fbbf24] text-neutral-950 font-black'
+                  }`}
                 >
                   {isLoadingAudio ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -603,42 +576,28 @@ export function PublicTypingPage() {
             </div>
 
             {/* READER BODY: ONE SINGLE CONTINUOUS PROSE PARAGRAPH */}
-            <div
-              className="rounded-2xl p-4 sm:p-5 transition-all"
-              style={{
-                backgroundColor: 'var(--card-bg, #140e09)',
-                border: '1px solid var(--border, #2c1d12)',
-              }}
-            >
+            <div className="rounded-2xl p-4 sm:p-5 transition-all bg-[var(--card-bg)] border border-[var(--border)] shadow-xs">
               <p
-                className={`leading-relaxed font-sans ${
+                className={`leading-relaxed font-sans text-[var(--text-heading)] ${
                   textSize === 'sm'
                     ? 'text-sm'
                     : textSize === 'lg'
                     ? 'text-lg sm:text-xl'
                     : 'text-base sm:text-lg'
                 }`}
-                style={{ color: 'var(--text, #f3ece4)' }}
               >
                 {renderReadableTextWithVocab(currentPassage.text)}
               </p>
             </div>
 
             {/* BOTTOM CARD STRIP: Translations: 🇩🇪 German & 🇸🇴 Somali */}
-            <div
-              className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-medium text-center"
-              style={{
-                backgroundColor: 'var(--card-bg, #140e09)',
-                border: '1px solid var(--border, #2c1d12)',
-                color: '#8e7d70',
-              }}
-            >
+            <div className="flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-medium text-center bg-[var(--surface)] border border-[var(--border)] text-[var(--text-muted)]">
               <span>Translations: 🇩🇪 German & 🇸🇴 Somali</span>
             </div>
 
             {/* FOOTER: Centered italic quote */}
             <footer className="text-center py-2">
-              <p className="text-xs italic" style={{ color: '#8e7d70' }}>
+              <p className="text-xs italic text-[var(--text-muted)]">
                 "I learn by reading and typing."
               </p>
             </footer>
@@ -646,19 +605,18 @@ export function PublicTypingPage() {
         )}
 
         {/* ========================================================
-            VIEW 2: TYPING TRAINER (Match 18778.jpg exactly)
+            VIEW 2: TYPING TRAINER (Matches 18778.jpg & dual theme)
             - Row 1: Mode chips [One-by-One] [Sentences] [Full Text]
-            - Row 2: 1-Row Compact Stats HUD: SPEED (0 wpm) | ACCURACY (100%) | TIME (0s) | MISTAKES (0)
+            - Row 2: 1-Row Compact Stats HUD: SPEED | ACCURACY | TIME | MISTAKES
             - Typing Stage Card:
-              * Header: "WORD / PHRASE DRILL" (amber) on left, [Listen (Ryan)] button on right
-              * Typing Box: Centered box with glowing amber border (#f59e0b) and large monospace text
+              * Header: "WORD / PHRASE DRILL" + [Listen (Ryan)] button
+              * Typing Box: Centered box with glowing amber border (#f59e0b)
               * Amber cursor/caret highlight; stealth input capturing keystrokes
-              * Footer navigation: [← Prev] on left, "1 of 6" in center, [Next →] on right
+              * Footer navigation: [← Prev] | "1 of 6" | [Next →]
             - Footer: Centered italic quote '"I learn by reading and typing."'
             ======================================================== */}
         {activeTab === 'trainer' && (
-          <div className="flex flex-col gap-3">
-            
+          <div className="flex flex-col gap-3 animate-in fade-in duration-200">
             {/* ROW 1: MODE CHIPS [One-by-One] [Sentences] [Full Text] */}
             <div className="grid grid-cols-3 gap-1.5">
               {[
@@ -675,16 +633,11 @@ export function PublicTypingPage() {
                       setDrillMode(m.id as DrillMode);
                       setDrillIndex(0);
                     }}
-                    className="py-1.5 px-2 rounded-xl text-xs font-bold text-center transition-all cursor-pointer"
-                    style={{
-                      backgroundColor: isActive
-                        ? 'var(--surface-hover, #261b11)'
-                        : 'var(--card-bg, #140e09)',
-                      border: isActive
-                        ? '1px solid #f59e0b'
-                        : '1px solid var(--border, #2c1d12)',
-                      color: isActive ? '#f59e0b' : '#8e7d70',
-                    }}
+                    className={`py-1.5 px-2 rounded-xl text-xs font-bold text-center transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-amber-500/15 border border-[#f59e0b] text-amber-600 dark:text-amber-400'
+                        : 'bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-heading)]'
+                    }`}
                   >
                     {m.label}
                   </button>
@@ -693,60 +646,51 @@ export function PublicTypingPage() {
             </div>
 
             {/* ROW 2: 1-ROW COMPACT STATS HUD */}
-            <div
-              className="grid grid-cols-4 rounded-2xl py-2 px-1 transition-all"
-              style={{
-                backgroundColor: 'var(--card-bg, #140e09)',
-                border: '1px solid var(--border, #2c1d12)',
-              }}
-            >
+            <div className="grid grid-cols-4 rounded-2xl py-2 px-1 transition-all bg-[var(--card-bg)] border border-[var(--border)] shadow-xs">
               {/* SPEED */}
               <div className="flex flex-col items-center justify-center text-center">
-                <span className="text-[10px] font-mono font-medium" style={{ color: '#8e7d70' }}>
+                <span className="text-[10px] font-mono font-medium text-[var(--text-muted)]">
                   SPEED
                 </span>
-                <span className="text-sm sm:text-base font-black font-mono text-white">
-                  {stats.wpm} <span className="text-[10px] font-normal font-mono" style={{ color: '#8e7d70' }}>wpm</span>
+                <span className="text-sm sm:text-base font-black font-mono text-[var(--text-heading)]">
+                  {stats.wpm}{' '}
+                  <span className="text-[10px] font-normal font-mono text-[var(--text-muted)]">
+                    wpm
+                  </span>
                 </span>
               </div>
 
               {/* ACCURACY */}
-              <div
-                className="flex flex-col items-center justify-center text-center"
-                style={{ borderLeft: '1px solid var(--border, #2c1d12)' }}
-              >
-                <span className="text-[10px] font-mono font-medium" style={{ color: '#8e7d70' }}>
+              <div className="flex flex-col items-center justify-center text-center border-l border-[var(--border)]">
+                <span className="text-[10px] font-mono font-medium text-[var(--text-muted)]">
                   ACCURACY
                 </span>
-                <span className="text-sm sm:text-base font-black font-mono text-emerald-400">
+                <span className="text-sm sm:text-base font-black font-mono text-emerald-600 dark:text-emerald-400">
                   {stats.accuracy}%
                 </span>
               </div>
 
               {/* TIME */}
-              <div
-                className="flex flex-col items-center justify-center text-center"
-                style={{ borderLeft: '1px solid var(--border, #2c1d12)' }}
-              >
-                <span className="text-[10px] font-mono font-medium" style={{ color: '#8e7d70' }}>
+              <div className="flex flex-col items-center justify-center text-center border-l border-[var(--border)]">
+                <span className="text-[10px] font-mono font-medium text-[var(--text-muted)]">
                   TIME
                 </span>
-                <span className="text-sm sm:text-base font-black font-mono text-amber-400">
+                <span className="text-sm sm:text-base font-black font-mono text-amber-600 dark:text-amber-400">
                   {stats.time}s
                 </span>
               </div>
 
               {/* MISTAKES */}
-              <div
-                className="flex flex-col items-center justify-center text-center"
-                style={{ borderLeft: '1px solid var(--border, #2c1d12)' }}
-              >
-                <span className="text-[10px] font-mono font-medium" style={{ color: '#8e7d70' }}>
+              <div className="flex flex-col items-center justify-center text-center border-l border-[var(--border)]">
+                <span className="text-[10px] font-mono font-medium text-[var(--text-muted)]">
                   MISTAKES
                 </span>
                 <span
-                  className="text-sm sm:text-base font-black font-mono"
-                  style={{ color: stats.mistakes > 0 ? '#f43f5e' : '#8e7d70' }}
+                  className={`text-sm sm:text-base font-black font-mono ${
+                    stats.mistakes > 0
+                      ? 'text-rose-600 dark:text-rose-400'
+                      : 'text-[var(--text-muted)]'
+                  }`}
                 >
                   {stats.mistakes}
                 </span>
@@ -756,15 +700,11 @@ export function PublicTypingPage() {
             {/* TYPING STAGE CARD */}
             <div
               onClick={handleFocusInput}
-              className="rounded-2xl p-4 sm:p-5 flex flex-col gap-4 transition-all cursor-text relative"
-              style={{
-                backgroundColor: 'var(--card-bg, #140e09)',
-                border: '1px solid var(--border, #2c1d12)',
-              }}
+              className="rounded-2xl p-4 sm:p-5 flex flex-col gap-4 transition-all cursor-text relative bg-[var(--card-bg)] border border-[var(--border)] shadow-xs"
             >
               {/* Card Header: "WORD / PHRASE DRILL" + [Listen (Ryan)] */}
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-mono font-bold tracking-wider text-[#f59e0b] uppercase">
+                <span className="text-[11px] font-mono font-bold tracking-wider text-amber-600 dark:text-amber-400 uppercase">
                   {drillMode === 'drill'
                     ? 'WORD / PHRASE DRILL'
                     : drillMode === 'sentence'
@@ -782,14 +722,11 @@ export function PublicTypingPage() {
                       playRyanAudio(activeTargetString);
                     }
                   }}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95"
-                  style={{
-                    backgroundColor: isPlayingAudio
-                      ? '#f43f5e'
-                      : 'var(--surface, #1b130c)',
-                    border: '1px solid var(--border, #2c1d12)',
-                    color: isPlayingAudio ? '#ffffff' : '#f59e0b',
-                  }}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95 ${
+                    isPlayingAudio
+                      ? 'bg-rose-500 text-white font-black'
+                      : 'bg-[var(--surface)] hover:bg-[var(--surface-hover)] border border-[var(--border)] text-amber-600 dark:text-amber-400'
+                  }`}
                 >
                   {isLoadingAudio ? (
                     <Loader2 className="w-3 h-3 animate-spin" />
@@ -818,14 +755,7 @@ export function PublicTypingPage() {
               />
 
               {/* TYPING BOX: CENTERED BOX WITH GLOWING AMBER BORDER (#f59e0b) */}
-              <div
-                className="rounded-xl p-4 min-h-[90px] flex items-center justify-center text-center transition-all"
-                style={{
-                  backgroundColor: 'var(--surface, #1b130c)',
-                  border: '1.5px solid #f59e0b',
-                  boxShadow: '0 0 16px rgba(245, 158, 11, 0.22)',
-                }}
-              >
+              <div className="rounded-xl p-4 min-h-[90px] flex items-center justify-center text-center transition-all bg-[var(--surface)] border-2 border-[#f59e0b] shadow-[0_0_16px_rgba(245,158,11,0.22)]">
                 <div className="font-mono text-base sm:text-lg leading-relaxed select-none tracking-normal">
                   {activeTargetString.split('').map((char, idx) => {
                     const isTyped = idx < inputVal.length;
@@ -837,26 +767,17 @@ export function PublicTypingPage() {
                       <span key={idx} className="relative inline">
                         {/* Amber Cursor / Caret highlight */}
                         {isCurrent && !isCompleted && (
-                          <span
-                            className="inline-block w-[2px] h-[1.15em] align-middle animate-pulse -mr-[2px]"
-                            style={{
-                              backgroundColor: '#f59e0b',
-                              boxShadow: '0 0 8px #f59e0b',
-                            }}
-                          />
+                          <span className="inline-block w-[2.5px] h-[1.15em] align-middle animate-pulse -mr-[2.5px] bg-[#f59e0b] shadow-[0_0_8px_#f59e0b]" />
                         )}
 
                         <span
                           className={
                             isCorrect
-                              ? 'text-white font-semibold'
+                              ? 'text-[var(--text-heading)] font-semibold'
                               : isError
-                              ? 'text-white bg-rose-600/90 rounded-xs'
-                              : 'opacity-40'
+                              ? 'text-white bg-rose-600/90 rounded-xs px-0.5'
+                              : 'opacity-50 text-[var(--text-muted)]'
                           }
-                          style={{
-                            color: !isTyped ? '#8e7d70' : undefined,
-                          }}
                         >
                           {char}
                         </span>
@@ -875,18 +796,13 @@ export function PublicTypingPage() {
                     handlePrevDrill();
                   }}
                   disabled={drillIndex === 0}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{
-                    backgroundColor: 'var(--surface, #1b130c)',
-                    border: '1px solid var(--border, #2c1d12)',
-                    color: '#8e7d70',
-                  }}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed bg-[var(--surface)] hover:bg-[var(--surface-hover)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-heading)]"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
                   <span>Prev</span>
                 </button>
 
-                <span className="text-xs font-mono font-medium" style={{ color: '#8e7d70' }}>
+                <span className="text-xs font-mono font-medium text-[var(--text-muted)]">
                   {drillIndex + 1} of {activeTargetsList.length}
                 </span>
 
@@ -897,12 +813,7 @@ export function PublicTypingPage() {
                     handleNextDrill();
                   }}
                   disabled={drillIndex >= activeTargetsList.length - 1}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                  style={{
-                    backgroundColor: 'var(--surface, #1b130c)',
-                    border: '1px solid var(--border, #2c1d12)',
-                    color: '#8e7d70',
-                  }}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed bg-[var(--surface)] hover:bg-[var(--surface-hover)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-heading)]"
                 >
                   <span>Next</span>
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -912,7 +823,7 @@ export function PublicTypingPage() {
 
             {/* FOOTER: Centered italic quote */}
             <footer className="text-center py-2">
-              <p className="text-xs italic" style={{ color: '#8e7d70' }}>
+              <p className="text-xs italic text-[var(--text-muted)]">
                 "I learn by reading and typing."
               </p>
             </footer>
@@ -925,10 +836,7 @@ export function PublicTypingPage() {
             <PublicVocabularyModal
               entry={selectedVocabEntry}
               onClose={() => setSelectedVocabEntry(null)}
-              onPracticeText={() => {
-                setSelectedVocabEntry(null);
-                setActiveTab('trainer');
-              }}
+              onPracticeText={handlePracticeWordFromModal}
             />
           )}
         </AnimatePresence>

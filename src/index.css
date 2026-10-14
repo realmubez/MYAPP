@@ -36,10 +36,10 @@
   --surface: #f1f5f9;
   --surface-hover: #e2e8f0;
   --surface-elevated: #e2e8f0;
-  --border: #cbd5e1;
-  --border-focus: #d97706;
-  --primary: #d97706;
-  --primary-hover: #b45309;
+  --border: #e2e8f0;
+  --border-focus: #f59e0b;
+  --primary: #f59e0b;
+  --primary-hover: #d97706;
   --primary-glow: rgba(217, 119, 6, 0.2);
   --primary-alpha: rgba(217, 119, 6, 0.12);
   --text: #1e293b;
