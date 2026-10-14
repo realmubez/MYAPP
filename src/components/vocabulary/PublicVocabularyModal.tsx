@@ -6,8 +6,6 @@ import {
   Keyboard,
   ArrowRight,
   Square,
-  Sparkles,
-  BookOpen,
   Languages,
 } from 'lucide-react';
 import { VocabularyEntry } from '../../data/publicVocabulary';
@@ -22,19 +20,19 @@ interface PublicVocabularyModalProps {
 type LangTab = 'so' | 'en' | 'de';
 
 export function PublicVocabularyModal({ entry, onClose, onPracticeText }: PublicVocabularyModalProps) {
-  // Default active tab must be SOMALI as requested
+  // 1. Default active tab MUST be SOMALI as requested
   const [activeLang, setActiveLang] = useState<LangTab>('so');
 
-  // Currently playing: { lang: 'en' | 'de' | 'so', type: 'word' | 'sentence' }
-  const [activePlayback, setActivePlayback] = useState<{
-    lang: 'en' | 'de' | 'so';
-    type: 'word' | 'sentence';
-  } | null>(null);
-  const [loadingPlayback, setLoadingPlayback] = useState<{
-    lang: 'en' | 'de' | 'so';
-    type: 'word' | 'sentence';
-  } | null>(null);
+  // Reset tab to Somali whenever a new entry opens
+  useEffect(() => {
+    if (entry) {
+      setActiveLang('so');
+    }
+  }, [entry?.id]);
 
+  // Audio playback state
+  const [activeAudioKey, setActiveAudioKey] = useState<string | null>(null);
+  const [loadingAudioKey, setLoadingAudioKey] = useState<string | null>(null);
   const activeAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const stopAudio = useCallback(() => {
@@ -50,125 +48,122 @@ export function PublicVocabularyModal({ entry, onClose, onPracticeText }: Public
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
-    setActivePlayback(null);
-    setLoadingPlayback(null);
+    setActiveAudioKey(null);
+    setLoadingAudioKey(null);
   }, []);
 
-  // Stop audio when modal closes or unmounts
   useEffect(() => {
     return () => {
       stopAudio();
     };
   }, [stopAudio]);
 
-  const playAudio = useCallback(
-    async (text: string, lang: 'en' | 'de' | 'so', type: 'word' | 'sentence') => {
-      if (activePlayback?.lang === lang && activePlayback?.type === type) {
+  const playSpeech = useCallback(
+    async (text: string, voiceLang: 'en' | 'de' | 'so', key: string) => {
+      if (activeAudioKey === key) {
         stopAudio();
         return;
       }
 
       stopAudio();
-      setLoadingPlayback({ lang, type });
+      setLoadingAudioKey(key);
 
       const voice =
-        lang === 'en'
-          ? 'en-GB-RyanNeural' // Ryan (Neural) UK
-          : lang === 'de'
-          ? 'de-DE-KillianNeural' // German Neural
-          : 'so-SO-MuuseNeural'; // Somali Neural
+        voiceLang === 'en'
+          ? 'en-GB-RyanNeural'
+          : voiceLang === 'de'
+          ? 'de-DE-KillianNeural'
+          : 'so-SO-MuuseNeural';
 
-      const rate = lang === 'so' ? '-10%' : '0%';
-      const clean = cleanSpeechText(text);
+      const rate = voiceLang === 'so' ? '-10%' : '0%';
+      const cleaned = cleanSpeechText(text);
 
       try {
-        const url = getTTSUrl({ text: clean, voice, rate });
+        const url = getTTSUrl({ text: cleaned, voice, rate });
         let resolvedSrc = url;
         try {
           resolvedSrc = await fetchTTSAudioBlobUrl(url);
         } catch {
-          // fallback to direct URL
+          // fallback to direct url
         }
 
         const audio = new Audio(resolvedSrc);
         activeAudioRef.current = audio;
 
         audio.onplaying = () => {
-          setLoadingPlayback(null);
-          setActivePlayback({ lang, type });
+          setLoadingAudioKey(null);
+          setActiveAudioKey(key);
         };
 
         audio.onended = () => {
-          setActivePlayback(null);
-          setLoadingPlayback(null);
+          setActiveAudioKey(null);
+          setLoadingAudioKey(null);
           activeAudioRef.current = null;
         };
 
         audio.onerror = () => {
-          setLoadingPlayback(null);
+          setLoadingAudioKey(null);
           if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-            const utterance = new SpeechSynthesisUtterance(clean);
-            utterance.lang = lang === 'en' ? 'en-GB' : lang === 'de' ? 'de-DE' : 'so';
-            utterance.onstart = () => setActivePlayback({ lang, type });
-            utterance.onend = () => setActivePlayback(null);
-            utterance.onerror = () => setActivePlayback(null);
+            const utterance = new SpeechSynthesisUtterance(cleaned);
+            utterance.lang = voiceLang === 'en' ? 'en-GB' : voiceLang === 'de' ? 'de-DE' : 'so';
+            utterance.onstart = () => setActiveAudioKey(key);
+            utterance.onend = () => setActiveAudioKey(null);
+            utterance.onerror = () => setActiveAudioKey(null);
             window.speechSynthesis.speak(utterance);
           } else {
-            setActivePlayback(null);
+            setActiveAudioKey(null);
           }
         };
 
         await audio.play();
       } catch {
-        setLoadingPlayback(null);
+        setLoadingAudioKey(null);
         if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-          const utterance = new SpeechSynthesisUtterance(clean);
-          utterance.lang = lang === 'en' ? 'en-GB' : lang === 'de' ? 'de-DE' : 'so';
-          utterance.onstart = () => setActivePlayback({ lang, type });
-          utterance.onend = () => setActivePlayback(null);
-          utterance.onerror = () => setActivePlayback(null);
+          const utterance = new SpeechSynthesisUtterance(cleaned);
+          utterance.lang = voiceLang === 'en' ? 'en-GB' : voiceLang === 'de' ? 'de-DE' : 'so';
+          utterance.onstart = () => setActiveAudioKey(key);
+          utterance.onend = () => setActiveAudioKey(null);
+          utterance.onerror = () => setActiveAudioKey(null);
           window.speechSynthesis.speak(utterance);
         } else {
-          setActivePlayback(null);
+          setActiveAudioKey(null);
         }
       }
     },
-    [activePlayback, stopAudio]
+    [activeAudioKey, stopAudio]
   );
 
   if (!entry) return null;
 
-  // Helper for audio buttons
-  const renderAudioButton = (
+  const renderChipAudioButton = (
     textToSpeak: string,
-    lang: 'en' | 'de' | 'so',
-    type: 'word' | 'sentence',
-    label: string,
-    badgeColorClass = 'text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30'
+    voiceLang: 'en' | 'de' | 'so',
+    key: string,
+    label: string
   ) => {
-    const isPlaying = activePlayback?.lang === lang && activePlayback?.type === type;
-    const isLoading = loadingPlayback?.lang === lang && loadingPlayback?.type === type;
+    const isPlaying = activeAudioKey === key;
+    const isLoading = loadingAudioKey === key;
 
     return (
       <button
         type="button"
         onClick={(e) => {
           e.stopPropagation();
-          playAudio(textToSpeak, lang, type);
+          playSpeech(textToSpeak, voiceLang, key);
         }}
-        className={`inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer select-none active:scale-95 ${
+        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer select-none active:scale-95 ${
           isPlaying
-            ? 'bg-[#f59e0b] text-neutral-950 border-[#f59e0b] font-black shadow-sm'
-            : badgeColorClass
+            ? 'bg-[#f59e0b] text-neutral-950 font-bold shadow-xs'
+            : 'bg-[var(--surface-elevated)] hover:bg-[var(--surface-hover)] text-[var(--text)] border border-[var(--border)]'
         }`}
-        title={isPlaying ? 'Stop Audio' : `Listen to ${label}`}
+        title={isPlaying ? 'Stop' : `Listen to ${label}`}
       >
         {isLoading ? (
-          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          <Loader2 className="w-3 h-3 animate-spin" />
         ) : isPlaying ? (
-          <Square className="w-3.5 h-3.5 fill-current" />
+          <Square className="w-3 h-3 fill-current" />
         ) : (
-          <Volume2 className="w-3.5 h-3.5" />
+          <Volume2 className="w-3 h-3" />
         )}
         <span>{isPlaying ? 'Stop' : label}</span>
       </button>
@@ -177,320 +172,219 @@ export function PublicVocabularyModal({ entry, onClose, onPracticeText }: Public
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 dark:bg-black/80 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 dark:bg-black/80 backdrop-blur-xs animate-in fade-in duration-150"
       onClick={() => {
         stopAudio();
         onClose();
       }}
     >
+      {/* 1. MODAL POSITION & STYLE: CENTER FLOATING DIALOG (NOT A BOTTOM SHEET) */}
       <div
-        className="relative w-full max-w-lg flex flex-col bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl shadow-2xl animate-in zoom-in-95 duration-200 text-[var(--text)] overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="vocab-modal-title"
+        className="relative w-full max-w-[440px] rounded-2xl p-5 sm:p-6 shadow-2xl flex flex-col gap-4 text-[var(--text)] transition-all animate-in zoom-in-95 duration-200 bg-[var(--card-bg)] border border-[var(--border)]"
         onClick={(e) => e.stopPropagation()}
         style={{
-          boxShadow: 'var(--shadow)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 30px rgba(245, 158, 11, 0.1)',
         }}
       >
-        {/* HEADER BAR */}
-        <div className="flex items-start justify-between px-5 sm:px-6 pt-5 pb-3 border-b border-[var(--border)] bg-[var(--surface)]">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/25 flex items-center gap-1">
-                <Languages className="w-3 h-3" />
-                <span>Tri-Lingual Vocabulary</span>
-              </span>
-              <span className="text-xs text-[var(--text-muted)] italic font-mono">
-                {entry.partOfSpeech}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3 mt-1.5">
-              <h2 className="text-2xl sm:text-3xl font-black font-mono text-[var(--text-heading)] tracking-tight">
-                {entry.word}
-              </h2>
-              {/* Quick Ryan UK Audio button for root word */}
-              {renderAudioButton(
-                entry.word,
-                'en',
-                'word',
-                'Ryan (UK)',
-                'text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-xs'
-              )}
-            </div>
+        {/* TOP ROW: Tag + Part of Speech + Close button */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold tracking-wider uppercase text-amber-500 bg-amber-500/10 border border-amber-500/30">
+              <Languages className="w-3 h-3" />
+              <span>TRILINGUAL VOCABULARY</span>
+            </span>
+            <span className="text-xs text-[var(--text-muted)] italic font-mono">
+              ({entry.partOfSpeech})
+            </span>
           </div>
 
           <button
+            type="button"
             onClick={() => {
               stopAudio();
               onClose();
             }}
-            className="p-2 rounded-xl bg-[var(--surface-hover)] text-[var(--text-muted)] hover:text-[var(--text-heading)] border border-[var(--border)] transition-all cursor-pointer active:scale-95"
+            className="w-7 h-7 rounded-full flex items-center justify-center bg-[var(--surface)] hover:bg-[var(--surface-hover)] text-[var(--text-muted)] hover:text-[var(--text)] transition-colors cursor-pointer border border-[var(--border)]"
             aria-label="Close"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* 3-TAB LANGUAGE SWITCHER: [🇸🇴 Soomaali] | [🇬🇧 English] | [🇩🇪 Deutsch] */}
-        <div className="px-5 sm:px-6 pt-3.5 pb-2 bg-[var(--surface)] border-b border-[var(--border)]">
-          <div className="grid grid-cols-3 gap-1.5 p-1 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)]">
-            <button
-              type="button"
-              onClick={() => {
-                stopAudio();
-                setActiveLang('so');
-              }}
-              className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeLang === 'so'
-                  ? 'bg-[#f59e0b] text-neutral-950 font-black shadow-sm'
-                  : 'text-[var(--text-muted)] hover:text-[var(--text-heading)]'
-              }`}
-            >
-              <span>🇸🇴</span>
-              <span className="truncate">Soomaali</span>
-            </button>
+        {/* HEADWORD + PRONOUNCE (UK) BUTTON */}
+        <div className="flex items-center justify-between gap-3">
+          <h2
+            id="vocab-modal-title"
+            className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-[var(--text-heading)]"
+          >
+            {entry.word}
+          </h2>
 
-            <button
-              type="button"
-              onClick={() => {
-                stopAudio();
-                setActiveLang('en');
-              }}
-              className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeLang === 'en'
-                  ? 'bg-[#f59e0b] text-neutral-950 font-black shadow-sm'
-                  : 'text-[var(--text-muted)] hover:text-[var(--text-heading)]'
-              }`}
-            >
-              <span>🇬🇧</span>
-              <span className="truncate">English</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                stopAudio();
-                setActiveLang('de');
-              }}
-              className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeLang === 'de'
-                  ? 'bg-[#f59e0b] text-neutral-950 font-black shadow-sm'
-                  : 'text-[var(--text-muted)] hover:text-[var(--text-heading)]'
-              }`}
-            >
-              <span>🇩🇪</span>
-              <span className="truncate">Deutsch</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => playSpeech(entry.word, 'en', 'root-word')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer active:scale-95 ${
+              activeAudioKey === 'root-word'
+                ? 'bg-[#f59e0b] text-neutral-950 font-black'
+                : 'border border-amber-500/40 text-amber-500 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20'
+            }`}
+          >
+            <Volume2 className="w-3.5 h-3.5" />
+            <span>
+              {activeAudioKey === 'root-word' ? 'Stop' : 'Pronounce (UK)'}
+            </span>
+          </button>
         </div>
 
-        {/* DYNAMIC EXPLANATION CARD MATCHING ACTIVE LANGUAGE */}
-        <div className="px-5 sm:px-6 py-4 flex-1 overflow-y-auto space-y-3.5 overscroll-contain">
-          {activeLang === 'so' && (
-            <div className="p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)] space-y-3">
-              {/* Top row: Word + grammatical form + Audio pronunciation chips */}
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] pb-3">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg font-black font-mono text-[var(--text-heading)]">
-                      {entry.somaliWord}
-                    </span>
-                    <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/25">
-                      Af-Soomaali
-                    </span>
-                  </div>
-                  <span className="text-xs text-[var(--text-muted)] italic">
-                    {entry.partOfSpeech}
-                  </span>
-                </div>
-
-                {/* Pronunciation chips: [Erey] and [Weedh] */}
-                <div className="flex items-center gap-1.5">
-                  {renderAudioButton(
-                    entry.somaliWord,
-                    'so',
-                    'word',
-                    'Erey',
-                    'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30'
-                  )}
-                  {renderAudioButton(
-                    entry.somaliExample,
-                    'so',
-                    'sentence',
-                    'Weedh',
-                    'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30'
-                  )}
-                </div>
-              </div>
-
-              {/* Full meaning definition */}
-              <div className="space-y-1">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                  Micnaha / Definition
-                </span>
-                <p className="text-sm font-medium leading-relaxed text-[var(--text)]">
-                  {entry.somaliMeaning}
-                </p>
-              </div>
-
-              {/* Monospace example quote block */}
-              <div className="space-y-1 pt-1">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                  Tusaale / Example Context
-                </span>
-                <div className="p-3 rounded-xl bg-[var(--card-bg)] border-l-4 border-l-[#f59e0b] border-y border-r border-[var(--border)] space-y-1">
-                  <p className="text-xs sm:text-sm font-mono text-[var(--text-heading)] italic leading-relaxed">
-                    «{entry.somaliExample}»
-                  </p>
-                  <p className="text-[11px] text-[var(--text-muted)] font-mono">
-                    EN: "{entry.englishExample}"
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeLang === 'en' && (
-            <div className="p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)] space-y-3">
-              {/* Top row: Word + grammatical form + Audio pronunciation chips */}
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] pb-3">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg font-black font-mono text-[var(--text-heading)]">
-                      {entry.word}
-                    </span>
-                    <span className="text-[11px] font-mono text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/25">
-                      English (UK)
-                    </span>
-                  </div>
-                  <span className="text-xs text-[var(--text-muted)] italic">
-                    {entry.partOfSpeech}
-                  </span>
-                </div>
-
-                {/* Pronunciation chips: [Word] and [Sentence] */}
-                <div className="flex items-center gap-1.5">
-                  {renderAudioButton(
-                    entry.word,
-                    'en',
-                    'word',
-                    'Word',
-                    'text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30'
-                  )}
-                  {renderAudioButton(
-                    entry.englishExample,
-                    'en',
-                    'sentence',
-                    'Sentence',
-                    'text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30'
-                  )}
-                </div>
-              </div>
-
-              {/* Full meaning definition */}
-              <div className="space-y-1">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                  Meaning
-                </span>
-                <p className="text-sm font-medium leading-relaxed text-[var(--text)]">
-                  {entry.englishMeaning}
-                </p>
-              </div>
-
-              {/* Monospace example quote block */}
-              <div className="space-y-1 pt-1">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                  Sentence in Context
-                </span>
-                <div className="p-3 rounded-xl bg-[var(--card-bg)] border-l-4 border-l-[#f59e0b] border-y border-r border-[var(--border)]">
-                  <p className="text-xs sm:text-sm font-mono text-[var(--text-heading)] italic leading-relaxed">
-                    “{entry.englishExample}”
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeLang === 'de' && (
-            <div className="p-4 rounded-2xl bg-[var(--surface)] border border-[var(--border)] space-y-3">
-              {/* Top row: Word + grammatical form + Audio pronunciation chips */}
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] pb-3">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg font-black font-mono text-[var(--text-heading)]">
-                      {entry.germanWord}
-                    </span>
-                    <span className="text-[11px] font-mono text-sky-600 dark:text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded-md border border-sky-500/25">
-                      Deutsch
-                    </span>
-                  </div>
-                  <span className="text-xs text-[var(--text-muted)] italic">
-                    {entry.partOfSpeech}
-                  </span>
-                </div>
-
-                {/* Pronunciation chips: [Wort] and [Satz] */}
-                <div className="flex items-center gap-1.5">
-                  {renderAudioButton(
-                    entry.germanWord,
-                    'de',
-                    'word',
-                    'Wort',
-                    'text-sky-600 dark:text-sky-400 bg-sky-500/10 hover:bg-sky-500/20 border-sky-500/30'
-                  )}
-                  {renderAudioButton(
-                    entry.germanExample,
-                    'de',
-                    'sentence',
-                    'Satz',
-                    'text-sky-600 dark:text-sky-400 bg-sky-500/10 hover:bg-sky-500/20 border-sky-500/30'
-                  )}
-                </div>
-              </div>
-
-              {/* Full meaning definition */}
-              <div className="space-y-1">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                  Bedeutung / Definition
-                </span>
-                <p className="text-sm font-medium leading-relaxed text-[var(--text)]">
-                  {entry.germanMeaning}
-                </p>
-              </div>
-
-              {/* Monospace example quote block */}
-              <div className="space-y-1 pt-1">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                  Beispielsatz
-                </span>
-                <div className="p-3 rounded-xl bg-[var(--card-bg)] border-l-4 border-l-[#f59e0b] border-y border-r border-[var(--border)] space-y-1">
-                  <p className="text-xs sm:text-sm font-mono text-[var(--text-heading)] italic leading-relaxed">
-                    „{entry.germanExample}“
-                  </p>
-                  <p className="text-[11px] text-[var(--text-muted)] font-mono">
-                    EN: "{entry.englishExample}"
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* PINNED CTA BUTTON: PRACTICE [WORD] IN TYPING ENGINE → */}
-        <div className="p-4 sm:p-5 border-t border-[var(--border)] bg-[var(--surface)]">
+        {/* 2. 3-TAB LANGUAGE PICKER: [🇸🇴 Soomaali] | [🇬🇧 English] | [🇩🇪 Deutsch] */}
+        <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-[var(--surface)] border border-[var(--border)]">
           <button
             type="button"
             onClick={() => {
               stopAudio();
-              onPracticeText?.(entry.word);
-              onClose();
+              setActiveLang('so');
             }}
-            className="w-full h-11 sm:h-12 flex items-center justify-center gap-2 rounded-xl bg-[#f59e0b] hover:bg-[#fbbf24] text-neutral-950 font-black text-xs sm:text-sm uppercase tracking-wider transition-all shadow-md shadow-amber-500/25 active:scale-98 cursor-pointer"
+            className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer select-none ${
+              activeLang === 'so'
+                ? 'bg-[#f59e0b] text-neutral-950 shadow-xs'
+                : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-hover)]'
+            }`}
           >
-            <Keyboard className="w-4 h-4" />
-            <span>PRACTICE "{entry.word.toUpperCase()}" IN TYPING ENGINE</span>
-            <ArrowRight className="w-4 h-4" />
+            <span>🇸🇴</span>
+            <span>Soomaali</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              stopAudio();
+              setActiveLang('en');
+            }}
+            className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer select-none ${
+              activeLang === 'en'
+                ? 'bg-[#f59e0b] text-neutral-950 shadow-xs'
+                : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-hover)]'
+            }`}
+          >
+            <span>🇬🇧</span>
+            <span>English</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              stopAudio();
+              setActiveLang('de');
+            }}
+            className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer select-none ${
+              activeLang === 'de'
+                ? 'bg-[#f59e0b] text-neutral-950 shadow-xs'
+                : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-hover)]'
+            }`}
+          >
+            <span>🇩🇪</span>
+            <span>Deutsch</span>
           </button>
         </div>
+
+        {/* 3. SINGLE EXPLANATION PANEL: ONLY ONE LANGUAGE CARD AT A TIME */}
+        <div className="w-full">
+          {/* SOMALI TAB (DEFAULT ACTIVE) */}
+          {activeLang === 'so' && (
+            <div className="p-4 rounded-xl bg-[var(--surface)] border border-[var(--border)] space-y-3">
+              {/* Word badge + [Word] and [Sentence] audio buttons */}
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono font-bold text-base sm:text-lg text-emerald-500 dark:text-emerald-400">
+                  {entry.somaliWord}
+                </span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {renderChipAudioButton(entry.somaliWord, 'so', 'so-word', 'Erey')}
+                  {renderChipAudioButton(entry.somaliExample, 'so', 'so-sentence', 'Weedh')}
+                </div>
+              </div>
+
+              {/* Full meaning definition text */}
+              <p className="text-xs sm:text-sm text-[var(--text)] leading-relaxed font-normal">
+                {entry.somaliMeaning}
+              </p>
+
+              {/* Monospace example quote box with amber border */}
+              <div className="p-3 rounded-lg bg-[var(--surface-elevated)] border-l-3 border-amber-500 font-mono text-xs sm:text-sm text-[var(--text)] italic leading-relaxed">
+                «{entry.somaliExample}»
+              </div>
+            </div>
+          )}
+
+          {/* ENGLISH TAB */}
+          {activeLang === 'en' && (
+            <div className="p-4 rounded-xl bg-[var(--surface)] border border-[var(--border)] space-y-3">
+              {/* Word badge + [Word] and [Sentence] audio buttons */}
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono font-bold text-base sm:text-lg text-amber-500 dark:text-amber-400">
+                  {entry.word}
+                </span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {renderChipAudioButton(entry.word, 'en', 'en-word', 'Word')}
+                  {renderChipAudioButton(entry.englishExample, 'en', 'en-sentence', 'Sentence')}
+                </div>
+              </div>
+
+              {/* Full meaning definition text */}
+              <p className="text-xs sm:text-sm text-[var(--text)] leading-relaxed font-normal">
+                {entry.englishMeaning}
+              </p>
+
+              {/* Monospace example quote box with amber border */}
+              <div className="p-3 rounded-lg bg-[var(--surface-elevated)] border-l-3 border-amber-500 font-mono text-xs sm:text-sm text-[var(--text)] italic leading-relaxed">
+                "{entry.englishExample}"
+              </div>
+            </div>
+          )}
+
+          {/* DEUTSCH TAB */}
+          {activeLang === 'de' && (
+            <div className="p-4 rounded-xl bg-[var(--surface)] border border-[var(--border)] space-y-3">
+              {/* Word badge + [Word] and [Sentence] audio buttons */}
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono font-bold text-base sm:text-lg text-sky-500 dark:text-sky-400">
+                  {entry.germanWord}
+                </span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {renderChipAudioButton(entry.germanWord, 'de', 'de-word', 'Wort')}
+                  {renderChipAudioButton(entry.germanExample, 'de', 'de-sentence', 'Satz')}
+                </div>
+              </div>
+
+              {/* Full meaning definition text */}
+              <p className="text-xs sm:text-sm text-[var(--text)] leading-relaxed font-normal">
+                {entry.germanMeaning}
+              </p>
+
+              {/* Monospace example quote box with amber border */}
+              <div className="p-3 rounded-lg bg-[var(--surface-elevated)] border-l-3 border-amber-500 font-mono text-xs sm:text-sm text-[var(--text)] italic leading-relaxed">
+                „{entry.germanExample}“
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 4. BOTTOM ACTION: PINNED PRACTICE CTA */}
+        <button
+          type="button"
+          onClick={() => {
+            stopAudio();
+            onPracticeText?.(entry.word);
+            onClose();
+          }}
+          className="w-full h-11 sm:h-12 flex items-center justify-center gap-2 rounded-xl bg-[#f59e0b] hover:bg-[#fbbf24] text-neutral-950 font-black text-xs sm:text-sm uppercase tracking-wide transition-all shadow-md shadow-amber-500/20 active:scale-[0.98] cursor-pointer"
+        >
+          <Keyboard className="w-4 h-4" />
+          <span>PRACTICE "{entry.word.toUpperCase()}" IN TYPING ENGINE</span>
+          <ArrowRight className="w-4 h-4" />
+        </button>
       </div>
     </div>
   );
