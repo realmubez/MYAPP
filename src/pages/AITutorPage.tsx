@@ -135,6 +135,17 @@ export function AITutorPage() {
   const [liveSessionReady, setLiveSessionReady] = useState<boolean>(false);
   const [demoQuickPrompt, setDemoQuickPrompt] = useState<string>('');
 
+  // Debug Logs State for troubleshooting live voice & publishing issues
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
+  const [showDebugDrawer, setShowDebugDrawer] = useState<boolean>(false);
+
+  const addDebugLog = useCallback((msg: string) => {
+    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const formatted = `[${timestamp}] ${msg}`;
+    console.log(formatted);
+    setDebugLogs((prev) => [...prev.slice(-49), formatted]);
+  }, []);
+
   // 3. Chat and Input States
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -433,7 +444,9 @@ Provide helpful corrections, translations, and pronunciations when relevant.`;
 
   // Safe Microphone Stream Setup - strictly called on user gesture
   const setupMicrophone = useCallback(async (): Promise<boolean> => {
+    addDebugLog('Requesting microphone access via getUserMedia...');
     if (typeof window === 'undefined' || !navigator?.mediaDevices?.getUserMedia) {
+      addDebugLog('ERROR: navigator.mediaDevices.getUserMedia unavailable');
       setMicPermissionState('denied');
       setIsMuted(true);
       isMutedRef.current = true;
@@ -465,6 +478,7 @@ Provide helpful corrections, translations, and pronunciations when relevant.`;
         },
       });
       mediaStreamRef.current = stream;
+      addDebugLog('Microphone access granted successfully');
 
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (AudioCtx) {
@@ -519,7 +533,7 @@ Provide helpful corrections, translations, and pronunciations when relevant.`;
       setStatusText('Listening to you...');
       return true;
     } catch (err: any) {
-      console.warn('[AUDIO_MIC_ACCESS] Mic permission not granted or device unavailable:', err?.name, err?.message);
+      addDebugLog(`ERROR: Microphone permission denied or error: ${err?.name} - ${err?.message}`);
       setMicPermissionState('denied');
       setIsMuted(true);
       isMutedRef.current = true;
@@ -527,12 +541,13 @@ Provide helpful corrections, translations, and pronunciations when relevant.`;
       setStatusText('Microphone permission denied');
       return false;
     }
-  }, []);
+  }, [addDebugLog]);
 
   // Setup WebSocket connection to Gemini Live API - runs ONCE on mount without requesting mic
   const connectLiveSession = useCallback(() => {
     try {
       setStatusText('Voice Studio Ready');
+      addDebugLog('Initializing Gemini Live WebSocket session...');
 
       // 1. Initialize Output Audio Context
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
@@ -541,19 +556,21 @@ Provide helpful corrections, translations, and pronunciations when relevant.`;
           const outputCtx = new AudioCtx({ sampleRate: 24000 });
           outputAudioCtxRef.current = outputCtx;
           nextStartTimeRef.current = outputCtx.currentTime;
+          addDebugLog('Output AudioContext initialized at 24kHz');
         } catch (e) {
-          console.warn('[AUDIO_OUTPUT_INIT]', e);
+          addDebugLog(`WARN: Output AudioContext init error: ${e}`);
         }
       }
 
       // 2. WebSocket setup
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsUrl = `${protocol}//${window.location.host}/api/live`;
+      addDebugLog(`Connecting WebSocket to ${wsUrl}`);
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {
-        console.log('[LIVE_WS_CLIENT] Connected');
+        addDebugLog('WebSocket connection opened successfully');
         setIsConnected(true);
         setStatusText(
           isDemoModeRef.current
@@ -575,11 +592,11 @@ Provide helpful corrections, translations, and pronunciations when relevant.`;
             if (msg.status === 'connected') {
               liveSessionReadyRef.current = true;
               setLiveSessionReady(true);
-              console.log('[LIVE_WS_CLIENT] Gemini Live session active');
+              addDebugLog(`Gemini Live session active (Model: ${msg.model || 'gemini-3.8-live'})`);
             } else if (msg.status === 'ready_fallback') {
               liveSessionReadyRef.current = false;
               setLiveSessionReady(false);
-              console.log('[LIVE_WS_CLIENT] Server is in hybrid fallback mode, enabling Web Speech');
+              addDebugLog('Server in hybrid fallback mode, enabling Web Speech');
               setupSpeechRecognition();
             }
           }
@@ -655,31 +672,28 @@ Provide helpful corrections, translations, and pronunciations when relevant.`;
             setIsAiTyping(false);
           }
         } catch (e) {
-          console.warn('[LIVE_WS_PARSE_ERROR]', e);
+          addDebugLog(`WARN: WS message parse error: ${e}`);
         }
       };
 
-      ws.onerror = () => {
-        console.warn('[LIVE_WS_CLIENT_ERROR] Falling back to continuous Web Speech');
+      ws.onerror = (err) => {
+        addDebugLog(`ERROR: WebSocket error encountered: ${JSON.stringify(err)}`);
         setIsConnected(true);
         setupSpeechRecognition();
       };
 
       ws.onclose = () => {
-        console.log('[LIVE_WS_CLIENT] WebSocket closed');
+        addDebugLog('WebSocket connection closed');
         setIsConnected(false);
         liveSessionReadyRef.current = false;
         setLiveSessionReady(false);
       };
-
-      // NOTE: DO NOT call setupMicrophone() here!
-      // getUserMedia must only be called via user interaction (clicking the mic button)
     } catch (err) {
-      console.warn('[LIVE_SESSION_INIT_WARN]', err);
+      addDebugLog(`ERROR: Live session init exception: ${err}`);
       setStatusText('Ready (Text Mode)');
       setIsConnected(true);
     }
-  }, [setupSpeechRecognition]);
+  }, [addDebugLog, setupSpeechRecognition]);
 
   // Disconnect & End call
   const disconnectSession = useCallback(() => {
@@ -924,6 +938,20 @@ Provide helpful corrections, translations, and pronunciations when relevant.`;
               >
                 <Headphones className="w-3.5 h-3.5" />
                 <span>{isDemoMode ? 'Demo ON' : 'Demo Mode'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowDebugDrawer(true)}
+                title="View Debug Logs & Connection Diagnostics"
+                className="h-9 px-2.5 rounded-full bg-[#18110b] border border-[#2b1d12] hover:border-[#f59e0b]/40 text-zinc-400 hover:text-[#f59e0b] text-[10px] md:text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer active:scale-95"
+              >
+                <span>🐞 Debug</span>
+                {debugLogs.length > 0 && (
+                  <span className="w-4 h-4 rounded-full bg-[#f59e0b] text-[#090705] text-[9px] font-black flex items-center justify-center">
+                    {debugLogs.length}
+                  </span>
+                )}
               </button>
 
               <button
@@ -1588,6 +1616,79 @@ Provide helpful corrections, translations, and pronunciations when relevant.`;
                 <Send className="w-5 h-5" />
               </button>
             </form>
+          </div>
+        </div>
+      )}
+      {/* DEBUG LOGS DRAWER / MODAL */}
+      {showDebugDrawer && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-[#140e09] border border-[#f59e0b]/40 rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[#2b1d12] bg-[#1a120a]">
+              <div className="flex items-center gap-2">
+                <span className="text-amber-400 font-bold text-sm">🛠️ Voice Studio Diagnostics</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono">
+                  {debugLogs.length} logs
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDebugDrawer(false)}
+                className="w-8 h-8 rounded-full bg-zinc-800 text-zinc-300 hover:text-white flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Logs Body */}
+            <div className="flex-1 p-3 overflow-y-auto font-mono text-[11px] text-zinc-300 space-y-1 bg-[#090705]">
+              {debugLogs.length === 0 ? (
+                <div className="text-zinc-500 text-center py-8 italic">No debug events recorded yet. Try starting a call or enabling Demo Mode.</div>
+              ) : (
+                debugLogs.map((log, idx) => (
+                  <div key={idx} className="border-b border-zinc-900 pb-1 break-all">
+                    {log}
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Footer Actions */}
+            <div className="flex items-center justify-between px-4 py-3 border-t border-[#2b1d12] bg-[#140e09]">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const text = debugLogs.join('\n');
+                    navigator.clipboard.writeText(text);
+                    alert('Debug logs copied to clipboard!');
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-[#f59e0b] text-[#090705] font-bold text-xs hover:bg-[#fbbf24] transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copy All Logs</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDebugLogs([])}
+                  className="px-3 py-1.5 rounded-xl bg-zinc-800 text-zinc-300 hover:text-white text-xs font-medium cursor-pointer"
+                >
+                  Clear
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  disconnectSession();
+                  connectLiveSession();
+                  addDebugLog('[MANUAL_ACTION] Re-initiated WebSocket connection');
+                }}
+                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs cursor-pointer flex items-center gap-1.5"
+              >
+                Reconnect WS
+              </button>
+            </div>
           </div>
         </div>
       )}

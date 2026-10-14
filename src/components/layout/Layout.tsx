@@ -69,16 +69,8 @@ export function Layout() {
     return 'MY LEARNING';
   };
 
+  // Home now uses the shared Layout and Sidebar
   const isHomeOrHub = location.pathname === '/' || location.pathname === '/home';
-
-  if (isHomeOrHub) {
-    return (
-      <div className="min-h-screen w-full bg-[#090705] text-[#f3ece4] flex justify-center antialiased">
-        <Outlet />
-        <PwaUpdatePrompt />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#0a0806] text-neutral-100 flex flex-col lg:flex-row antialiased selection:bg-amber-500/30 selection:text-white">
