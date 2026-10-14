@@ -31,7 +31,13 @@ export async function generateAIResponse(options: {
     imageType = 'image/jpeg',
   } = options;
 
-  const geminiApiKey = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)?.trim();
+  const geminiApiKey = (
+    process.env.MY_REALTIME_GEMINI_KEY ||
+    process.env.VITE_MY_REALTIME_GEMINI_KEY ||
+    process.env.NEXT_PUBLIC_MY_REALTIME_GEMINI_KEY ||
+    process.env.GEMINI_API_KEY ||
+    process.env.GOOGLE_API_KEY
+  )?.trim();
   const groqApiKey = process.env.GROQ_API_KEY?.trim();
 
   // 1. If an image is provided, prefer Gemini multimodal vision

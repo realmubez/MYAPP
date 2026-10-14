@@ -7,7 +7,13 @@ export function setupLiveWebSocket(server: Server) {
 
   wss.on('connection', async (clientWs: WebSocket) => {
     console.log('[LIVE_WS] Client connected');
-    const apiKey = (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY)?.trim();
+    const apiKey = (
+      process.env.MY_REALTIME_GEMINI_KEY ||
+      process.env.VITE_MY_REALTIME_GEMINI_KEY ||
+      process.env.NEXT_PUBLIC_MY_REALTIME_GEMINI_KEY ||
+      process.env.GEMINI_API_KEY ||
+      process.env.GOOGLE_API_KEY
+    )?.trim();
 
     if (!apiKey) {
       console.log('[LIVE_WS] No GEMINI_API_KEY present; notifying client to use hybrid voice/chat mode.');
